@@ -1,10 +1,8 @@
 import { Suspense } from 'react';
 import { Login } from '../login';
-
-export default function SignUpPage() {
-  return (
-    <Suspense>
-      <Login mode="signup" />
-    </Suspense>
-  );
-}
+const SignUpPage = () => {
+    return (<Suspense>
+      <Login mode="signup"/>
+    </Suspense>);
+};
+export default SignUpPage;
