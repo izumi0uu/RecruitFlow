@@ -1,11 +1,20 @@
 "use client";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Label } from "@/components/ui/Label";
-import { Lock, Trash2, Loader2 } from "lucide-react";
+
 import { useActionState } from "react";
-import { updatePassword, deleteAccount } from "@/app/(login)/actions";
+import { Loader2, Lock, Trash2 } from "lucide-react";
+
+import { deleteAccount, updatePassword } from "@/app/(login)/actions";
+import { Button } from "@/components/ui/Button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+
 type PasswordState = {
   currentPassword?: string;
   newPassword?: string;
@@ -13,11 +22,28 @@ type PasswordState = {
   error?: string;
   success?: string;
 };
+
 type DeleteState = {
   password?: string;
   error?: string;
   success?: string;
 };
+
+const SectionHeader = () => {
+  return (
+    <div className="mb-8 space-y-3">
+      <span className="inline-kicker">Security</span>
+      <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
+        Security settings
+      </h1>
+      <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+        Keep sign-in details up to date and control what happens when an account
+        should be removed from the workspace entirely.
+      </p>
+    </div>
+  );
+};
+
 const SecurityPage = () => {
   const [passwordState, passwordAction, isPasswordPending] = useActionState<
     PasswordState,
@@ -27,21 +53,22 @@ const SecurityPage = () => {
     DeleteState,
     FormData
   >(deleteAccount, {});
+
   return (
-    <section className="flex-1 p-4 lg:p-8">
-      <h1 className="text-lg lg:text-2xl font-medium bold text-gray-900 mb-6">
-        Security Settings
-      </h1>
-      <Card className="mb-8">
+    <section className="space-y-6 px-0 py-1 lg:py-2">
+      <SectionHeader />
+
+      <Card className="max-w-3xl">
         <CardHeader>
           <CardTitle>Password</CardTitle>
+          <CardDescription>
+            Rotate your password regularly to keep the workspace secure.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" action={passwordAction}>
-            <div>
-              <Label htmlFor="current-password" className="mb-2">
-                Current Password
-              </Label>
+          <form className="space-y-5" action={passwordAction}>
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current password</Label>
               <Input
                 id="current-password"
                 name="currentPassword"
@@ -53,10 +80,8 @@ const SecurityPage = () => {
                 defaultValue={passwordState.currentPassword}
               />
             </div>
-            <div>
-              <Label htmlFor="new-password" className="mb-2">
-                New Password
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New password</Label>
               <Input
                 id="new-password"
                 name="newPassword"
@@ -68,10 +93,8 @@ const SecurityPage = () => {
                 defaultValue={passwordState.newPassword}
               />
             </div>
-            <div>
-              <Label htmlFor="confirm-password" className="mb-2">
-                Confirm New Password
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm new password</Label>
               <Input
                 id="confirm-password"
                 name="confirmPassword"
@@ -82,26 +105,30 @@ const SecurityPage = () => {
                 defaultValue={passwordState.confirmPassword}
               />
             </div>
-            {passwordState.error && (
-              <p className="text-red-500 text-sm">{passwordState.error}</p>
-            )}
-            {passwordState.success && (
-              <p className="text-green-500 text-sm">{passwordState.success}</p>
-            )}
+
+            {passwordState.error ? (
+              <p className="status-message status-error">{passwordState.error}</p>
+            ) : null}
+            {passwordState.success ? (
+              <p className="status-message status-success">
+                {passwordState.success}
+              </p>
+            ) : null}
+
             <Button
               type="submit"
-              className="bg-orange-500 hover:bg-orange-600 text-white"
+              className="rounded-full"
               disabled={isPasswordPending}
             >
               {isPasswordPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                   Updating...
                 </>
               ) : (
                 <>
-                  <Lock className="mr-2 h-4 w-4" />
-                  Update Password
+                  <Lock className="size-4" />
+                  Update password
                 </>
               )}
             </Button>
@@ -109,19 +136,18 @@ const SecurityPage = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="max-w-3xl border-destructive/20">
         <CardHeader>
-          <CardTitle>Delete Account</CardTitle>
+          <CardTitle>Delete account</CardTitle>
+          <CardDescription>
+            Account deletion is irreversible. Proceed only if the workspace no
+            longer needs this identity.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500 mb-4">
-            Account deletion is non-reversable. Please proceed with caution.
-          </p>
-          <form action={deleteAction} className="space-y-4">
-            <div>
-              <Label htmlFor="delete-password" className="mb-2">
-                Confirm Password
-              </Label>
+          <form action={deleteAction} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Confirm password</Label>
               <Input
                 id="delete-password"
                 name="password"
@@ -132,24 +158,26 @@ const SecurityPage = () => {
                 defaultValue={deleteState.password}
               />
             </div>
-            {deleteState.error && (
-              <p className="text-red-500 text-sm">{deleteState.error}</p>
-            )}
+
+            {deleteState.error ? (
+              <p className="status-message status-error">{deleteState.error}</p>
+            ) : null}
+
             <Button
               type="submit"
               variant="destructive"
-              className="bg-red-600 hover:bg-red-700"
+              className="rounded-full"
               disabled={isDeletePending}
             >
               {isDeletePending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                   Deleting...
                 </>
               ) : (
                 <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Account
+                  <Trash2 className="size-4" />
+                  Delete account
                 </>
               )}
             </Button>
@@ -159,4 +187,5 @@ const SecurityPage = () => {
     </section>
   );
 };
+
 export default SecurityPage;

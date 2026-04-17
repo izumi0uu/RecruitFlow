@@ -1,22 +1,36 @@
-import Link from 'next/link';
-import { CircleIcon } from 'lucide-react';
+import Link from "next/link";
+
+import { BrandLockup } from "@/components/Brand";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Button } from "@/components/ui/Button";
+
 const NotFound = () => {
-    return (<div className="flex items-center justify-center min-h-[100dvh]">
-      <div className="max-w-md space-y-8 p-4 text-center">
-        <div className="flex justify-center">
-          <CircleIcon className="size-12 text-orange-500"/>
-        </div>
-        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
-          Page Not Found
-        </h1>
-        <p className="text-base text-gray-500">
-          The page you are looking for might have been removed, had its name
-          changed, or is temporarily unavailable.
-        </p>
-        <Link href="/" className="max-w-48 mx-auto flex justify-center py-2 px-4 border border-gray-300 rounded-full shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-          Back to Home
-        </Link>
+  return (
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-4 py-10">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <ThemeToggle />
       </div>
-    </div>);
+
+      <div className="panel-shell w-full max-w-xl rounded-[2rem] p-8 text-center sm:p-10">
+        <div className="mx-auto flex w-full max-w-sm flex-col items-center space-y-6">
+          <BrandLockup compact />
+          <span className="inline-kicker">404</span>
+          <div className="space-y-3">
+            <h1 className="text-balance text-4xl font-semibold tracking-[-0.05em] text-foreground">
+              The page drifted out of this workspace.
+            </h1>
+            <p className="text-base leading-7 text-muted-foreground">
+              It may have moved, expired, or never existed. The rest of the
+              product is still right where you left it.
+            </p>
+          </div>
+          <Button asChild className="rounded-full px-6">
+            <Link href="/">Back to home</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
+
 export default NotFound;

@@ -1,99 +1,159 @@
 "use client";
+
 import Link from "next/link";
-import { use, useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { LayoutDashboard, LogIn, LogOut } from "lucide-react";
+import useSWR, { mutate } from "swr";
+
+import { BrandLockup } from "@/components/Brand";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { CircleIcon, Home, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { signOut } from "@/app/(login)/actions";
-import { useRouter } from "next/navigation";
+import { useMounted } from "@/hooks/useMounted";
 import { User } from "@/lib/db/schema";
-import useSWR, { mutate } from "swr";
+
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+const getUserInitials = (user: Pick<User, "name" | "email">) => {
+  const source = user.name?.trim() || user.email?.split("@")[0] || "RF";
+
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("");
+};
+
 const UserMenu = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const mounted = useMounted();
   const { data: user } = useSWR<User>("/api/user", fetcher);
   const router = useRouter();
+
   const handleSignOut = async () => {
     await signOut();
     mutate("/api/user");
     router.push("/");
   };
+
   if (!user) {
     return (
       <>
         <Link
           href="/pricing"
-          className="text-sm font-medium text-gray-700 hover:text-gray-900"
+          className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
         >
           Pricing
         </Link>
-        <Button asChild className="rounded-full">
-          <Link href="/sign-up">Sign Up</Link>
+        <Button
+          asChild
+          variant="ghost"
+          className="hidden rounded-full sm:inline-flex"
+        >
+          <Link href="/sign-in">
+            <LogIn className="size-4" />
+            Sign In
+          </Link>
+        </Button>
+        <Button asChild className="rounded-full px-5">
+          <Link href="/sign-up">Get Started</Link>
         </Button>
       </>
     );
   }
+
+  if (!mounted) {
+    return (
+      <button
+        type="button"
+        className="rounded-full focus-visible:outline-none"
+        aria-label="Open user menu"
+      >
+        <Avatar className="size-10">
+          <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
+        </Avatar>
+      </button>
+    );
+  }
+
   return (
     <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-      <DropdownMenuTrigger>
-        <Avatar className="cursor-pointer size-9">
-          <AvatarImage alt={user.name || ""} />
-          <AvatarFallback>
-            {user.email
-              .split(" ")
-              .map((n) => n[0])
-              .join("")}
-          </AvatarFallback>
-        </Avatar>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20"
+          aria-label="Open user menu"
+        >
+          <Avatar className="size-10 cursor-pointer">
+            <AvatarImage alt={user.name || user.email || "RecruitFlow user"} />
+            <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
+          </Avatar>
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="flex flex-col gap-1">
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel className="space-y-1 normal-case tracking-normal">
+          <p className="text-sm font-medium text-foreground">
+            {user.name || "RecruitFlow user"}
+          </p>
+          <p className="text-xs font-normal text-muted-foreground">
+            {user.email}
+          </p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer">
-          <Link href="/dashboard" className="flex w-full items-center">
-            <Home className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
+          <Link href="/dashboard" className="flex w-full items-center gap-2">
+            <LayoutDashboard className="size-4" />
+            Dashboard
           </Link>
         </DropdownMenuItem>
-        <form action={handleSignOut} className="w-full">
-          <button type="submit" className="flex w-full">
-            <DropdownMenuItem className="w-full flex-1 cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sign out</span>
-            </DropdownMenuItem>
-          </button>
-        </form>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onSelect={async (event) => {
+            event.preventDefault();
+            await handleSignOut();
+          }}
+        >
+          <LogOut className="size-4" />
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
+
 const Header = () => {
   return (
-    <header className="border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center">
-          <CircleIcon className="h-6 w-6 text-orange-500" />
-          <span className="ml-2 text-xl font-semibold text-gray-900">ACME</span>
-        </Link>
-        <div className="flex items-center space-x-4">
-          <Suspense fallback={<div className="h-9" />}>
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/72 backdrop-blur-2xl">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
+        <BrandLockup />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+          <div className="flex items-center gap-2 sm:gap-3">
             <UserMenu />
-          </Suspense>
+          </div>
         </div>
       </div>
     </header>
   );
 };
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <section className="flex flex-col min-h-screen">
+    <section className="relative flex min-h-screen flex-col">
       <Header />
-      {children}
+      <div className="flex-1">{children}</div>
     </section>
   );
 };
+
 export default Layout;

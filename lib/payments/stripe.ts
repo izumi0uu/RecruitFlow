@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { Team } from '@/lib/db/schema';
 import { getTeamByStripeCustomerId, getUser, updateTeamSubscription } from '@/lib/db/queries';
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-04-30.basil'
+    apiVersion: '2025-08-27.basil'
 });
 export const createCheckoutSession = async ({ team, priceId }: {
     team: Team | null;

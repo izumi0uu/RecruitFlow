@@ -1,25 +1,51 @@
 "use client";
-import { useActionState } from "react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Label } from "@/components/ui/Label";
+
+import { Suspense, useActionState } from "react";
 import { Loader2 } from "lucide-react";
-import { updateAccount } from "@/app/(login)/actions";
-import { User } from "@/lib/db/schema";
 import useSWR from "swr";
-import { Suspense } from "react";
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+import { updateAccount } from "@/app/(login)/actions";
+import { Button } from "@/components/ui/Button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import { User } from "@/lib/db/schema";
+
 type ActionState = {
   name?: string;
   error?: string;
   success?: string;
 };
+
 type AccountFormProps = {
   state: ActionState;
   nameValue?: string;
   emailValue?: string;
 };
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+const SectionHeader = () => {
+  return (
+    <div className="mb-8 space-y-3">
+      <span className="inline-kicker">Account details</span>
+      <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
+        General settings
+      </h1>
+      <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+        Keep your workspace identity current so collaborators always know who
+        owns the next decision.
+      </p>
+    </div>
+  );
+};
+
 const AccountForm = ({
   state,
   nameValue = "",
@@ -27,10 +53,8 @@ const AccountForm = ({
 }: AccountFormProps) => {
   return (
     <>
-      <div>
-        <Label htmlFor="name" className="mb-2">
-          Name
-        </Label>
+      <div className="space-y-2">
+        <Label htmlFor="name">Name</Label>
         <Input
           id="name"
           name="name"
@@ -39,10 +63,8 @@ const AccountForm = ({
           required
         />
       </div>
-      <div>
-        <Label htmlFor="email" className="mb-2">
-          Email
-        </Label>
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
         <Input
           id="email"
           name="email"
@@ -55,8 +77,10 @@ const AccountForm = ({
     </>
   );
 };
+
 const AccountFormWithData = ({ state }: { state: ActionState }) => {
   const { data: user } = useSWR<User>("/api/user", fetcher);
+
   return (
     <AccountForm
       state={state}
@@ -65,44 +89,45 @@ const AccountFormWithData = ({ state }: { state: ActionState }) => {
     />
   );
 };
+
 const GeneralPage = () => {
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     updateAccount,
-    {},
+    {}
   );
-  return (
-    <section className="flex-1 p-4 lg:p-8">
-      <h1 className="text-lg lg:text-2xl font-medium text-gray-900 mb-6">
-        General Settings
-      </h1>
 
-      <Card>
+  return (
+    <section className="px-0 py-1 lg:py-2">
+      <SectionHeader />
+
+      <Card className="max-w-3xl">
         <CardHeader>
-          <CardTitle>Account Information</CardTitle>
+          <CardTitle>Account information</CardTitle>
+          <CardDescription>
+            Update the identity details that appear throughout the workspace.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" action={formAction}>
+          <form className="space-y-5" action={formAction}>
             <Suspense fallback={<AccountForm state={state} />}>
               <AccountFormWithData state={state} />
             </Suspense>
-            {state.error && (
-              <p className="text-red-500 text-sm">{state.error}</p>
-            )}
-            {state.success && (
-              <p className="text-green-500 text-sm">{state.success}</p>
-            )}
-            <Button
-              type="submit"
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-              disabled={isPending}
-            >
+
+            {state.error ? (
+              <p className="status-message status-error">{state.error}</p>
+            ) : null}
+            {state.success ? (
+              <p className="status-message status-success">{state.success}</p>
+            ) : null}
+
+            <Button type="submit" className="rounded-full" disabled={isPending}>
               {isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                   Saving...
                 </>
               ) : (
-                "Save Changes"
+                "Save changes"
               )}
             </Button>
           </form>
@@ -111,4 +136,5 @@ const GeneralPage = () => {
     </section>
   );
 };
+
 export default GeneralPage;
