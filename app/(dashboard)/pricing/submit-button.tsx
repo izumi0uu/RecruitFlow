@@ -22,7 +22,7 @@ export const SubmitButton = ({
       type="submit"
       disabled={pending}
       variant={variant}
-      className={cn("w-full rounded-full", className)}
+      className={cn("cursor-pointer w-full rounded-full", className)}
     >
       {pending ? (
         <>

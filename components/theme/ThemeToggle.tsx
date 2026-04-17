@@ -54,7 +54,7 @@ const ThemeToggle = ({ className }: ThemeToggleProps) => {
         size="icon"
         className={cn(
           "rounded-full border-border/70 bg-background/70 shadow-[0_24px_60px_-38px_var(--shadow-color)] backdrop-blur-xl",
-          className
+          className,
         )}
         aria-label="Toggle theme"
       >
@@ -71,8 +71,8 @@ const ThemeToggle = ({ className }: ThemeToggleProps) => {
           variant="outline"
           size="icon"
           className={cn(
-            "rounded-full border-border/70 bg-background/70 shadow-[0_24px_60px_-38px_var(--shadow-color)] backdrop-blur-xl",
-            className
+            "cursor-pointer rounded-full border-border/70 bg-background/70 shadow-[0_24px_60px_-38px_var(--shadow-color)] backdrop-blur-xl",
+            className,
           )}
           aria-label="Toggle theme"
         >
@@ -93,7 +93,7 @@ const ThemeToggle = ({ className }: ThemeToggleProps) => {
               <DropdownMenuRadioItem
                 key={option.value}
                 value={option.value}
-                className="gap-3"
+                className="cursor-pointer gap-3"
               >
                 <Icon className="size-4" />
                 <span>{option.label}</span>
