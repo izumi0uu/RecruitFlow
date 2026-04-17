@@ -1,17 +1,42 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
 
-export default function ActivityPageSkeleton() {
+const ActivityPageSkeleton = () => {
   return (
-    <section className="flex-1 p-4 lg:p-8">
-      <h1 className="text-lg lg:text-2xl font-medium text-gray-900 mb-6">
-        Activity Log
-      </h1>
-      <Card>
+    <section className="space-y-6 px-0 py-1 lg:py-2">
+      <div className="space-y-3">
+        <span className="inline-kicker">Activity</span>
+        <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
+          Activity log
+        </h1>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+          Loading your most recent account and workspace activity.
+        </p>
+      </div>
+
+      <Card className="max-w-4xl">
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>Recent activity</CardTitle>
+          <CardDescription>Syncing the latest actions.</CardDescription>
         </CardHeader>
-        <CardContent className="min-h-[88px]" />
+        <CardContent>
+          <div className="animate-pulse space-y-3">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="h-20 rounded-[1.5rem] border border-border/70 bg-surface-1/75"
+              />
+            ))}
+          </div>
+        </CardContent>
       </Card>
     </section>
   );
-}
+};
+
+export default ActivityPageSkeleton;

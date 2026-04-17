@@ -1,18 +1,26 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Settings,
-  LogOut,
-  UserPlus,
-  Lock,
-  UserCog,
-  AlertCircle,
-  UserMinus,
-  Mail,
+  Activity,
   CheckCircle,
+  Lock,
+  LogOut,
+  Mail,
+  Settings,
+  ShieldCheck,
+  UserCog,
+  UserMinus,
+  UserPlus,
   type LucideIcon,
-} from 'lucide-react';
-import { ActivityType } from '@/lib/db/schema';
-import { getActivityLogs } from '@/lib/db/queries';
+} from "lucide-react";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
+import { getActivityLogs } from "@/lib/db/queries";
+import { ActivityType } from "@/lib/db/schema";
 
 const iconMap: Record<ActivityType, LucideIcon> = {
   [ActivityType.SIGN_UP]: UserPlus,
@@ -27,79 +35,97 @@ const iconMap: Record<ActivityType, LucideIcon> = {
   [ActivityType.ACCEPT_INVITATION]: CheckCircle,
 };
 
-function getRelativeTime(date: Date) {
+const getRelativeTime = (date: Date) => {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (diffInSeconds < 60) return 'just now';
+  if (diffInSeconds < 60) return "just now";
+
   if (diffInSeconds < 3600)
     return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+
   if (diffInSeconds < 86400)
     return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+
   if (diffInSeconds < 604800)
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
-  return date.toLocaleDateString();
-}
 
-function formatAction(action: ActivityType): string {
+  return date.toLocaleDateString();
+};
+
+const formatAction = (action: ActivityType): string => {
   switch (action) {
     case ActivityType.SIGN_UP:
-      return 'You signed up';
+      return "You signed up";
     case ActivityType.SIGN_IN:
-      return 'You signed in';
+      return "You signed in";
     case ActivityType.SIGN_OUT:
-      return 'You signed out';
+      return "You signed out";
     case ActivityType.UPDATE_PASSWORD:
-      return 'You changed your password';
+      return "You changed your password";
     case ActivityType.DELETE_ACCOUNT:
-      return 'You deleted your account';
+      return "You deleted your account";
     case ActivityType.UPDATE_ACCOUNT:
-      return 'You updated your account';
+      return "You updated your account";
     case ActivityType.CREATE_TEAM:
-      return 'You created a new team';
+      return "You created a new team";
     case ActivityType.REMOVE_TEAM_MEMBER:
-      return 'You removed a team member';
+      return "You removed a team member";
     case ActivityType.INVITE_TEAM_MEMBER:
-      return 'You invited a team member';
+      return "You invited a team member";
     case ActivityType.ACCEPT_INVITATION:
-      return 'You accepted an invitation';
+      return "You accepted an invitation";
     default:
-      return 'Unknown action occurred';
+      return "Unknown action occurred";
   }
-}
+};
 
-export default async function ActivityPage() {
+const ActivityPage = async () => {
   const logs = await getActivityLogs();
 
   return (
-    <section className="flex-1 p-4 lg:p-8">
-      <h1 className="text-lg lg:text-2xl font-medium text-gray-900 mb-6">
-        Activity Log
-      </h1>
-      <Card>
+    <section className="space-y-6 px-0 py-1 lg:py-2">
+      <div className="space-y-3">
+        <span className="inline-kicker">Workspace history</span>
+        <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
+          Activity log
+        </h1>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+          Review recent account and workspace actions in the same subdued
+          surface as the rest of the product.
+        </p>
+      </div>
+
+      <Card className="max-w-4xl">
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>Recent activity</CardTitle>
+          <CardDescription>
+            The last few actions recorded for this account.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {logs.length > 0 ? (
-            <ul className="space-y-4">
+            <ul className="space-y-3">
               {logs.map((log) => {
-                const Icon = iconMap[log.action as ActivityType] || Settings;
+                const Icon = iconMap[log.action as ActivityType] || ShieldCheck;
                 const formattedAction = formatAction(
-                  log.action as ActivityType
+                  log.action as ActivityType,
                 );
 
                 return (
-                  <li key={log.id} className="flex items-center space-x-4">
-                    <div className="bg-orange-100 rounded-full p-2">
-                      <Icon className="w-5 h-5 text-orange-600" />
+                  <li
+                    key={log.id}
+                    className="flex gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/75 px-4 py-4"
+                  >
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-background/75">
+                      <Icon className="size-[1.125rem] text-foreground" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">
                         {formattedAction}
-                        {log.ipAddress && ` from IP ${log.ipAddress}`}
+                        {log.ipAddress ? ` from IP ${log.ipAddress}` : ""}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                         {getRelativeTime(new Date(log.timestamp))}
                       </p>
                     </div>
@@ -108,14 +134,16 @@ export default async function ActivityPage() {
               })}
             </ul>
           ) : (
-            <div className="flex flex-col items-center justify-center text-center py-12">
-              <AlertCircle className="h-12 w-12 text-orange-500 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border/70 bg-surface-1/55 px-6 py-14 text-center">
+              <div className="flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70">
+                <Activity className="size-5 text-foreground" />
+              </div>
+              <h3 className="mt-5 text-lg font-semibold tracking-[-0.03em] text-foreground">
                 No activity yet
               </h3>
-              <p className="text-sm text-gray-500 max-w-sm">
-                When you perform actions like signing in or updating your
-                account, they'll appear here.
+              <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
+                When you sign in, update your account, or manage teammates, the
+                activity will appear here.
               </p>
             </div>
           )}
@@ -123,4 +151,6 @@ export default async function ActivityPage() {
       </Card>
     </section>
   );
-}
+};
+
+export default ActivityPage;
