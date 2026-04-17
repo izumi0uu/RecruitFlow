@@ -2,6 +2,7 @@ import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 import { SWRConfig } from "swr";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -59,10 +60,10 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
-      <head>
-        <script id="theme-script" dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
       <body className="min-h-[100dvh] bg-background text-foreground">
+        <Script id="theme-script" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         <ThemeProvider>
           <SWRConfig
             value={{
