@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LayoutDashboard, LogIn, LogOut } from "lucide-react";
 import useSWR, { mutate } from "swr";
 
 import { BrandLockup } from "@/components/Brand";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +21,7 @@ import {
 import { signOut } from "@/app/(login)/actions";
 import { useMounted } from "@/hooks/useMounted";
 import { User } from "@/lib/db/schema";
+import { startRouteLoading } from "@/lib/route-loading";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -43,30 +44,31 @@ const UserMenu = () => {
   const handleSignOut = async () => {
     await signOut();
     mutate("/api/user");
+    startRouteLoading();
     router.push("/");
   };
 
   if (!user) {
     return (
       <>
-        <Link
+        <TrackedLink
           href="/pricing"
           className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
         >
           Pricing
-        </Link>
+        </TrackedLink>
         <Button
           asChild
           variant="ghost"
           className="hidden rounded-full sm:inline-flex"
         >
-          <Link href="/sign-in">
+          <TrackedLink href="/sign-in">
             <LogIn className="size-4" />
             Sign In
-          </Link>
+          </TrackedLink>
         </Button>
         <Button asChild className="rounded-full px-5">
-          <Link href="/sign-up">Get Started</Link>
+          <TrackedLink href="/sign-up">Get Started</TrackedLink>
         </Button>
       </>
     );
@@ -111,10 +113,10 @@ const UserMenu = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer">
-          <Link href="/dashboard" className="flex w-full items-center gap-2">
+          <TrackedLink href="/dashboard" className="flex w-full items-center gap-2">
             <LayoutDashboard className="size-4" />
             Dashboard
-          </Link>
+          </TrackedLink>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer"

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -8,6 +7,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 
 import { Terminal } from "./terminal";
@@ -59,13 +59,13 @@ const HomePage = () => {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button asChild size="lg" className="rounded-full px-6">
-                <Link href="/sign-up">
+                <TrackedLink href="/sign-up">
                   Open a workspace
                   <ArrowRight className="size-4" />
-                </Link>
+                </TrackedLink>
               </Button>
               <Button asChild size="lg" variant="outline" className="rounded-full px-6">
-                <Link href="/pricing">See plans</Link>
+                <TrackedLink href="/pricing">See plans</TrackedLink>
               </Button>
             </div>
 
@@ -222,13 +222,13 @@ const HomePage = () => {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" className="rounded-full px-6">
-                <Link href="/dashboard">
+                <TrackedLink href="/dashboard">
                   Open dashboard
                   <ArrowRight className="size-4" />
-                </Link>
+                </TrackedLink>
               </Button>
               <Button asChild size="lg" variant="outline" className="rounded-full px-6">
-                <Link href="/pricing">Review pricing</Link>
+                <TrackedLink href="/pricing">Review pricing</TrackedLink>
               </Button>
             </div>
           </div>

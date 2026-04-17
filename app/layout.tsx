@@ -3,8 +3,10 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { Suspense } from "react";
 import { SWRConfig } from "swr";
 
+import { RouteLoadingOverlay } from "@/components/navigation/RouteLoadingOverlay";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { getUser, getTeamForUser } from "@/lib/db/queries";
 import { themeScript } from "@/lib/theme";
@@ -73,6 +75,9 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
               },
             }}
           >
+            <Suspense fallback={null}>
+              <RouteLoadingOverlay />
+            </Suspense>
             {children}
           </SWRConfig>
         </ThemeProvider>

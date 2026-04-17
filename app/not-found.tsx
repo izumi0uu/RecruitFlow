@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { BrandLockup } from "@/components/Brand";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 
@@ -25,7 +24,7 @@ const NotFound = () => {
             </p>
           </div>
           <Button asChild className="rounded-full px-6">
-            <Link href="/">Back to home</Link>
+            <TrackedLink href="/">Back to home</TrackedLink>
           </Button>
         </div>
       </div>

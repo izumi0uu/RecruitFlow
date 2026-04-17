@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Activity, Menu, Settings, Shield, Users, X } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BrandLockup } from "@/components/Brand";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -106,10 +106,13 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                       "border-foreground/5 bg-foreground text-background hover:bg-foreground/96 hover:text-background"
                   )}
                 >
-                  <Link href={item.href} onClick={() => setIsSidebarOpen(false)}>
+                  <TrackedLink
+                    href={item.href}
+                    onClick={() => setIsSidebarOpen(false)}
+                  >
                     <Icon className="size-4" />
                     {item.label}
-                  </Link>
+                  </TrackedLink>
                 </Button>
               );
             })}

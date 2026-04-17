@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { cn } from "@/lib/utils";
 
 type BrandMarkProps = {
@@ -47,9 +46,9 @@ const BrandLockup = ({
   );
 
   return (
-    <Link href={href} className="inline-flex items-center">
+    <TrackedLink href={href} className="inline-flex items-center">
       {content}
-    </Link>
+    </TrackedLink>
   );
 };
 

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import {
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { BrandLockup } from "@/components/Brand";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -186,7 +186,7 @@ export const Login = ({ mode = "signin" }: { mode?: "signin" | "signup" }) => {
 
                 <Button
                   type="submit"
-                  className="h-12 w-full justify-center rounded-2xl"
+                  className="cursor-pointer h-12 w-full justify-center rounded-2xl"
                   disabled={pending}
                 >
                   {pending ? (
@@ -222,11 +222,11 @@ export const Login = ({ mode = "signin" }: { mode?: "signin" | "signup" }) => {
                   variant="outline"
                   className="mt-6 h-12 w-full rounded-2xl"
                 >
-                  <Link href={alternateHref}>
+                  <TrackedLink href={alternateHref}>
                     {mode === "signin"
                       ? "Create an account"
                       : "Sign in to existing account"}
-                  </Link>
+                  </TrackedLink>
                 </Button>
               </div>
             </div>
