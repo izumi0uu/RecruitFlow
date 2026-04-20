@@ -1,8 +1,25 @@
 import { desc, and, eq, isNull } from "drizzle-orm";
 import { db } from "./drizzle";
-import { activityLogs, teamMembers, teams, users } from "./schema";
+import {
+  activityLogs,
+  teamMembers,
+  teams,
+  users,
+  type TeamDataWithMembers,
+  type WorkspaceDataWithMembers,
+} from "./schema";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth/session";
+
+const toWorkspaceData = (
+  team: TeamDataWithMembers,
+): WorkspaceDataWithMembers => ({
+  ...team,
+  memberships: team.teamMembers.map((membership) => ({
+    ...membership,
+  })),
+});
+
 export const getUser = async () => {
   const sessionCookie = (await cookies()).get("session");
   if (!sessionCookie || !sessionCookie.value) {
@@ -92,11 +109,13 @@ export const getActivityLogs = async () => {
     .orderBy(desc(activityLogs.timestamp))
     .limit(10);
 };
-export const getTeamForUser = async () => {
+
+export const getCurrentWorkspace = async () => {
   const user = await getUser();
   if (!user) {
     return null;
   }
+
   const result = await db.query.teamMembers.findFirst({
     where: eq(teamMembers.userId, user.id),
     with: {
@@ -117,5 +136,37 @@ export const getTeamForUser = async () => {
       },
     },
   });
-  return result?.team || null;
+
+  if (!result?.team) {
+    return null;
+  }
+
+  return toWorkspaceData(result.team);
 };
+
+export const getCurrentMembership = async () => {
+  const user = await getUser();
+  if (!user) {
+    return null;
+  }
+
+  const result = await db.query.teamMembers.findFirst({
+    where: eq(teamMembers.userId, user.id),
+    with: {
+      team: true,
+    },
+  });
+
+  if (!result?.team) {
+    return null;
+  }
+
+  const { team, ...membership } = result;
+
+  return {
+    ...membership,
+    workspace: team,
+  };
+};
+
+export const getTeamForUser = getCurrentWorkspace;

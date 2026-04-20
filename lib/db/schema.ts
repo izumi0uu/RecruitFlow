@@ -43,6 +43,9 @@ export const teamMembers = pgTable('team_members', {
   joinedAt: timestamp('joined_at').notNull().defaultNow(),
 });
 
+export const workspaces = teams;
+export const memberships = teamMembers;
+
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
   teamId: integer('team_id')
@@ -122,9 +125,19 @@ export type ActivityLog = typeof activityLogs.$inferSelect;
 export type NewActivityLog = typeof activityLogs.$inferInsert;
 export type Invitation = typeof invitations.$inferSelect;
 export type NewInvitation = typeof invitations.$inferInsert;
+type MemberIdentity = Pick<User, 'id' | 'name' | 'email'>;
 export type TeamDataWithMembers = Team & {
   teamMembers: (TeamMember & {
-    user: Pick<User, 'id' | 'name' | 'email'>;
+    user: MemberIdentity;
+  })[];
+};
+export type Workspace = Team;
+export type NewWorkspace = NewTeam;
+export type Membership = TeamMember;
+export type NewMembership = NewTeamMember;
+export type WorkspaceDataWithMembers = Workspace & {
+  memberships: (Membership & {
+    user: MemberIdentity;
   })[];
 };
 

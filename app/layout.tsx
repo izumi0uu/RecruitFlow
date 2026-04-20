@@ -9,10 +9,10 @@ import { Suspense } from "react";
 import { Providers } from "@/app/providers";
 import { RouteLoadingOverlay } from "@/components/navigation/RouteLoadingOverlay";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import { getCurrentUser, getTeamForUser } from "@/lib/db/queries";
+import { getCurrentUser, getCurrentWorkspace } from "@/lib/db/queries";
 import {
-  currentTeamQueryOptions,
   currentUserQueryOptions,
+  currentWorkspaceQueryOptions,
 } from "@/lib/query/options";
 import { createQueryClient } from "@/lib/query/query-client";
 import { toQueryDto } from "@/lib/query/types";
@@ -55,7 +55,7 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "RecruitFlow",
   description:
-    "A monochrome recruiting workspace for team collaboration, candidate reviews, and subscription-managed growth.",
+    "A monochrome recruiting workspace for member collaboration, candidate reviews, and subscription-managed growth.",
 };
 
 export const viewport: Viewport = {
@@ -73,8 +73,8 @@ const RootLayout = async ({ children }: { children: React.ReactNode }) => {
       queryFn: async () => toQueryDto(await getCurrentUser()),
     }),
     queryClient.prefetchQuery({
-      ...currentTeamQueryOptions(),
-      queryFn: async () => toQueryDto(await getTeamForUser()),
+      ...currentWorkspaceQueryOptions(),
+      queryFn: async () => toQueryDto(await getCurrentWorkspace()),
     }),
   ]);
 

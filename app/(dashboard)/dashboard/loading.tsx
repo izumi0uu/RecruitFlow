@@ -7,7 +7,7 @@ const DashboardLoading = () => {
       title="Loading the next settings view"
       description="Bringing the next dashboard surface into focus without dropping your current context."
       cardTitle="Preparing your workspace"
-      cardDescription="Syncing the next route's account, billing, and team state."
+      cardDescription="Syncing the next route's account, billing, and workspace state."
     />
   );
 };

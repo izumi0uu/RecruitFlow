@@ -4,16 +4,16 @@ import { useActionState } from "react";
 import { Loader2, Lock, Trash2 } from "lucide-react";
 
 import { deleteAccount, updatePassword } from "@/app/(login)/actions";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PasswordState = {
   currentPassword?: string;

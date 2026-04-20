@@ -5,7 +5,7 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2, PlusCircle } from "lucide-react";
 
 import { inviteTeamMember, removeTeamMember } from "@/app/(login)/actions";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,16 +13,16 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card";
-import { Avatar, AvatarFallback } from "@/components/ui/Avatar";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
 import { customerPortalAction } from "@/lib/payments/actions";
 import {
-  currentTeamQueryOptions,
   currentUserQueryOptions,
-  teamQueryKey,
+  currentWorkspaceQueryOptions,
+  workspaceQueryKey,
 } from "@/lib/query/options";
 import type { CurrentUserDto } from "@/lib/query/types";
 
@@ -88,7 +88,7 @@ const SubscriptionSkeleton = () => {
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle>Team Subscription</CardTitle>
+        <CardTitle>Workspace subscription</CardTitle>
         <CardDescription>Loading your current plan details.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -102,25 +102,27 @@ const SubscriptionSkeleton = () => {
 };
 
 const ManageSubscription = () => {
-  const { data: teamData } = useSuspenseQuery(currentTeamQueryOptions());
+  const { data: workspaceData } = useSuspenseQuery(
+    currentWorkspaceQueryOptions(),
+  );
 
   return (
-    <Card className="h-full">
+      <Card className="h-full">
       <CardHeader>
-        <CardTitle>Team subscription</CardTitle>
+        <CardTitle>Workspace subscription</CardTitle>
         <CardDescription>
           Review your current workspace plan and open the billing portal.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="flex flex-wrap items-center gap-3">
-          <span className={subscriptionTone(teamData?.subscriptionStatus)}>
-            {subscriptionLabel(teamData?.subscriptionStatus)}
+          <span className={subscriptionTone(workspaceData?.subscriptionStatus)}>
+            {subscriptionLabel(workspaceData?.subscriptionStatus)}
           </span>
           <span className="text-sm text-muted-foreground">
-            {teamData?.subscriptionStatus === "active"
+            {workspaceData?.subscriptionStatus === "active"
               ? "Billed monthly"
-              : teamData?.subscriptionStatus === "trialing"
+              : workspaceData?.subscriptionStatus === "trialing"
                 ? "Trial period in progress"
                 : "No active subscription"}
           </span>
@@ -133,7 +135,7 @@ const ManageSubscription = () => {
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-3xl font-semibold tracking-[-0.05em] text-foreground">
-                {teamData?.planName || "Free"}
+                {workspaceData?.planName || "Free"}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Switch plans, update payment methods, or review seats from the
@@ -156,7 +158,7 @@ const TeamMembersSkeleton = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Team members</CardTitle>
+        <CardTitle>Workspace members</CardTitle>
         <CardDescription>Loading your workspace roster.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -181,7 +183,9 @@ const TeamMembersSkeleton = () => {
 
 const TeamMembers = () => {
   const queryClient = useQueryClient();
-  const { data: teamData } = useSuspenseQuery(currentTeamQueryOptions());
+  const { data: workspaceData } = useSuspenseQuery(
+    currentWorkspaceQueryOptions(),
+  );
   const [removeState, removeAction, isRemovePending] = useActionState<
     ActionState,
     FormData
@@ -190,21 +194,21 @@ const TeamMembers = () => {
   useEffect(() => {
     if (!removeState.success) return;
 
-    queryClient.invalidateQueries({ queryKey: teamQueryKey, exact: true });
+    queryClient.invalidateQueries({ queryKey: workspaceQueryKey, exact: true });
   }, [queryClient, removeState]);
 
-  if (!teamData?.teamMembers?.length) {
+  if (!workspaceData?.memberships?.length) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Team members</CardTitle>
+          <CardTitle>Workspace members</CardTitle>
           <CardDescription>
             Add collaborators once your workspace is ready to review candidates.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-surface-1/60 px-5 py-8 text-sm text-muted-foreground">
-            No team members yet.
+            No members yet.
           </div>
         </CardContent>
       </Card>
@@ -214,14 +218,14 @@ const TeamMembers = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Team members</CardTitle>
+        <CardTitle>Workspace members</CardTitle>
         <CardDescription>
           See who currently has access to this workspace.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <ul className="space-y-3">
-          {teamData.teamMembers.map((member, index) => (
+          {workspaceData.memberships.map((member, index) => (
             <li
               key={member.id}
               className="flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
@@ -274,7 +278,7 @@ const InviteTeamMemberSkeleton = () => {
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle>Invite team member</CardTitle>
+        <CardTitle>Invite member</CardTitle>
         <CardDescription>Loading access controls.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -315,11 +319,11 @@ const InviteTeamMember = () => {
   ];
 
   return (
-    <Card className="h-full">
+      <Card className="h-full">
       <CardHeader>
-        <CardTitle>Invite team member</CardTitle>
+        <CardTitle>Invite member</CardTitle>
         <CardDescription>
-          Add another teammate when the workspace is ready for more hands.
+          Add another member when the workspace is ready for more hands.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -416,7 +420,7 @@ const SettingsPage = () => {
   return (
     <section className="px-0 py-1 lg:py-2">
       <SectionHeader
-        title="Team settings"
+        title="Workspace settings"
         description="Shape who has access to the workspace, how billing behaves, and how collaborators move through the same recruiting surface."
       />
 

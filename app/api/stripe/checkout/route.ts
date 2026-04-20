@@ -56,7 +56,7 @@ export const GET = async (request: NextRequest) => {
             .where(eq(teamMembers.userId, user[0].id))
             .limit(1);
         if (userTeam.length === 0) {
-            throw new Error('User is not associated with any team.');
+            throw new Error('User is not associated with any workspace.');
         }
         await db
             .update(teams)
