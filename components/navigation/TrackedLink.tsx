@@ -9,7 +9,7 @@ type TrackedLinkProps = ComponentProps<typeof Link>;
 
 const TrackedLinkStatusBridge = () => {
   const { pending } = useLinkStatus();
-  const wasPendingRef = useRef(false);
+  const wasPendingRef = useRef(false); // to avoid dispatching the same start/stop event multiple times
 
   useEffect(() => {
     if (pending && !wasPendingRef.current) {

@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useActionState } from "react";
+import { useEffect, Suspense, useActionState } from "react";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2, PlusCircle } from "lucide-react";
-import useSWR from "swr";
 
 import { inviteTeamMember, removeTeamMember } from "@/app/(login)/actions";
 import { Button } from "@/components/ui/Button";
@@ -18,16 +18,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
-import { TeamDataWithMembers, User } from "@/lib/db/schema";
 import { customerPortalAction } from "@/lib/payments/actions";
-import { cn } from "@/lib/utils";
+import {
+  currentTeamQueryOptions,
+  currentUserQueryOptions,
+  teamQueryKey,
+} from "@/lib/query/options";
+import type { CurrentUserDto } from "@/lib/query/types";
 
 type ActionState = {
   error?: string;
   success?: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+type UserIdentity = Pick<NonNullable<CurrentUserDto>, "name" | "email">;
 
 const subscriptionTone = (status?: string | null) => {
   if (status === "active" || status === "trialing") {
@@ -48,11 +52,11 @@ const subscriptionLabel = (status?: string | null) => {
   return "Inactive";
 };
 
-const getUserDisplayName = (user: Pick<User, "name" | "email">) => {
+const getUserDisplayName = (user: UserIdentity) => {
   return user.name || user.email || "Unknown User";
 };
 
-const getUserInitials = (user: Pick<User, "name" | "email">) => {
+const getUserInitials = (user: UserIdentity) => {
   return getUserDisplayName(user)
     .split(/\s+/)
     .slice(0, 2)
@@ -98,7 +102,7 @@ const SubscriptionSkeleton = () => {
 };
 
 const ManageSubscription = () => {
-  const { data: teamData } = useSWR<TeamDataWithMembers>("/api/team", fetcher);
+  const { data: teamData } = useSuspenseQuery(currentTeamQueryOptions());
 
   return (
     <Card className="h-full">
@@ -176,11 +180,18 @@ const TeamMembersSkeleton = () => {
 };
 
 const TeamMembers = () => {
-  const { data: teamData } = useSWR<TeamDataWithMembers>("/api/team", fetcher);
+  const queryClient = useQueryClient();
+  const { data: teamData } = useSuspenseQuery(currentTeamQueryOptions());
   const [removeState, removeAction, isRemovePending] = useActionState<
     ActionState,
     FormData
   >(removeTeamMember, {});
+
+  useEffect(() => {
+    if (!removeState.success) return;
+
+    queryClient.invalidateQueries({ queryKey: teamQueryKey, exact: true });
+  }, [queryClient, removeState]);
 
   if (!teamData?.teamMembers?.length) {
     return (
@@ -217,7 +228,9 @@ const TeamMembers = () => {
             >
               <div className="flex items-center gap-4">
                 <Avatar className="size-11">
-                  <AvatarFallback>{getUserInitials(member.user)}</AvatarFallback>
+                  <AvatarFallback>
+                    {getUserInitials(member.user)}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-medium text-foreground">
@@ -248,7 +261,9 @@ const TeamMembers = () => {
         </ul>
 
         {removeState?.error ? (
-          <p className="status-message status-error mt-5">{removeState.error}</p>
+          <p className="status-message status-error mt-5">
+            {removeState.error}
+          </p>
         ) : null}
       </CardContent>
     </Card>
@@ -277,7 +292,7 @@ const InviteTeamMemberSkeleton = () => {
 };
 
 const InviteTeamMember = () => {
-  const { data: user } = useSWR<User>("/api/user", fetcher);
+  const { data: user } = useSuspenseQuery(currentUserQueryOptions());
   const isOwner = user?.role === "owner";
   const [inviteState, inviteAction, isInvitePending] = useActionState<
     ActionState,
@@ -335,7 +350,11 @@ const InviteTeamMember = () => {
                   className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 p-4"
                 >
                   <div className="flex items-start gap-3">
-                    <RadioGroupItem value={option.value} id={option.id} className="mt-1" />
+                    <RadioGroupItem
+                      value={option.value}
+                      id={option.id}
+                      className="mt-1"
+                    />
                     <div>
                       <Label
                         htmlFor={option.id}
@@ -357,7 +376,9 @@ const InviteTeamMember = () => {
             <p className="status-message status-error">{inviteState.error}</p>
           ) : null}
           {inviteState?.success ? (
-            <p className="status-message status-success">{inviteState.success}</p>
+            <p className="status-message status-success">
+              {inviteState.success}
+            </p>
           ) : null}
 
           <Button

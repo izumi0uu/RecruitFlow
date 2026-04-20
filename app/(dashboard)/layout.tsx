@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LayoutDashboard, LogIn, LogOut } from "lucide-react";
-import useSWR, { mutate } from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
@@ -20,12 +20,13 @@ import {
 } from "@/components/ui/DropdownMenu";
 import { signOut } from "@/app/(login)/actions";
 import { useMounted } from "@/hooks/useMounted";
-import { User } from "@/lib/db/schema";
+import { currentUserQueryOptions, teamQueryKey, userQueryKey } from "@/lib/query/options";
+import type { CurrentUserDto } from "@/lib/query/types";
 import { startRouteLoading } from "@/lib/route-loading";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+type UserIdentity = Pick<NonNullable<CurrentUserDto>, "name" | "email">;
 
-const getUserInitials = (user: Pick<User, "name" | "email">) => {
+const getUserInitials = (user: UserIdentity) => {
   const source = user.name?.trim() || user.email?.split("@")[0] || "RF";
 
   return source
@@ -38,12 +39,16 @@ const getUserInitials = (user: Pick<User, "name" | "email">) => {
 const UserMenu = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const mounted = useMounted();
-  const { data: user } = useSWR<User>("/api/user", fetcher);
+  const queryClient = useQueryClient();
+  const { data: user } = useQuery(currentUserQueryOptions());
   const router = useRouter();
 
   const handleSignOut = async () => {
     await signOut();
-    mutate("/api/user");
+    queryClient.setQueryData(userQueryKey, null);
+    queryClient.setQueryData(teamQueryKey, null);
+    queryClient.removeQueries({ queryKey: userQueryKey, exact: true });
+    queryClient.removeQueries({ queryKey: teamQueryKey, exact: true });
     startRouteLoading();
     router.push("/");
   };

@@ -1,14 +1,21 @@
 import "./globals.css";
 
+import { dehydrate } from "@tanstack/react-query";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
 import { Suspense } from "react";
-import { SWRConfig } from "swr";
 
+import { Providers } from "@/app/providers";
 import { RouteLoadingOverlay } from "@/components/navigation/RouteLoadingOverlay";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import { getUser, getTeamForUser } from "@/lib/db/queries";
+import { getCurrentUser, getTeamForUser } from "@/lib/db/queries";
+import {
+  currentTeamQueryOptions,
+  currentUserQueryOptions,
+} from "@/lib/query/options";
+import { createQueryClient } from "@/lib/query/query-client";
+import { toQueryDto } from "@/lib/query/types";
 import { themeScript } from "@/lib/theme";
 
 const geistSans = localFont({
@@ -55,7 +62,24 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-const RootLayout = ({ children }: { children: React.ReactNode }) => {
+export const dynamic = "force-dynamic";
+
+const RootLayout = async ({ children }: { children: React.ReactNode }) => {
+  const queryClient = createQueryClient(); // server temp queryclient https://tanstack.com/query/v5/docs/framework/react/guides/ssr#using-the-hydration-apis
+
+  await Promise.all([
+    queryClient.prefetchQuery({
+      ...currentUserQueryOptions(),
+      queryFn: async () => toQueryDto(await getCurrentUser()),
+    }),
+    queryClient.prefetchQuery({
+      ...currentTeamQueryOptions(),
+      queryFn: async () => toQueryDto(await getTeamForUser()),
+    }),
+  ]);
+
+  const dehydratedState = dehydrate(queryClient); // Server Query Cache JSON Snapshot, https://tanstack.com/query/v5/docs/framework/react/guides/ssr#using-the-hydration-apis
+
   return (
     <html
       lang="en"
@@ -67,19 +91,12 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
           {themeScript}
         </Script>
         <ThemeProvider>
-          <SWRConfig
-            value={{
-              fallback: {
-                "/api/user": getUser(),
-                "/api/team": getTeamForUser(),
-              },
-            }}
-          >
+          <Providers dehydratedState={dehydratedState}>
             <Suspense fallback={null}>
               <RouteLoadingOverlay />
             </Suspense>
             {children}
-          </SWRConfig>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>
