@@ -1,7 +1,7 @@
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 
 const NotFound = () => {
   return (

@@ -2,34 +2,68 @@
 
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Activity, Menu, Settings, Shield, Users, X } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Building2,
+  FileText,
+  LayoutDashboard,
+  Menu,
+  Settings,
+  SquareKanban,
+  UsersRound,
+  Workflow,
+  X,
+} from "lucide-react";
 
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
-import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", icon: Users, label: "Workspace" },
-  { href: "/dashboard/general", icon: Settings, label: "General" },
-  { href: "/dashboard/activity", icon: Activity, label: "Activity" },
-  { href: "/dashboard/security", icon: Shield, label: "Security" },
-];
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/clients", icon: Building2, label: "Clients" },
+  { href: "/jobs", icon: BriefcaseBusiness, label: "Jobs" },
+  { href: "/candidates", icon: UsersRound, label: "Candidates" },
+  { href: "/pipeline", icon: Workflow, label: "Pipeline" },
+  { href: "/tasks", icon: SquareKanban, label: "Tasks" },
+  { href: "/documents", icon: FileText, label: "Documents" },
+  { href: "/settings", icon: Settings, label: "Settings" },
+] as const;
 
-const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
+const isRouteActive = (pathname: string, href: string) => {
+  if (href === "/dashboard") {
+    return pathname === href || pathname.startsWith("/dashboard/");
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+};
+
+type WorkspaceShellProps = {
+  children: React.ReactNode;
+  workspaceName: string;
+};
+
+const WorkspaceShell = ({
+  children,
+  workspaceName,
+}: WorkspaceShellProps) => {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const activeItem =
+    navItems.find((item) => isRouteActive(pathname, item.href)) || navItems[0];
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-10 pt-6 sm:px-6 lg:flex-row lg:gap-6 lg:px-8">
       <div className="panel-shell flex items-center justify-between px-4 py-3 lg:hidden">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            Workspace
+            {workspaceName}
           </p>
           <h2 className="mt-1 text-sm font-semibold text-foreground">
-            Settings surface
+            {activeItem.label}
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -42,7 +76,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
             onClick={() => setIsSidebarOpen(true)}
           >
             <Menu className="size-4" />
-            <span className="sr-only">Open settings navigation</span>
+            <span className="sr-only">Open workspace navigation</span>
           </Button>
         </div>
       </div>
@@ -56,12 +90,12 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
             : "pointer-events-none opacity-0"
         )}
         onClick={() => setIsSidebarOpen(false)}
-        aria-label="Close settings navigation"
+        aria-label="Close workspace navigation"
       />
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-4 transition-transform duration-300 lg:sticky lg:top-[104px] lg:z-auto lg:block lg:w-[280px] lg:translate-x-0 lg:p-0",
+          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-4 transition-transform duration-300 lg:sticky lg:top-[104px] lg:z-auto lg:block lg:w-[280px] lg:translate-x-0 lg:self-start lg:p-0",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -82,17 +116,20 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
           <div className="px-1 pt-5">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Workspace settings
+              Active workspace
+            </p>
+            <p className="mt-2 text-base font-semibold text-foreground">
+              {workspaceName}
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Manage billing, members, account details, and security from one
-              monochrome workspace.
+              Foundation now owns the route shell so downstream module branches
+              can land inside one stable navigation model.
             </p>
           </div>
 
           <nav className="mt-6 space-y-2">
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = isRouteActive(pathname, item.href);
               const Icon = item.icon;
 
               return (
@@ -124,7 +161,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   Appearance
                 </p>
-                <p className="mt-1 text-sm text-foreground">Light, dark, or system</p>
+                <p className="mt-1 text-sm text-foreground">
+                  Light, dark, or system
+                </p>
               </div>
               <ThemeToggle />
             </div>
@@ -137,4 +176,4 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default DashboardLayout;
+export { WorkspaceShell };
