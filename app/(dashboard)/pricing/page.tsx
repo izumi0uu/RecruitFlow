@@ -7,7 +7,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import { checkoutAction } from "@/lib/payments/actions";
 import { getStripePrices, getStripeProducts } from "@/lib/payments/stripe";

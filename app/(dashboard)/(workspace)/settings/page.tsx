@@ -5,7 +5,7 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2, PlusCircle } from "lucide-react";
 
 import { inviteTeamMember, removeTeamMember } from "@/app/(login)/actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import {
   Card,
   CardContent,
@@ -13,10 +13,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/Card";
+import { Avatar, AvatarFallback } from "@/components/ui/Avatar";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
 import { customerPortalAction } from "@/lib/payments/actions";
 import {

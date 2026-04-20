@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 
 import { Terminal } from "./terminal";
 

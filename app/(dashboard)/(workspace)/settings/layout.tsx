@@ -7,7 +7,7 @@ import { Activity, Menu, Settings, Shield, Users, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 const navItems = [

@@ -3,7 +3,7 @@
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 type SubmitButtonProps = {

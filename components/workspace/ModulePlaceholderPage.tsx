@@ -2,14 +2,14 @@ import { ArrowRight, Lock, Sparkles } from "lucide-react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { RouteLoadingFallback } from "@/components/navigation/RouteLoadingFallback";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 
 type PlaceholderViewState = "default" | "restricted" | "loading";
 

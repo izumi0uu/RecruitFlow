@@ -13,12 +13,19 @@ import {
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ActionState } from "@/lib/auth/middleware";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 
 import { signIn, signUp } from "./actions";
+
+type AuthActionState = {
+  error?: string;
+  email?: string;
+  password?: string;
+  success?: string;
+  [key: string]: string | undefined;
+};
 
 const leftColumnPoints = [
   {
@@ -43,7 +50,7 @@ export const Login = ({ mode = "signin" }: { mode?: "signin" | "signup" }) => {
   const redirect = searchParams.get("redirect");
   const priceId = searchParams.get("priceId");
   const inviteId = searchParams.get("inviteId");
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+  const [state, formAction, pending] = useActionState<AuthActionState, FormData>(
     mode === "signin" ? signIn : signUp,
     { error: "" },
   );
