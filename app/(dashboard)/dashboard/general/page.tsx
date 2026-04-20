@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useActionState } from "react";
+import { useEffect, Suspense, useActionState } from "react";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import useSWR from "swr";
 
 import { updateAccount } from "@/app/(login)/actions";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import { User } from "@/lib/db/schema";
+import { currentUserQueryOptions, userQueryKey } from "@/lib/query/options";
 
 type ActionState = {
   name?: string;
@@ -28,8 +28,6 @@ type AccountFormProps = {
   nameValue?: string;
   emailValue?: string;
 };
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const SectionHeader = () => {
   return (
@@ -79,7 +77,7 @@ const AccountForm = ({
 };
 
 const AccountFormWithData = ({ state }: { state: ActionState }) => {
-  const { data: user } = useSWR<User>("/api/user", fetcher);
+  const { data: user } = useSuspenseQuery(currentUserQueryOptions());
 
   return (
     <AccountForm
@@ -91,10 +89,17 @@ const AccountFormWithData = ({ state }: { state: ActionState }) => {
 };
 
 const GeneralPage = () => {
+  const queryClient = useQueryClient();
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     updateAccount,
-    {}
+    {},
   );
+
+  useEffect(() => {
+    if (!state.success) return;
+
+    queryClient.invalidateQueries({ queryKey: userQueryKey, exact: true });
+  }, [queryClient, state]);
 
   return (
     <section className="px-0 py-1 lg:py-2">
