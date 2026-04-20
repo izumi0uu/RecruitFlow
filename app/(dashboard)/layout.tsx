@@ -8,8 +8,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,11 @@ import {
 } from "@/components/ui/DropdownMenu";
 import { signOut } from "@/app/(login)/actions";
 import { useMounted } from "@/hooks/useMounted";
-import { currentUserQueryOptions, teamQueryKey, userQueryKey } from "@/lib/query/options";
+import {
+  currentUserQueryOptions,
+  userQueryKey,
+  workspaceQueryKey,
+} from "@/lib/query/options";
 import type { CurrentUserDto } from "@/lib/query/types";
 import { startRouteLoading } from "@/lib/route-loading";
 
@@ -46,9 +50,9 @@ const UserMenu = () => {
   const handleSignOut = async () => {
     await signOut();
     queryClient.setQueryData(userQueryKey, null);
-    queryClient.setQueryData(teamQueryKey, null);
+    queryClient.setQueryData(workspaceQueryKey, null);
     queryClient.removeQueries({ queryKey: userQueryKey, exact: true });
-    queryClient.removeQueries({ queryKey: teamQueryKey, exact: true });
+    queryClient.removeQueries({ queryKey: workspaceQueryKey, exact: true });
     startRouteLoading();
     router.push("/");
   };

@@ -7,11 +7,11 @@ import { Activity, Menu, Settings, Shield, Users, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", icon: Users, label: "Team" },
+  { href: "/dashboard", icon: Users, label: "Workspace" },
   { href: "/dashboard/general", icon: Settings, label: "General" },
   { href: "/dashboard/activity", icon: Activity, label: "Activity" },
   { href: "/dashboard/security", icon: Shield, label: "Security" },
@@ -85,7 +85,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
               Workspace settings
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Manage billing, teammates, account details, and security from one
+              Manage billing, members, account details, and security from one
               monochrome workspace.
             </p>
           </div>

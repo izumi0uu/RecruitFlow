@@ -13,9 +13,9 @@ import {
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ActionState } from "@/lib/auth/middleware";
 
 import { signIn, signUp } from "./actions";
@@ -33,7 +33,7 @@ const leftColumnPoints = [
   },
   {
     icon: ShieldCheck,
-    title: "Ready for team ops",
+    title: "Ready for workspace ops",
     copy: "Permissions, billing, and member controls are already built into the foundation.",
   },
 ];
@@ -78,7 +78,7 @@ export const Login = ({ mode = "signin" }: { mode?: "signin" | "signup" }) => {
                   Monochrome recruiting workspace
                 </span>
                 <h1 className="text-balance text-5xl font-semibold tracking-[-0.06em] text-foreground">
-                  Build a calmer hiring surface for your team.
+                  Build a calmer hiring surface for your workspace.
                 </h1>
                 <p className="text-base leading-7 text-muted-foreground">
                   RecruitFlow gives workspaces, candidate reviews, and admin

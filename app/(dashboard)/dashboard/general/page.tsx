@@ -5,16 +5,16 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { updateAccount } from "@/app/(login)/actions";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { currentUserQueryOptions, userQueryKey } from "@/lib/query/options";
 
 type ActionState = {

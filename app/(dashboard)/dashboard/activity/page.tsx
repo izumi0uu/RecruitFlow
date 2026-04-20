@@ -18,7 +18,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card";
+} from "@/components/ui/card";
 import { getActivityLogs } from "@/lib/db/queries";
 import { ActivityType } from "@/lib/db/schema";
 
@@ -68,11 +68,11 @@ const formatAction = (action: ActivityType): string => {
     case ActivityType.UPDATE_ACCOUNT:
       return "You updated your account";
     case ActivityType.CREATE_TEAM:
-      return "You created a new team";
+      return "You created a new workspace";
     case ActivityType.REMOVE_TEAM_MEMBER:
-      return "You removed a team member";
+      return "You removed a workspace member";
     case ActivityType.INVITE_TEAM_MEMBER:
-      return "You invited a team member";
+      return "You invited a workspace member";
     case ActivityType.ACCEPT_INVITATION:
       return "You accepted an invitation";
     default:
@@ -142,8 +142,8 @@ const ActivityPage = async () => {
                 No activity yet
               </h3>
               <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-                When you sign in, update your account, or manage teammates, the
-                activity will appear here.
+                When you sign in, update your account, or manage workspace
+                members, the activity will appear here.
               </p>
             </div>
           )}

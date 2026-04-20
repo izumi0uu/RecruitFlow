@@ -60,7 +60,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
     const redirectTo = formData.get('redirect') as string | null;
     if (redirectTo === 'checkout') {
         const priceId = formData.get('priceId') as string;
-        return createCheckoutSession({ team: foundTeam, priceId });
+        return createCheckoutSession({ workspace: foundTeam, priceId });
     }
     redirect('/dashboard');
 });
@@ -126,14 +126,14 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
         }
     }
     else {
-        // Create a new team if there's no invitation
+        // Create a new workspace if there's no invitation
         const newTeam: NewTeam = {
-            name: `${email}'s Team`
+            name: `${email}'s Workspace`
         };
         [createdTeam] = await db.insert(teams).values(newTeam).returning();
         if (!createdTeam) {
             return {
-                error: 'Failed to create team. Please try again.',
+                error: 'Failed to create workspace. Please try again.',
                 email,
                 password
             };
@@ -155,7 +155,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     const redirectTo = formData.get('redirect') as string | null;
     if (redirectTo === 'checkout') {
         const priceId = formData.get('priceId') as string;
-        return createCheckoutSession({ team: createdTeam, priceId });
+        return createCheckoutSession({ workspace: createdTeam, priceId });
     }
     redirect('/dashboard');
 });
@@ -260,13 +260,13 @@ export const removeTeamMember = validatedActionWithUser(removeTeamMemberSchema, 
     const { memberId } = data;
     const userWithTeam = await getUserWithTeam(user.id);
     if (!userWithTeam?.teamId) {
-        return { error: 'User is not part of a team' };
+        return { error: 'User is not part of a workspace' };
     }
     await db
         .delete(teamMembers)
         .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, userWithTeam.teamId)));
     await logActivity(userWithTeam.teamId, user.id, ActivityType.REMOVE_TEAM_MEMBER);
-    return { success: 'Team member removed successfully' };
+    return { success: 'Workspace member removed successfully' };
 });
 const inviteTeamMemberSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -276,7 +276,7 @@ export const inviteTeamMember = validatedActionWithUser(inviteTeamMemberSchema, 
     const { email, role } = data;
     const userWithTeam = await getUserWithTeam(user.id);
     if (!userWithTeam?.teamId) {
-        return { error: 'User is not part of a team' };
+        return { error: 'User is not part of a workspace' };
     }
     const existingMember = await db
         .select()
@@ -285,7 +285,7 @@ export const inviteTeamMember = validatedActionWithUser(inviteTeamMemberSchema, 
         .where(and(eq(users.email, email), eq(teamMembers.teamId, userWithTeam.teamId)))
         .limit(1);
     if (existingMember.length > 0) {
-        return { error: 'User is already a member of this team' };
+        return { error: 'User is already a member of this workspace' };
     }
     // Check if there's an existing invitation
     const existingInvitation = await db

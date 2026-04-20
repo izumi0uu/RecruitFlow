@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 
 import { Terminal } from "./terminal";
 
@@ -35,7 +35,10 @@ const featureCards = [
 
 const proofPoints = [
   { value: "24h", label: "From workspace setup to live review flow" },
-  { value: "1 place", label: "For jobs, candidates, billing, and team actions" },
+  {
+    value: "1 place",
+    label: "For jobs, candidates, billing, and workspace actions",
+  },
   { value: "0 noise", label: "A calmer visual system for operational work" },
 ];
 
@@ -51,7 +54,8 @@ const HomePage = () => {
                 Turn hiring operations into a surface that feels precise.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                RecruitFlow combines recruiting workflow, team collaboration,
+                RecruitFlow combines recruiting workflow, workspace
+                collaboration,
                 and billing-ready SaaS primitives inside one calm grayscale
                 system designed for daily use.
               </p>
@@ -184,14 +188,15 @@ const HomePage = () => {
               A premium shell, backed by real SaaS mechanics.
             </h3>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Auth, teams, subscriptions, audit-friendly activity, and async
+              Auth, workspaces, subscriptions, audit-friendly activity, and
+              async
               workspace state are already part of the foundation.
             </p>
             <div className="mt-8 space-y-3">
               {[
                 "Multi-tenant workspace foundations",
                 "Stripe-backed plan and seat flows",
-                "A dashboard shell ready for team workflows",
+                "A dashboard shell ready for workspace workflows",
               ].map((item) => (
                 <div
                   key={item}
@@ -213,7 +218,7 @@ const HomePage = () => {
               <span className="inline-kicker">Ready to move</span>
               <h2 className="mt-4 text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
                 Start with a lighter surface, then shift into graphite when the
-                team settles in.
+                workspace settles in.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted-foreground">
                 The whole product now shares the same grayscale system, so

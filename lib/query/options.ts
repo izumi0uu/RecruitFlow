@@ -1,10 +1,11 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { fetchJson } from "@/lib/query/fetcher";
-import type { CurrentTeamDto, CurrentUserDto } from "@/lib/query/types";
+import type { CurrentUserDto, CurrentWorkspaceDto } from "@/lib/query/types";
 
 export const userQueryKey = ["user"] as const;
-export const teamQueryKey = ["team"] as const;
+export const workspaceQueryKey = ["workspace"] as const;
+export const teamQueryKey = workspaceQueryKey;
 
 export const currentUserQueryOptions = () =>
   queryOptions({
@@ -12,8 +13,10 @@ export const currentUserQueryOptions = () =>
     queryFn: () => fetchJson<CurrentUserDto>("/api/user"),
   });
 
-export const currentTeamQueryOptions = () =>
+export const currentWorkspaceQueryOptions = () =>
   queryOptions({
-    queryKey: teamQueryKey,
-    queryFn: () => fetchJson<CurrentTeamDto>("/api/team"),
+    queryKey: workspaceQueryKey,
+    queryFn: () => fetchJson<CurrentWorkspaceDto>("/api/workspace"),
   });
+
+export const currentTeamQueryOptions = currentWorkspaceQueryOptions;
