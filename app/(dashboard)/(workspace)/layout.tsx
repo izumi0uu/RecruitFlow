@@ -2,29 +2,35 @@ import { redirect } from "next/navigation";
 
 import { NoWorkspaceState } from "@/components/workspace/ModulePlaceholderPage";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
-import { getCurrentUser, getCurrentWorkspace } from "@/lib/db/queries";
+import {
+  isWorkspaceAccessError,
+  requireWorkspace,
+} from "@/lib/db/queries";
 
 const WorkspaceRouteLayout = async ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  const [user, workspace] = await Promise.all([
-    getCurrentUser(),
-    getCurrentWorkspace(),
-  ]);
+  try {
+    const { workspace } = await requireWorkspace();
 
-  if (!user) {
-    redirect("/sign-in");
+    return (
+      <WorkspaceShell workspaceName={workspace.name}>{children}</WorkspaceShell>
+    );
+  } catch (error) {
+    if (isWorkspaceAccessError(error)) {
+      if (error.code === "UNAUTHENTICATED") {
+        redirect("/sign-in");
+      }
+
+      if (error.code === "NO_WORKSPACE") {
+        return <NoWorkspaceState />;
+      }
+    }
+
+    throw error;
   }
-
-  if (!workspace) {
-    return <NoWorkspaceState />;
-  }
-
-  return (
-    <WorkspaceShell workspaceName={workspace.name}>{children}</WorkspaceShell>
-  );
 };
 
 export default WorkspaceRouteLayout;
