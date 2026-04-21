@@ -305,10 +305,16 @@ const InviteTeamMember = () => {
 
   const options = [
     {
-      id: "member",
-      value: "member",
-      label: "Member",
-      description: "Can view the workspace and contribute to reviews.",
+      id: "coordinator",
+      value: "coordinator",
+      label: "Coordinator",
+      description: "Keeps follow-ups, scheduling, and shared workflow details moving.",
+    },
+    {
+      id: "recruiter",
+      value: "recruiter",
+      label: "Recruiter",
+      description: "Owns candidate flow, client updates, and day-to-day recruiting work.",
     },
     {
       id: "owner",
@@ -343,9 +349,9 @@ const InviteTeamMember = () => {
           <div className="space-y-3">
             <Label>Role</Label>
             <RadioGroup
-              defaultValue="member"
+              defaultValue="coordinator"
               name="role"
-              className="grid gap-3 sm:grid-cols-2"
+              className="grid gap-3 lg:grid-cols-3"
               disabled={!isOwner}
             >
               {options.map((option) => (
