@@ -2,11 +2,16 @@ import { desc, and, eq, isNull } from "drizzle-orm";
 import { db } from "./drizzle";
 import {
   activityLogs,
+  type Membership,
   teamMembers,
   teams,
   users,
   type TeamDataWithMembers,
+  type User,
+  type Workspace,
   type WorkspaceDataWithMembers,
+  type WorkspaceRole,
+  workspaceRoleValues,
 } from "./schema";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth/session";
@@ -19,6 +24,103 @@ const toWorkspaceData = (
     ...membership,
   })),
 });
+
+type CurrentUser = Omit<User, "passwordHash">;
+
+export type CurrentMembership = Membership & {
+  workspace: Workspace;
+};
+
+export type WorkspaceContext = {
+  membership: CurrentMembership;
+  user: CurrentUser;
+  workspace: WorkspaceDataWithMembers;
+};
+
+export type RoleRequirement =
+  | {
+      allowedRoles: WorkspaceRole[];
+      minRole?: never;
+    }
+  | {
+      allowedRoles?: never;
+      minRole: WorkspaceRole;
+    };
+
+const workspaceRoleRank = Object.fromEntries(
+  workspaceRoleValues.map((role, index) => [role, index]),
+) as Record<WorkspaceRole, number>;
+
+export class WorkspaceAccessError extends Error {
+  code: "INSUFFICIENT_ROLE" | "NO_WORKSPACE" | "UNAUTHENTICATED";
+  allowedRoles?: WorkspaceRole[];
+  currentRole?: WorkspaceRole;
+  minRole?: WorkspaceRole;
+
+  constructor(options: {
+    code: "INSUFFICIENT_ROLE" | "NO_WORKSPACE" | "UNAUTHENTICATED";
+    message: string;
+    allowedRoles?: WorkspaceRole[];
+    currentRole?: WorkspaceRole;
+    minRole?: WorkspaceRole;
+  }) {
+    super(options.message);
+    this.name = "WorkspaceAccessError";
+    this.code = options.code;
+    this.allowedRoles = options.allowedRoles;
+    this.currentRole = options.currentRole;
+    this.minRole = options.minRole;
+  }
+}
+
+export const isWorkspaceAccessError = (
+  error: unknown,
+): error is WorkspaceAccessError => error instanceof WorkspaceAccessError;
+
+const toCurrentUser = ({ passwordHash: _passwordHash, ...currentUser }: User) =>
+  currentUser;
+
+const toCurrentMembership = (
+  membership: Membership,
+  workspace: Workspace,
+): CurrentMembership => ({
+  ...membership,
+  workspace,
+});
+
+const getCurrentWorkspaceRecord = async (userId: number) => {
+  return db.query.teamMembers.findFirst({
+    where: eq(teamMembers.userId, userId),
+    with: {
+      team: {
+        with: {
+          teamMembers: {
+            with: {
+              user: {
+                columns: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+export const hasRequiredRole = (
+  currentRole: WorkspaceRole,
+  requirement: RoleRequirement,
+) => {
+  if (requirement.allowedRoles) {
+    return requirement.allowedRoles.includes(currentRole);
+  }
+
+  return workspaceRoleRank[currentRole] <= workspaceRoleRank[requirement.minRole];
+};
 
 export const getUser = async () => {
   const sessionCookie = (await cookies()).get("session");
@@ -50,8 +152,7 @@ export const getCurrentUser = async () => {
   const user = await getUser();
   if (!user) return null;
 
-  const { passwordHash: _passwordHash, ...currentUser } = user;
-  return currentUser;
+  return toCurrentUser(user);
 };
 export const getTeamByStripeCustomerId = async (customerId: string) => {
   const result = await db
@@ -116,26 +217,7 @@ export const getCurrentWorkspace = async () => {
     return null;
   }
 
-  const result = await db.query.teamMembers.findFirst({
-    where: eq(teamMembers.userId, user.id),
-    with: {
-      team: {
-        with: {
-          teamMembers: {
-            with: {
-              user: {
-                columns: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+  const result = await getCurrentWorkspaceRecord(user.id);
 
   if (!result?.team) {
     return null;
@@ -150,12 +232,7 @@ export const getCurrentMembership = async () => {
     return null;
   }
 
-  const result = await db.query.teamMembers.findFirst({
-    where: eq(teamMembers.userId, user.id),
-    with: {
-      team: true,
-    },
-  });
+  const result = await getCurrentWorkspaceRecord(user.id);
 
   if (!result?.team) {
     return null;
@@ -163,10 +240,54 @@ export const getCurrentMembership = async () => {
 
   const { team, ...membership } = result;
 
+  return toCurrentMembership(membership, team);
+};
+
+export const requireWorkspace = async (): Promise<WorkspaceContext> => {
+  const user = await getUser();
+  if (!user) {
+    throw new WorkspaceAccessError({
+      code: "UNAUTHENTICATED",
+      message: "User is not authenticated.",
+    });
+  }
+
+  const result = await getCurrentWorkspaceRecord(user.id);
+  if (!result?.team) {
+    throw new WorkspaceAccessError({
+      code: "NO_WORKSPACE",
+      message: "Current user does not belong to a workspace.",
+    });
+  }
+
+  const { team, ...membership } = result;
+
   return {
-    ...membership,
-    workspace: team,
+    membership: toCurrentMembership(membership, team),
+    user: toCurrentUser(user),
+    workspace: toWorkspaceData(team),
   };
+};
+
+export const requireRole = async (
+  requirement: RoleRequirement,
+): Promise<WorkspaceContext> => {
+  const context = await requireWorkspace();
+  const currentRole = context.membership.role;
+
+  if (hasRequiredRole(currentRole, requirement)) {
+    return context;
+  }
+
+  throw new WorkspaceAccessError({
+    code: "INSUFFICIENT_ROLE",
+    message: requirement.allowedRoles
+      ? `Current role must be one of: ${requirement.allowedRoles.join(", ")}.`
+      : `Current role must be at least ${requirement.minRole}.`,
+    allowedRoles: requirement.allowedRoles,
+    currentRole,
+    minRole: requirement.allowedRoles ? undefined : requirement.minRole,
+  });
 };
 
 export const getTeamForUser = getCurrentWorkspace;

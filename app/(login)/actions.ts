@@ -20,7 +20,12 @@ import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createCheckoutSession } from '@/lib/payments/stripe';
-import { getUser, getUserWithTeam } from '@/lib/db/queries';
+import {
+    getUser,
+    getUserWithTeam,
+    isWorkspaceAccessError,
+    requireRole,
+} from '@/lib/db/queries';
 import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware';
 const logActivity = async (teamId: number | null | undefined, userId: number, type: ActivityType, ipAddress?: string) => {
     if (teamId === null || teamId === undefined) {
@@ -276,15 +281,25 @@ const removeTeamMemberSchema = z.object({
 });
 export const removeTeamMember = validatedActionWithUser(removeTeamMemberSchema, async (data, _, user) => {
     const { memberId } = data;
-    const userWithTeam = await getUserWithTeam(user.id);
-    if (!userWithTeam?.teamId) {
-        return { error: 'User is not part of a workspace' };
+    try {
+        const { workspace } = await requireRole({ allowedRoles: ['owner'] });
+        await db
+            .delete(teamMembers)
+            .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspace.id)));
+        await logActivity(workspace.id, user.id, ActivityType.REMOVE_TEAM_MEMBER);
+        return { success: 'Workspace member removed successfully' };
     }
-    await db
-        .delete(teamMembers)
-        .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, userWithTeam.teamId)));
-    await logActivity(userWithTeam.teamId, user.id, ActivityType.REMOVE_TEAM_MEMBER);
-    return { success: 'Workspace member removed successfully' };
+    catch (error) {
+        if (isWorkspaceAccessError(error)) {
+            if (error.code === 'NO_WORKSPACE') {
+                return { error: 'User is not part of a workspace' };
+            }
+            if (error.code === 'INSUFFICIENT_ROLE') {
+                return { error: 'Only workspace owners can remove members' };
+            }
+        }
+        throw error;
+    }
 });
 const inviteTeamMemberSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -292,38 +307,48 @@ const inviteTeamMemberSchema = z.object({
 });
 export const inviteTeamMember = validatedActionWithUser(inviteTeamMemberSchema, async (data, _, user) => {
     const { email, role } = data;
-    const userWithTeam = await getUserWithTeam(user.id);
-    if (!userWithTeam?.teamId) {
-        return { error: 'User is not part of a workspace' };
+    try {
+        const { workspace } = await requireRole({ allowedRoles: ['owner'] });
+        const existingMember = await db
+            .select()
+            .from(users)
+            .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
+            .where(and(eq(users.email, email), eq(teamMembers.teamId, workspace.id)))
+            .limit(1);
+        if (existingMember.length > 0) {
+            return { error: 'User is already a member of this workspace' };
+        }
+        // Check if there's an existing invitation
+        const existingInvitation = await db
+            .select()
+            .from(invitations)
+            .where(and(eq(invitations.email, email), eq(invitations.teamId, workspace.id), eq(invitations.status, 'pending')))
+            .limit(1);
+        if (existingInvitation.length > 0) {
+            return { error: 'An invitation has already been sent to this email' };
+        }
+        // Create a new invitation
+        await db.insert(invitations).values({
+            teamId: workspace.id,
+            email,
+            role,
+            invitedBy: user.id,
+            status: 'pending'
+        });
+        await logActivity(workspace.id, user.id, ActivityType.INVITE_TEAM_MEMBER);
+        // TODO: Send invitation email and include ?inviteId={id} to sign-up URL
+        // await sendInvitationEmail(email, workspace.name, role)
+        return { success: 'Invitation sent successfully' };
     }
-    const existingMember = await db
-        .select()
-        .from(users)
-        .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
-        .where(and(eq(users.email, email), eq(teamMembers.teamId, userWithTeam.teamId)))
-        .limit(1);
-    if (existingMember.length > 0) {
-        return { error: 'User is already a member of this workspace' };
+    catch (error) {
+        if (isWorkspaceAccessError(error)) {
+            if (error.code === 'NO_WORKSPACE') {
+                return { error: 'User is not part of a workspace' };
+            }
+            if (error.code === 'INSUFFICIENT_ROLE') {
+                return { error: 'Only workspace owners can invite members' };
+            }
+        }
+        throw error;
     }
-    // Check if there's an existing invitation
-    const existingInvitation = await db
-        .select()
-        .from(invitations)
-        .where(and(eq(invitations.email, email), eq(invitations.teamId, userWithTeam.teamId), eq(invitations.status, 'pending')))
-        .limit(1);
-    if (existingInvitation.length > 0) {
-        return { error: 'An invitation has already been sent to this email' };
-    }
-    // Create a new invitation
-    await db.insert(invitations).values({
-        teamId: userWithTeam.teamId,
-        email,
-        role,
-        invitedBy: user.id,
-        status: 'pending'
-    });
-    await logActivity(userWithTeam.teamId, user.id, ActivityType.INVITE_TEAM_MEMBER);
-    // TODO: Send invitation email and include ?inviteId={id} to sign-up URL
-    // await sendInvitationEmail(email, userWithTeam.team.name, role)
-    return { success: 'Invitation sent successfully' };
 });

@@ -102,12 +102,14 @@ const SubscriptionSkeleton = () => {
 };
 
 const ManageSubscription = () => {
+  const { data: user } = useSuspenseQuery(currentUserQueryOptions());
   const { data: workspaceData } = useSuspenseQuery(
     currentWorkspaceQueryOptions(),
   );
+  const isOwner = user?.role === "owner";
 
   return (
-      <Card className="h-full">
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>Workspace subscription</CardTitle>
         <CardDescription>
@@ -143,13 +145,26 @@ const ManageSubscription = () => {
               </p>
             </div>
             <form action={customerPortalAction}>
-              <Button type="submit" variant="outline" className="rounded-full">
+              <Button
+                type="submit"
+                variant="outline"
+                className="rounded-full"
+                disabled={!isOwner}
+              >
                 Manage subscription
               </Button>
             </form>
           </div>
         </div>
       </CardContent>
+
+      {!isOwner ? (
+        <CardFooter>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Only workspace owners can manage billing and subscriptions.
+          </p>
+        </CardFooter>
+      ) : null}
     </Card>
   );
 };
@@ -183,9 +198,11 @@ const TeamMembersSkeleton = () => {
 
 const TeamMembers = () => {
   const queryClient = useQueryClient();
+  const { data: user } = useSuspenseQuery(currentUserQueryOptions());
   const { data: workspaceData } = useSuspenseQuery(
     currentWorkspaceQueryOptions(),
   );
+  const isOwner = user?.role === "owner";
   const [removeState, removeAction, isRemovePending] = useActionState<
     ActionState,
     FormData
@@ -246,7 +263,7 @@ const TeamMembers = () => {
                 </div>
               </div>
 
-              {index > 1 ? (
+              {isOwner && index > 1 ? (
                 <form action={removeAction}>
                   <input type="hidden" name="memberId" value={member.id} />
                   <Button
@@ -267,6 +284,12 @@ const TeamMembers = () => {
         {removeState?.error ? (
           <p className="status-message status-error mt-5">
             {removeState.error}
+          </p>
+        ) : null}
+
+        {!isOwner ? (
+          <p className="mt-5 text-sm leading-6 text-muted-foreground">
+            Only workspace owners can remove members from this workspace.
           </p>
         ) : null}
       </CardContent>
