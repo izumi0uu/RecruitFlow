@@ -2,7 +2,20 @@
 import { z } from 'zod';
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
-import { User, users, teams, teamMembers, activityLogs, type NewUser, type NewTeam, type NewTeamMember, type NewActivityLog, ActivityType, invitations } from '@/lib/db/schema';
+import {
+  User,
+  users,
+  teams,
+  teamMembers,
+  activityLogs,
+  type NewUser,
+  type NewTeam,
+  type NewTeamMember,
+  type NewActivityLog,
+  ActivityType,
+  invitations,
+  workspaceRoleValues,
+} from '@/lib/db/schema';
 import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -87,7 +100,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     const newUser: NewUser = {
         email,
         passwordHash,
-        role: 'owner' // Default role, will be overridden if there's an invitation
+        role: 'owner',
     };
     const [createdUser] = await db.insert(users).values(newUser).returning();
     if (!createdUser) {
@@ -98,7 +111,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
         };
     }
     let teamId: number;
-    let userRole: string;
+    let userRole: (typeof workspaceRoleValues)[number];
     let createdTeam: typeof teams.$inferSelect | null = null;
     if (inviteId) {
         // Check if there's a valid invitation
@@ -147,10 +160,15 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
         teamId: teamId,
         role: userRole
     };
+    const sessionUser = {
+        ...createdUser,
+        role: userRole,
+    };
     await Promise.all([
         db.insert(teamMembers).values(newTeamMember),
+        db.update(users).set({ role: userRole }).where(eq(users.id, createdUser.id)),
         logActivity(teamId, createdUser.id, ActivityType.SIGN_UP),
-        setSession(createdUser)
+        setSession(sessionUser)
     ]);
     const redirectTo = formData.get('redirect') as string | null;
     if (redirectTo === 'checkout') {
@@ -270,7 +288,7 @@ export const removeTeamMember = validatedActionWithUser(removeTeamMemberSchema, 
 });
 const inviteTeamMemberSchema = z.object({
     email: z.string().email('Invalid email address'),
-    role: z.enum(['member', 'owner'])
+    role: z.enum(workspaceRoleValues)
 });
 export const inviteTeamMember = validatedActionWithUser(inviteTeamMemberSchema, async (data, _, user) => {
     const { email, role } = data;
