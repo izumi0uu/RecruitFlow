@@ -2,6 +2,7 @@ import {
   ModulePlaceholderPage,
   getPlaceholderViewState,
 } from "@/components/workspace/ModulePlaceholderPage";
+import { getWorkspaceDemoOverview } from "@/lib/db/queries";
 
 type PageProps = {
   searchParams?: Promise<{ state?: string }> | { state?: string };
@@ -9,9 +10,19 @@ type PageProps = {
 
 const ClientsPage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
+  const overview = await getWorkspaceDemoOverview();
 
   return (
     <ModulePlaceholderPage
+      demoState={
+        overview?.clientCount
+          ? {
+              title: `${overview.clientCount} seeded clients ready for QA`,
+              description:
+                "Northstar Recruiting now includes active and prospect client accounts so CRM routes land in a visibly non-empty state from the first review pass.",
+            }
+          : undefined
+      }
       kicker="Client relationships"
       title="Clients"
       description="This shared placeholder protects the final `/clients` entry point while the CRM branch wires the real list view, filters, and creation flow."

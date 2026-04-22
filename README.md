@@ -46,17 +46,23 @@ Use the included setup script to create your `.env` file:
 pnpm db:setup
 ```
 
-Run the database migrations and seed the database with a default user and team:
+Run the database migrations and seed the database with the shared RecruitFlow demo workspace:
 
 ```bash
 pnpm db:migrate
 pnpm db:seed
 ```
 
-This will create the following user and team:
+This seed creates the following baseline:
 
-- User: `test@test.com`
-- Password: `admin123`
+- Workspace: `Northstar Recruiting`
+- Owner: `test@test.com` / `admin123`
+- Recruiter: `recruiter@test.com` / `admin123`
+- Coordinator: `coordinator@test.com` / `admin123`
+
+The seed also creates baseline clients, jobs, candidates, submissions, tasks,
+documents, and audit history so the authenticated workspace routes load with
+non-empty demo states.
 
 You can also create new users through the `/sign-up` route.
 

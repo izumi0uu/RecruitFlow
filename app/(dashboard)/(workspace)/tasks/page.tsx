@@ -2,6 +2,7 @@ import {
   ModulePlaceholderPage,
   getPlaceholderViewState,
 } from "@/components/workspace/ModulePlaceholderPage";
+import { getWorkspaceDemoOverview } from "@/lib/db/queries";
 
 type PageProps = {
   searchParams?: Promise<{ state?: string }> | { state?: string };
@@ -9,9 +10,18 @@ type PageProps = {
 
 const TasksPage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
+  const overview = await getWorkspaceDemoOverview();
 
   return (
     <ModulePlaceholderPage
+      demoState={
+        overview?.taskCount
+          ? {
+              title: `${overview.taskCount} seeded tasks ready to triage`,
+              description: `${overview.overdueTaskCount} overdue follow-up${overview.overdueTaskCount === 1 ? "" : "s"} are included so execution views can verify urgency states against realistic data.`,
+            }
+          : undefined
+      }
       kicker="Execution rhythm"
       title="Tasks"
       description="Tasks now have a protected top-level destination, which keeps follow-up work, ownership, and overdue queues from being scattered across later branches."

@@ -1,8 +1,15 @@
-import { desc, and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { db } from "./drizzle";
 import {
   activityLogs,
+  auditLogs,
+  candidates,
+  clients,
+  documents,
+  jobs,
   type Membership,
+  submissions,
+  tasks,
   teamMembers,
   teams,
   users,
@@ -35,6 +42,20 @@ export type WorkspaceContext = {
   membership: CurrentMembership;
   user: CurrentUser;
   workspace: WorkspaceDataWithMembers;
+};
+
+export type WorkspaceDemoOverview = {
+  auditCount: number;
+  candidateCount: number;
+  clientCount: number;
+  documentCount: number;
+  jobCount: number;
+  memberCount: number;
+  openJobCount: number;
+  overdueTaskCount: number;
+  submissionCount: number;
+  taskCount: number;
+  workspaceName: string;
 };
 
 export type RoleRequirement =
@@ -291,3 +312,82 @@ export const requireRole = async (
 };
 
 export const getTeamForUser = getCurrentWorkspace;
+
+const countRows = async (
+  table:
+    | typeof clients
+    | typeof jobs
+    | typeof candidates
+    | typeof submissions
+    | typeof tasks
+    | typeof documents
+    | typeof auditLogs,
+  workspaceId: number,
+) => {
+  const [result] = await db
+    .select({
+      count: sql<number>`cast(count(*) as int)`,
+    })
+    .from(table)
+    .where(eq(table.workspaceId, workspaceId));
+
+  return result?.count ?? 0;
+};
+
+export const getWorkspaceDemoOverview =
+  async (): Promise<WorkspaceDemoOverview | null> => {
+    const workspace = await getCurrentWorkspace();
+    if (!workspace) {
+      return null;
+    }
+
+    const [jobCount, openJobCount, overdueTaskCount, clientCount, candidateCount, submissionCount, taskCount, documentCount, auditCount] =
+      await Promise.all([
+        countRows(jobs, workspace.id),
+        db
+          .select({
+            count: sql<number>`cast(count(*) as int)`,
+          })
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.workspaceId, workspace.id),
+              inArray(jobs.status, ["intake", "open", "on_hold"]),
+            ),
+          )
+          .then((result) => result[0]?.count ?? 0),
+        db
+          .select({
+            count: sql<number>`cast(count(*) as int)`,
+          })
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.workspaceId, workspace.id),
+              ne(tasks.status, "done"),
+              lt(tasks.dueAt, new Date()),
+            ),
+          )
+          .then((result) => result[0]?.count ?? 0),
+        countRows(clients, workspace.id),
+        countRows(candidates, workspace.id),
+        countRows(submissions, workspace.id),
+        countRows(tasks, workspace.id),
+        countRows(documents, workspace.id),
+        countRows(auditLogs, workspace.id),
+      ]);
+
+    return {
+      auditCount,
+      candidateCount,
+      clientCount,
+      documentCount,
+      jobCount,
+      memberCount: workspace.memberships.length,
+      openJobCount,
+      overdueTaskCount,
+      submissionCount,
+      taskCount,
+      workspaceName: workspace.name,
+    };
+  };

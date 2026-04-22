@@ -485,6 +485,34 @@ export type WorkspaceDataWithMembers = Workspace & {
   })[];
 };
 
+export const auditEntityTypeValues = [
+  "workspace",
+  "membership",
+  "client",
+  "client_contact",
+  "job",
+  "candidate",
+  "submission",
+  "task",
+  "note",
+  "document",
+  "automation_run",
+] as const;
+
+export type AuditEntityType = (typeof auditEntityTypeValues)[number];
+
+export enum AuditAction {
+  WORKSPACE_CREATED = "WORKSPACE_CREATED",
+  MEMBER_INVITED = "MEMBER_INVITED",
+  MEMBER_JOINED = "MEMBER_JOINED",
+  MEMBER_REMOVED = "MEMBER_REMOVED",
+  ACCOUNT_UPDATED = "ACCOUNT_UPDATED",
+  PASSWORD_UPDATED = "PASSWORD_UPDATED",
+  ACCOUNT_DELETED = "ACCOUNT_DELETED",
+  SIGN_IN = "SIGN_IN",
+  SIGN_OUT = "SIGN_OUT",
+}
+
 export enum ActivityType {
   SIGN_UP = "SIGN_UP",
   SIGN_IN = "SIGN_IN",
