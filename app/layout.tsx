@@ -7,8 +7,10 @@ import Script from "next/script";
 import { Suspense } from "react";
 
 import { Providers } from "@/app/providers";
+import { DevAccountSwitcher } from "@/components/dev/DevAccountSwitcher";
 import { RouteLoadingOverlay } from "@/components/navigation/RouteLoadingOverlay";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { DEV_ACCOUNT_SWITCHER_ENABLED } from "@/lib/dev/test-account-definitions";
 import { getCurrentUser, getCurrentWorkspace } from "@/lib/db/queries";
 import {
   currentUserQueryOptions,
@@ -95,6 +97,7 @@ const RootLayout = async ({ children }: { children: React.ReactNode }) => {
             <Suspense fallback={null}>
               <RouteLoadingOverlay />
             </Suspense>
+            {DEV_ACCOUNT_SWITCHER_ENABLED ? <DevAccountSwitcher /> : null}
             {children}
           </Providers>
         </ThemeProvider>

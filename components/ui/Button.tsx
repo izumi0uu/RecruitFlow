@@ -77,7 +77,9 @@ const Button = ({
   return (
     <Comp
       data-slot="Button"
-      className={buttonVariants({ className, variant, size })}
+      className={
+        buttonVariants({ className, variant, size }) + " cursor-pointer"
+      }
       {...props}
     />
   );
