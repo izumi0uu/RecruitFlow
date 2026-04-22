@@ -5,6 +5,7 @@ import { useState } from "react";
 import { LayoutDashboard, LogIn, LogOut } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { signOut } from "@/app/(login)/actions";
 import { BrandLockup } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -18,7 +19,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
-import { signOut } from "@/app/(login)/actions";
 import { useMounted } from "@/hooks/useMounted";
 import {
   currentUserQueryOptions,
@@ -122,7 +122,10 @@ const UserMenu = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer">
-          <TrackedLink href="/dashboard" className="flex w-full items-center gap-2">
+          <TrackedLink
+            href="/dashboard"
+            className="flex w-full items-center gap-2"
+          >
             <LayoutDashboard className="size-4" />
             Dashboard
           </TrackedLink>
@@ -142,7 +145,7 @@ const UserMenu = () => {
   );
 };
 
-const Header = () => {
+const PublicHeader = () => {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/72 backdrop-blur-2xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
@@ -158,13 +161,13 @@ const Header = () => {
   );
 };
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
+const PublicLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <section className="relative flex min-h-screen flex-col">
-      <Header />
+      <PublicHeader />
       <div className="flex-1">{children}</div>
     </section>
   );
 };
 
-export default Layout;
+export default PublicLayout;

@@ -8,9 +8,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-import { cn } from "@/lib/utils";
 import { checkoutAction } from "@/lib/payments/actions";
 import { getStripePrices, getStripeProducts } from "@/lib/payments/stripe";
+import { cn } from "@/lib/utils";
 
 import { SubmitButton } from "./submit-button";
 
@@ -35,9 +35,9 @@ const PricingPage = async () => {
           Choose the surface that fits your hiring cadence.
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground sm:text-lg">
-          Both plans share the same workspace shell, permissions foundation,
-          and recruiting flow. Upgrade when you need more support and earlier
-          access.
+          Both plans share the same workspace foundation, but billing remains a
+          public-entry surface until members intentionally move into the
+          authenticated workspace app.
         </p>
       </div>
 
@@ -102,19 +102,24 @@ const PricingCard = ({
       className={cn(
         "h-full rounded-[2rem]",
         featured &&
-          "border-foreground/10 bg-foreground text-background before:bg-none"
+          "border-foreground/10 bg-foreground text-background before:bg-none",
       )}
     >
       <CardHeader className="gap-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle className={cn("text-3xl tracking-[-0.04em]", featured && "text-background")}>
+            <CardTitle
+              className={cn(
+                "text-3xl tracking-[-0.04em]",
+                featured && "text-background",
+              )}
+            >
               {name}
             </CardTitle>
             <CardDescription
               className={cn(
                 "mt-2 text-sm leading-6",
-                featured ? "text-background/70" : "text-muted-foreground"
+                featured ? "text-background/70" : "text-muted-foreground",
               )}
             >
               {description}
@@ -130,12 +135,17 @@ const PricingCard = ({
       </CardHeader>
 
       <CardContent>
-        <p className={cn("text-5xl font-semibold tracking-[-0.06em]", featured && "text-background")}>
+        <p
+          className={cn(
+            "text-5xl font-semibold tracking-[-0.06em]",
+            featured && "text-background",
+          )}
+        >
           ${price / 100}
           <span
             className={cn(
               "ml-2 text-lg font-normal tracking-normal",
-              featured ? "text-background/60" : "text-muted-foreground"
+              featured ? "text-background/60" : "text-muted-foreground",
             )}
           >
             per member / {interval}
@@ -144,7 +154,7 @@ const PricingCard = ({
         <p
           className={cn(
             "mt-3 text-sm",
-            featured ? "text-background/70" : "text-muted-foreground"
+            featured ? "text-background/70" : "text-muted-foreground",
           )}
         >
           Includes a {trialDays}-day free trial.
@@ -158,13 +168,13 @@ const PricingCard = ({
                 "flex items-start gap-3 rounded-[1.25rem] border px-4 py-3",
                 featured
                   ? "border-white/10 bg-white/[0.06] text-background/92"
-                  : "border-border/70 bg-surface-1/75 text-foreground"
+                  : "border-border/70 bg-surface-1/75 text-foreground",
               )}
             >
               <Check
                 className={cn(
                   "mt-0.5 size-4 shrink-0",
-                  featured ? "text-background" : "text-foreground"
+                  featured ? "text-background" : "text-foreground",
                 )}
               />
               <span className="text-sm leading-6">{feature}</span>
@@ -178,7 +188,10 @@ const PricingCard = ({
           <input type="hidden" name="priceId" value={priceId} />
           <SubmitButton
             variant={featured ? "secondary" : "default"}
-            className={cn(featured && "border-white/15 bg-background text-foreground hover:bg-background/92")}
+            className={cn(
+              featured &&
+                "border-white/15 bg-background text-foreground hover:bg-background/92",
+            )}
           />
         </form>
       </CardFooter>
