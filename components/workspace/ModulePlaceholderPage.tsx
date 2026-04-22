@@ -13,7 +13,13 @@ import {
 
 type PlaceholderViewState = "default" | "restricted" | "loading";
 
+type ModuleDemoState = {
+  description: string;
+  title: string;
+};
+
 type ModulePlaceholderPageProps = {
+  demoState?: ModuleDemoState;
   description: string;
   emptyDescription: string;
   emptyTitle: string;
@@ -35,6 +41,7 @@ const getPlaceholderViewState = (
 };
 
 const ModulePlaceholderPage = ({
+  demoState,
   description,
   emptyDescription,
   emptyTitle,
@@ -122,21 +129,41 @@ const ModulePlaceholderPage = ({
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <Card>
           <CardHeader>
-            <CardTitle>{emptyTitle}</CardTitle>
+            <CardTitle>{demoState?.title ?? emptyTitle}</CardTitle>
             <CardDescription>
-              Shared empty-state treatment for unfinished business modules.
+              {demoState
+                ? "Shared seeded-state treatment for workspace demo verification."
+                : "Shared empty-state treatment for unfinished business modules."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="rounded-[1.75rem] border border-dashed border-border/70 bg-surface-1/60 px-6 py-12 text-center">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70">
+            <div
+              className={
+                demoState
+                  ? "rounded-[1.75rem] border border-border/70 bg-surface-1/80 px-6 py-8"
+                  : "rounded-[1.75rem] border border-dashed border-border/70 bg-surface-1/60 px-6 py-12 text-center"
+              }
+            >
+              <div
+                className={
+                  demoState
+                    ? "flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70"
+                    : "mx-auto flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70"
+                }
+              >
                 <Sparkles className="size-5 text-foreground" />
               </div>
               <h2 className="mt-5 text-lg font-semibold tracking-[-0.03em] text-foreground">
-                {emptyTitle}
+                {demoState?.title ?? emptyTitle}
               </h2>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-                {emptyDescription}
+              <p
+                className={
+                  demoState
+                    ? "mt-3 max-w-xl text-sm leading-6 text-muted-foreground"
+                    : "mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground"
+                }
+              >
+                {demoState?.description ?? emptyDescription}
               </p>
             </div>
 
@@ -227,5 +254,6 @@ export {
   ModulePlaceholderPage,
   NoWorkspaceState,
   getPlaceholderViewState,
+  type ModuleDemoState,
   type PlaceholderViewState,
 };

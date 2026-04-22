@@ -2,7 +2,9 @@
 import { z } from 'zod';
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
+import { writeAuditLog } from '@/lib/db/audit';
 import {
+  AuditAction,
   User,
   users,
   teams,
@@ -63,6 +65,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
         };
     }
     const { user: foundUser, team: foundTeam } = userWithTeam[0];
+    const workspaceId = foundTeam?.id;
     const isPasswordValid = await comparePasswords(password, foundUser.passwordHash);
     if (!isPasswordValid) {
         return {
@@ -73,7 +76,16 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
     }
     await Promise.all([
         setSession(foundUser),
-        logActivity(foundTeam?.id, foundUser.id, ActivityType.SIGN_IN)
+        logActivity(workspaceId, foundUser.id, ActivityType.SIGN_IN),
+        writeAuditLog({
+            workspaceId,
+            actorUserId: foundUser.id,
+            actorRole: foundUser.role,
+            action: AuditAction.SIGN_IN,
+            entityType: 'workspace',
+            entityId: workspaceId,
+            source: 'server_action',
+        })
     ]);
     const redirectTo = formData.get('redirect') as string | null;
     if (redirectTo === 'checkout') {
@@ -159,6 +171,18 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
         teamId = createdTeam.id;
         userRole = 'owner';
         await logActivity(teamId, createdUser.id, ActivityType.CREATE_TEAM);
+        await writeAuditLog({
+            workspaceId: teamId,
+            actorUserId: createdUser.id,
+            actorRole: userRole,
+            action: AuditAction.WORKSPACE_CREATED,
+            entityType: 'workspace',
+            entityId: teamId,
+            source: 'server_action',
+            metadata: {
+                workspaceName: createdTeam.name,
+            }
+        });
     }
     const newTeamMember: NewTeamMember = {
         userId: createdUser.id,
@@ -169,11 +193,30 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
         ...createdUser,
         role: userRole,
     };
+    const [createdMembership] = await db.insert(teamMembers).values(newTeamMember).returning();
+    if (!createdMembership) {
+        return {
+            error: 'Failed to create membership. Please try again.',
+            email,
+            password
+        };
+    }
     await Promise.all([
-        db.insert(teamMembers).values(newTeamMember),
         db.update(users).set({ role: userRole }).where(eq(users.id, createdUser.id)),
         logActivity(teamId, createdUser.id, ActivityType.SIGN_UP),
-        setSession(sessionUser)
+        setSession(sessionUser),
+        writeAuditLog({
+            workspaceId: teamId,
+            actorUserId: createdUser.id,
+            actorRole: userRole,
+            action: AuditAction.MEMBER_JOINED,
+            entityType: 'membership',
+            entityId: createdMembership.id,
+            source: 'server_action',
+            metadata: {
+                joinedViaInvitation: Boolean(inviteId),
+            }
+        })
     ]);
     const redirectTo = formData.get('redirect') as string | null;
     if (redirectTo === 'checkout') {
@@ -185,7 +228,18 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
 export const signOut = async () => {
     const user = (await getUser()) as User;
     const userWithTeam = await getUserWithTeam(user.id);
-    await logActivity(userWithTeam?.teamId, user.id, ActivityType.SIGN_OUT);
+    await Promise.all([
+        logActivity(userWithTeam?.teamId, user.id, ActivityType.SIGN_OUT),
+        writeAuditLog({
+            workspaceId: userWithTeam?.teamId,
+            actorUserId: user.id,
+            actorRole: user.role,
+            action: AuditAction.SIGN_OUT,
+            entityType: 'workspace',
+            entityId: userWithTeam?.teamId,
+            source: 'server_action',
+        })
+    ]);
     (await cookies()).delete('session');
 };
 const updatePasswordSchema = z.object({
@@ -282,11 +336,22 @@ const removeTeamMemberSchema = z.object({
 export const removeTeamMember = validatedActionWithUser(removeTeamMemberSchema, async (data, _, user) => {
     const { memberId } = data;
     try {
-        const { workspace } = await requireRole({ allowedRoles: ['owner'] });
+        const { membership, workspace } = await requireRole({ allowedRoles: ['owner'] });
         await db
             .delete(teamMembers)
             .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspace.id)));
-        await logActivity(workspace.id, user.id, ActivityType.REMOVE_TEAM_MEMBER);
+        await Promise.all([
+            logActivity(workspace.id, user.id, ActivityType.REMOVE_TEAM_MEMBER),
+            writeAuditLog({
+                workspaceId: workspace.id,
+                actorUserId: user.id,
+                actorRole: membership.role,
+                action: AuditAction.MEMBER_REMOVED,
+                entityType: 'membership',
+                entityId: memberId,
+                source: 'server_action',
+            })
+        ]);
         return { success: 'Workspace member removed successfully' };
     }
     catch (error) {
@@ -308,7 +373,7 @@ const inviteTeamMemberSchema = z.object({
 export const inviteTeamMember = validatedActionWithUser(inviteTeamMemberSchema, async (data, _, user) => {
     const { email, role } = data;
     try {
-        const { workspace } = await requireRole({ allowedRoles: ['owner'] });
+        const { membership, workspace } = await requireRole({ allowedRoles: ['owner'] });
         const existingMember = await db
             .select()
             .from(users)
@@ -328,14 +393,30 @@ export const inviteTeamMember = validatedActionWithUser(inviteTeamMemberSchema, 
             return { error: 'An invitation has already been sent to this email' };
         }
         // Create a new invitation
-        await db.insert(invitations).values({
+        const [createdInvitation] = await db.insert(invitations).values({
             teamId: workspace.id,
             email,
             role,
             invitedBy: user.id,
             status: 'pending'
-        });
-        await logActivity(workspace.id, user.id, ActivityType.INVITE_TEAM_MEMBER);
+        }).returning();
+        await Promise.all([
+            logActivity(workspace.id, user.id, ActivityType.INVITE_TEAM_MEMBER),
+            writeAuditLog({
+                workspaceId: workspace.id,
+                actorUserId: user.id,
+                actorRole: membership.role,
+                action: AuditAction.MEMBER_INVITED,
+                entityType: 'workspace',
+                entityId: workspace.id,
+                source: 'server_action',
+                metadata: {
+                    invitationId: createdInvitation?.id ?? null,
+                    invitedEmail: email,
+                    invitedRole: role,
+                }
+            })
+        ]);
         // TODO: Send invitation email and include ?inviteId={id} to sign-up URL
         // await sendInvitationEmail(email, workspace.name, role)
         return { success: 'Invitation sent successfully' };

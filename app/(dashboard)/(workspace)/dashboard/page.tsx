@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-import { getCurrentWorkspace } from "@/lib/db/queries";
+import { getCurrentWorkspace, getWorkspaceDemoOverview } from "@/lib/db/queries";
 
 const quickLinks: Array<{
   description: string;
@@ -78,8 +78,26 @@ const dashboardSignals = [
   "Pipeline stage distribution and open-job snapshots",
 ];
 
+const formatMetricLabel = (count: number, singular: string, plural: string) => {
+  return `${count} ${count === 1 ? singular : plural}`;
+};
+
 const DashboardPage = async () => {
-  const workspace = await getCurrentWorkspace();
+  const [workspace, overview] = await Promise.all([
+    getCurrentWorkspace(),
+    getWorkspaceDemoOverview(),
+  ]);
+
+  const seededMetrics = overview
+    ? [
+        formatMetricLabel(overview.memberCount, "member", "members"),
+        formatMetricLabel(overview.clientCount, "client", "clients"),
+        formatMetricLabel(overview.openJobCount, "open job", "open jobs"),
+        formatMetricLabel(overview.candidateCount, "candidate", "candidates"),
+        formatMetricLabel(overview.submissionCount, "submission", "submissions"),
+        formatMetricLabel(overview.documentCount, "document", "documents"),
+      ]
+    : [];
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -90,10 +108,29 @@ const DashboardPage = async () => {
         </h1>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
           {workspace
-            ? `${workspace.name} now lands inside the shared business shell. This page is the jump hub for Wave 1 modules while the richer dashboard experience is owned later by feature-dashboard-demo-polish.`
+            ? overview
+              ? `${workspace.name} now lands inside the shared business shell with seeded demo data, so reviewers can verify non-empty routes before downstream modules replace these starter summaries.`
+              : `${workspace.name} now lands inside the shared business shell. This page is the jump hub for Wave 1 modules while the richer dashboard experience is owned later by feature-dashboard-demo-polish.`
             : "This page is the jump hub for Wave 1 modules while the richer dashboard experience is owned later by feature-dashboard-demo-polish."}
         </p>
       </div>
+
+      {overview ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {seededMetrics.map((metric) => (
+            <div
+              key={metric}
+              className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 px-4 py-4"
+            >
+              <p className="text-sm font-medium text-foreground">{metric}</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Seeded baseline for {overview.workspaceName} is ready for route
+                QA and downstream branch demos.
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
@@ -139,14 +176,25 @@ const DashboardPage = async () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Next dashboard signals</CardTitle>
+            <CardTitle>
+              {overview ? "Seeded workspace snapshot" : "Next dashboard signals"}
+            </CardTitle>
             <CardDescription>
-              The fuller `/dashboard` brief from the shared spec still lands
-              later, but the target surface is now explicit.
+              {overview
+                ? "Foundation now exposes enough seeded context for reviewers to confirm non-empty navigation and shared route shells."
+                : "The fuller `/dashboard` brief from the shared spec still lands later, but the target surface is now explicit."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {dashboardSignals.map((signal) => (
+            {(overview
+              ? [
+                  `${formatMetricLabel(overview.jobCount, "job shell", "job shells")} are visible, including ${formatMetricLabel(overview.openJobCount, "open role", "open roles")}.`,
+                  `${formatMetricLabel(overview.taskCount, "task", "tasks")} are seeded, with ${formatMetricLabel(overview.overdueTaskCount, "overdue follow-up", "overdue follow-ups")} ready for QA.`,
+                  `${formatMetricLabel(overview.auditCount, "audit event", "audit events")} give the workspace a believable baseline history.`,
+                  "Downstream branches can now replace these foundation summaries without having to invent demo data first.",
+                ]
+              : dashboardSignals
+            ).map((signal) => (
               <div
                 key={signal}
                 className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 px-4 py-4"

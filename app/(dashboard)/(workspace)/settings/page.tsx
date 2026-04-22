@@ -445,6 +445,70 @@ const InviteTeamMember = () => {
   );
 };
 
+const SettingsGateSkeleton = () => {
+  return (
+    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="space-y-6">
+        <SubscriptionSkeleton />
+        <TeamMembersSkeleton />
+      </div>
+      <InviteTeamMemberSkeleton />
+    </div>
+  );
+};
+
+const SettingsRestrictedState = () => {
+  return (
+    <Card className="max-w-4xl">
+      <CardHeader>
+        <CardTitle>Restricted workspace settings</CardTitle>
+        <CardDescription>
+          Billing controls and membership administration stay limited to
+          workspace owners.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 p-5">
+          <p className="text-sm font-medium text-foreground">
+            This route is protected correctly, but the current role does not
+            have access to owner-only settings actions.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Recruiters and coordinators can continue working through the shared
+            recruiting shell while workspace owners manage billing, invitations,
+            and membership changes from this screen.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const SettingsPageContent = () => {
+  const { data: user } = useSuspenseQuery(currentUserQueryOptions());
+
+  if (user?.role !== "owner") {
+    return <SettingsRestrictedState />;
+  }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="space-y-6">
+        <Suspense fallback={<SubscriptionSkeleton />}>
+          <ManageSubscription />
+        </Suspense>
+        <Suspense fallback={<TeamMembersSkeleton />}>
+          <TeamMembers />
+        </Suspense>
+      </div>
+
+      <Suspense fallback={<InviteTeamMemberSkeleton />}>
+        <InviteTeamMember />
+      </Suspense>
+    </div>
+  );
+};
+
 const SettingsPage = () => {
   return (
     <section className="px-0 py-1 lg:py-2">
@@ -453,20 +517,9 @@ const SettingsPage = () => {
         description="Shape who has access to the workspace, how billing behaves, and how collaborators move through the same recruiting surface."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
-          <Suspense fallback={<SubscriptionSkeleton />}>
-            <ManageSubscription />
-          </Suspense>
-          <Suspense fallback={<TeamMembersSkeleton />}>
-            <TeamMembers />
-          </Suspense>
-        </div>
-
-        <Suspense fallback={<InviteTeamMemberSkeleton />}>
-          <InviteTeamMember />
-        </Suspense>
-      </div>
+      <Suspense fallback={<SettingsGateSkeleton />}>
+        <SettingsPageContent />
+      </Suspense>
     </section>
   );
 };
