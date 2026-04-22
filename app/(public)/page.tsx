@@ -55,9 +55,8 @@ const HomePage = () => {
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                 RecruitFlow combines recruiting workflow, workspace
-                collaboration,
-                and billing-ready SaaS primitives inside one calm grayscale
-                system designed for daily use.
+                collaboration, and billing-ready SaaS primitives inside one calm
+                grayscale system designed for daily use.
               </p>
             </div>
 
@@ -68,14 +67,22 @@ const HomePage = () => {
                   <ArrowRight className="size-4" />
                 </TrackedLink>
               </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full px-6">
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full px-6"
+              >
                 <TrackedLink href="/pricing">See plans</TrackedLink>
               </Button>
             </div>
 
             <dl className="grid gap-3 sm:grid-cols-3">
               {proofPoints.map((item) => (
-                <div key={item.label} className="panel-shell rounded-[1.5rem] px-4 py-4">
+                <div
+                  key={item.label}
+                  className="panel-shell rounded-[1.5rem] px-4 py-4"
+                >
                   <dt className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                     {item.label}
                   </dt>
@@ -174,7 +181,9 @@ const HomePage = () => {
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                     {step.title}
                   </p>
-                  <p className="mt-3 text-sm leading-6 text-foreground">{step.copy}</p>
+                  <p className="mt-3 text-sm leading-6 text-foreground">
+                    {step.copy}
+                  </p>
                 </div>
               ))}
             </div>
@@ -185,12 +194,12 @@ const HomePage = () => {
               <Gauge className="size-5 text-foreground" />
             </div>
             <h3 className="mt-5 text-2xl font-semibold tracking-[-0.04em] text-foreground">
-              A premium shell, backed by real SaaS mechanics.
+              A premium public shell, backed by real SaaS mechanics.
             </h3>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Auth, workspaces, subscriptions, audit-friendly activity, and
-              async
-              workspace state are already part of the foundation.
+              Marketing and auth stay intentionally separate from the workspace
+              shell, while the product still shares one visual language across
+              acquisition and operations.
             </p>
             <div className="mt-8 space-y-3">
               {[
@@ -221,8 +230,9 @@ const HomePage = () => {
                 workspace settles in.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted-foreground">
-                The whole product now shares the same grayscale system, so
-                marketing, auth, and settings feel like one continuous product.
+                The public shell introduces the product clearly, then hands off
+                into a dedicated workspace surface once members enter the
+                recruiting app.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -232,7 +242,12 @@ const HomePage = () => {
                   <ArrowRight className="size-4" />
                 </TrackedLink>
               </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full px-6">
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full px-6"
+              >
                 <TrackedLink href="/pricing">Review pricing</TrackedLink>
               </Button>
             </div>
