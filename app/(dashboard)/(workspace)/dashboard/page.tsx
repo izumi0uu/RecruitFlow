@@ -1,25 +1,54 @@
 import {
+  Activity,
   BriefcaseBusiness,
   Building2,
+  CalendarDays,
+  CircleAlert,
+  Clock3,
   FileText,
   LayoutDashboard,
+  ShieldAlert,
   Settings,
   SquareKanban,
+  Target,
+  TrendingUp,
   UsersRound,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
 
+import { DashboardSection } from "@/components/dashboard/DashboardSection";
+import {
+  DashboardMetricPill,
+  DashboardStatCard,
+} from "@/components/dashboard/DashboardStatCard";
+import { DashboardAreaChart } from "@/components/dashboard/DashboardAreaChart";
+import { DashboardBarChart } from "@/components/dashboard/DashboardBarChart";
+import { DashboardRingChart } from "@/components/dashboard/DashboardRingChart";
+import { SubmissionDigestList } from "@/components/dashboard/SubmissionDigestList";
+import { TaskDigestList } from "@/components/dashboard/TaskDigestList";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
+import { Card, CardContent } from "@/components/ui/Card";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/Card";
-import { getCurrentWorkspace, getWorkspaceDemoOverview } from "@/lib/db/queries";
+  formatAverageDays,
+  formatCountLabel,
+  formatLongDate,
+  formatRoleLabel,
+  getFirstName,
+} from "@/lib/dashboard/formatters";
+import {
+  getDashboardAtRiskSubmissions,
+  getDashboardKpis,
+  getDashboardOperationalPulse,
+  getDashboardOutcomeSummary,
+  getDashboardOverdueTasks,
+  getDashboardRiskBreakdown,
+  getDashboardStageDistribution,
+  getDashboardStaleSubmissions,
+  getDashboardUserTasks,
+} from "@/lib/dashboard/queries";
+import { requireWorkspace } from "@/lib/db/queries";
 
 const quickLinks: Array<{
   description: string;
@@ -71,144 +100,414 @@ const quickLinks: Array<{
   },
 ];
 
-const dashboardSignals = [
-  "KPI cards for open jobs, active candidates, and in-flight submissions",
-  "Recent activity and workspace change history",
-  "Overdue task summaries and handoff reminders",
-  "Pipeline stage distribution and open-job snapshots",
-];
-
-const formatMetricLabel = (count: number, singular: string, plural: string) => {
-  return `${count} ${count === 1 ? singular : plural}`;
-};
+const DashboardFallback = ({ message }: { message: string }) => (
+  <div className="rounded-[1.4rem] border border-dashed border-border/70 bg-workspace-muted-surface/55 px-4 py-5 text-sm leading-6 text-muted-foreground">
+    {message}
+  </div>
+);
 
 const DashboardPage = async () => {
-  const [workspace, overview] = await Promise.all([
-    getCurrentWorkspace(),
-    getWorkspaceDemoOverview(),
+  const { membership, user, workspace } = await requireWorkspace();
+  const [
+    kpisResult,
+    pulseResult,
+    stageResult,
+    riskResult,
+    atRiskResult,
+    staleResult,
+    overdueResult,
+    myTasksResult,
+    outcomeResult,
+  ] = await Promise.allSettled([
+    getDashboardKpis(workspace.id),
+    getDashboardOperationalPulse(workspace.id),
+    getDashboardStageDistribution(workspace.id),
+    getDashboardRiskBreakdown(workspace.id),
+    getDashboardAtRiskSubmissions(workspace.id),
+    getDashboardStaleSubmissions(workspace.id),
+    getDashboardOverdueTasks(workspace.id),
+    getDashboardUserTasks(workspace.id, user.id),
+    getDashboardOutcomeSummary(workspace.id),
   ]);
+  const kpis = kpisResult.status === "fulfilled" ? kpisResult.value : null;
+  const pulse = pulseResult.status === "fulfilled" ? pulseResult.value : null;
+  const stageDistribution =
+    stageResult.status === "fulfilled" ? stageResult.value : null;
+  const riskBreakdown =
+    riskResult.status === "fulfilled" ? riskResult.value : null;
+  const atRiskItems =
+    atRiskResult.status === "fulfilled" ? atRiskResult.value : [];
+  const staleItems =
+    staleResult.status === "fulfilled" ? staleResult.value : [];
+  const overdueItems =
+    overdueResult.status === "fulfilled" ? overdueResult.value : [];
+  const myTaskItems =
+    myTasksResult.status === "fulfilled" ? myTasksResult.value : [];
+  const outcomeSummary =
+    outcomeResult.status === "fulfilled" ? outcomeResult.value : null;
 
-  const seededMetrics = overview
-    ? [
-        formatMetricLabel(overview.memberCount, "member", "members"),
-        formatMetricLabel(overview.clientCount, "client", "clients"),
-        formatMetricLabel(overview.openJobCount, "open job", "open jobs"),
-        formatMetricLabel(overview.candidateCount, "candidate", "candidates"),
-        formatMetricLabel(overview.submissionCount, "submission", "submissions"),
-        formatMetricLabel(overview.documentCount, "document", "documents"),
-      ]
-    : [];
+  const riskTotal =
+    riskBreakdown?.reduce((sum, segment) => sum + segment.value, 0) ?? 0;
+  const atRiskCount =
+    riskBreakdown
+      ?.filter((segment) => segment.key !== "none")
+      .reduce((sum, segment) => sum + segment.value, 0) ?? 0;
+  const heroSummary = kpis
+    ? `${kpis.activeClients} client accounts are in motion, ${kpis.openJobs} roles remain open, and ${kpis.overdueTasks} follow-ups need attention today.`
+    : "The workspace shell is live, but some dashboard aggregates are still loading.";
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
-      <div className="space-y-3">
-        <span className="inline-kicker">Workspace command center</span>
-        <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-          Dashboard
-        </h1>
-        <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          {workspace
-            ? overview
-              ? `${workspace.name} now lands inside the shared business shell with seeded demo data, so reviewers can verify non-empty routes before downstream modules replace these starter summaries.`
-              : `${workspace.name} now lands inside the shared business shell. This page is the jump hub for Wave 1 modules while the richer dashboard experience is owned later by feature-dashboard-demo-polish.`
-            : "This page is the jump hub for Wave 1 modules while the richer dashboard experience is owned later by feature-dashboard-demo-polish."}
-        </p>
-      </div>
-
-      {overview ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {seededMetrics.map((metric) => (
-            <div
-              key={metric}
-              className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 px-4 py-4"
-            >
-              <p className="text-sm font-medium text-foreground">{metric}</p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Seeded baseline for {overview.workspaceName} is ready for route
-                QA and downstream branch demos.
+      <Card className="rounded-[2.1rem]">
+        <CardContent className="grid gap-6 pt-1 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <div className="space-y-4">
+            <span className="inline-kicker">Workspace operating surface</span>
+            <div className="space-y-3">
+              <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
+                Hello, {getFirstName(user.name)}.
+              </h1>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                {heroSummary}
               </p>
             </div>
-          ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <DashboardMetricPill>{workspace.name}</DashboardMetricPill>
+              <DashboardMetricPill>
+                {formatRoleLabel(membership.role)}
+              </DashboardMetricPill>
+              <DashboardMetricPill>
+                {kpis
+                  ? formatCountLabel(kpis.activeSubmissions, "live submission")
+                  : "Dashboard sync pending"}
+              </DashboardMetricPill>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-start gap-3 lg:items-end">
+            <div className="rounded-full border border-border/70 bg-workspace-muted-surface px-4 py-2 text-sm font-medium text-muted-foreground">
+              {formatLongDate(new Date())}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild className="rounded-full">
+                <TrackedLink href="/pipeline">Open pipeline</TrackedLink>
+              </Button>
+              <Button asChild variant="outline" className="rounded-full">
+                <TrackedLink href="/tasks">Review tasks</TrackedLink>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        <DashboardStatCard
+          title="Active Clients"
+          value={kpis ? `${kpis.activeClients}` : "—"}
+          detail={
+            kpis
+              ? "Accounts still in play across retained and warm prospect searches."
+              : "Client activity is temporarily unavailable."
+          }
+          href="/clients"
+          icon={<Building2 className="size-4" />}
+        />
+        <DashboardStatCard
+          title="Open Jobs"
+          value={kpis ? `${kpis.openJobs}` : "—"}
+          detail={
+            kpis
+              ? "Roles currently sitting in intake, open, or on-hold execution."
+              : "Job counts are temporarily unavailable."
+          }
+          href="/jobs"
+          icon={<BriefcaseBusiness className="size-4" />}
+        />
+        <DashboardStatCard
+          title="Active Submissions"
+          value={kpis ? `${kpis.activeSubmissions}` : "—"}
+          detail={
+            kpis
+              ? "Candidate-to-job relationships still moving through the pipeline."
+              : "Submission volume is temporarily unavailable."
+          }
+          href="/pipeline"
+          icon={<Workflow className="size-4" />}
+        />
+        <DashboardStatCard
+          title="Overdue Tasks"
+          value={kpis ? `${kpis.overdueTasks}` : "—"}
+          detail={
+            kpis
+              ? "Follow-ups that already slipped past their intended due date."
+              : "Task urgency is temporarily unavailable."
+          }
+          href="/tasks"
+          icon={<SquareKanban className="size-4" />}
+        />
+      </div>
+
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+        <DashboardSection
+          eyebrow="Trend"
+          title="Operational pulse"
+          description="Submission touches and follow-up demand over the last seven days."
+          action={
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+            >
+              <TrackedLink href="/pipeline">Pipeline view</TrackedLink>
+            </Button>
+          }
+        >
+          {pulse ? (
+            <DashboardAreaChart
+              data={pulse}
+              series={[
+                {
+                  color: "var(--chart-primary)",
+                  dataKey: "submissionTouches",
+                  label: "Submission touches",
+                },
+                {
+                  color: "var(--chart-secondary)",
+                  dataKey: "followUps",
+                  label: "Follow-up load",
+                },
+              ]}
+            />
+          ) : (
+            <DashboardFallback message="Operational trend data could not be loaded, but the rest of the dashboard remains available." />
+          )}
+        </DashboardSection>
+
+        <div className="grid gap-6">
+          <DashboardSection
+            eyebrow="Flow"
+            title="Stage distribution"
+            description="Pipeline volume grouped by the current submission stage."
+          >
+            {stageDistribution ? (
+              <DashboardBarChart data={stageDistribution} />
+            ) : (
+              <DashboardFallback message="Stage distribution is temporarily unavailable." />
+            )}
+          </DashboardSection>
+
+          <DashboardSection
+            eyebrow="Risk"
+            title="Risk mix"
+            description="A quick read on healthy work versus submissions carrying delivery risk."
+          >
+            {riskBreakdown ? (
+              <DashboardRingChart
+                centerLabel="At Risk"
+                centerValue={`${atRiskCount}/${riskTotal || 0}`}
+                data={riskBreakdown.map((segment) => ({
+                  label: segment.label,
+                  tone: segment.tone,
+                  value: segment.value,
+                }))}
+              />
+            ) : (
+              <DashboardFallback message="Risk distribution is temporarily unavailable." />
+            )}
+          </DashboardSection>
         </div>
-      ) : null}
+      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-[1rem] border border-border/70 bg-surface-1">
-                <LayoutDashboard className="size-4 text-foreground" />
-              </span>
-              Ready entry points
-            </CardTitle>
-            <CardDescription>
-              The foundation branch owns these top-level routes so downstream
-              feature branches can plug into one stable information
-              architecture.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
-              {quickLinks.map((item) => {
-                const Icon = item.icon;
+      <div className="grid gap-6 xl:grid-cols-2">
+        <DashboardSection
+          eyebrow="Pipeline"
+          title="At-risk submissions"
+          description="Fragile opportunities that need active owner attention."
+        >
+          {atRiskResult.status === "fulfilled" ? (
+            <SubmissionDigestList
+              items={atRiskItems}
+              emptyMessage="No active submissions are flagged as risky right now."
+            />
+          ) : (
+            <DashboardFallback message="At-risk submission data could not be loaded." />
+          )}
+        </DashboardSection>
 
-                return (
+        <DashboardSection
+          eyebrow="Pipeline"
+          title="Stale work"
+          description="Active submissions that have not been touched since before today."
+        >
+          {staleResult.status === "fulfilled" ? (
+            <SubmissionDigestList
+              items={staleItems}
+              emptyMessage="Everything active has been touched today."
+            />
+          ) : (
+            <DashboardFallback message="Stale submission data could not be loaded." />
+          )}
+        </DashboardSection>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <DashboardSection
+          eyebrow="Execution"
+          title="Overdue follow-ups"
+          description="Workspace-level misses that should become the next actions."
+          action={
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+            >
+              <TrackedLink href="/tasks">Open tasks</TrackedLink>
+            </Button>
+          }
+        >
+          {overdueResult.status === "fulfilled" ? (
+            <TaskDigestList
+              items={overdueItems}
+              emptyMessage="No workspace follow-ups are overdue right now."
+            />
+          ) : (
+            <DashboardFallback message="Overdue task data could not be loaded." />
+          )}
+        </DashboardSection>
+
+        <DashboardSection
+          eyebrow="Execution"
+          title="My tasks today"
+          description="Current-user work due by the end of today, including overdue carryover."
+        >
+          {myTasksResult.status === "fulfilled" ? (
+            <TaskDigestList
+              items={myTaskItems}
+              emptyMessage={`${getFirstName(user.name)}, you do not have any tasks due today.`}
+            />
+          ) : (
+            <DashboardFallback message="Your current task queue could not be loaded." />
+          )}
+        </DashboardSection>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.85fr_minmax(0,1.15fr)]">
+        <DashboardSection
+          eyebrow="Outcomes"
+          title="Time to submit"
+          description="Average time from job intake opening to the first candidate submission."
+        >
+          {outcomeSummary ? (
+            <div className="space-y-4">
+              <div className="rounded-[1.5rem] border border-border/70 bg-workspace-muted-surface/70 px-4 py-5">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Average cycle
+                </p>
+                <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">
+                  {formatAverageDays(outcomeSummary.averageTimeToSubmitDays)}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  The metric stays explainable even when the workspace has not
+                  yet recorded a formal placement.
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-[1.35rem] border border-border/70 bg-workspace-muted-surface/55 px-4 py-4">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Placements
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                    {outcomeSummary.recentPlacements.length}
+                  </p>
+                </div>
+                <div className="rounded-[1.35rem] border border-border/70 bg-workspace-muted-surface/55 px-4 py-4">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Demo posture
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-foreground">
+                    Enough operational data is present to explain the workflow,
+                    even before a placed record exists.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <DashboardFallback message="Outcome metrics could not be loaded." />
+          )}
+        </DashboardSection>
+
+        <DashboardSection
+          eyebrow="Outcomes"
+          title="Recent placements"
+          description="Closed wins land here when the workspace records placed submissions."
+        >
+          {outcomeResult.status === "fulfilled" ? (
+            outcomeSummary && outcomeSummary.recentPlacements.length > 0 ? (
+              <div className="space-y-3">
+                {outcomeSummary.recentPlacements.map((placement) => (
                   <TrackedLink
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 p-4 transition-colors hover:bg-surface-1"
+                    key={placement.id}
+                    href="/pipeline"
+                    className="block rounded-[1.4rem] border border-border/70 bg-workspace-muted-surface/55 px-4 py-4 transition-colors hover:bg-surface-2"
                   >
-                    <div className="flex size-11 items-center justify-center rounded-[1.1rem] border border-border/70 bg-background/75">
-                      <Icon className="size-4 text-foreground" />
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">
+                          {placement.candidateName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {placement.jobTitle} · {placement.clientName}
+                        </p>
+                      </div>
+                      <DashboardMetricPill>
+                        {placement.ownerName ?? "Unassigned"}
+                      </DashboardMetricPill>
                     </div>
-                    <p className="mt-4 text-sm font-medium text-foreground">
-                      {item.title}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {item.description}
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Closed on {formatLongDate(placement.placedAt)}
                     </p>
                   </TrackedLink>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {overview ? "Seeded workspace snapshot" : "Next dashboard signals"}
-            </CardTitle>
-            <CardDescription>
-              {overview
-                ? "Foundation now exposes enough seeded context for reviewers to confirm non-empty navigation and shared route shells."
-                : "The fuller `/dashboard` brief from the shared spec still lands later, but the target surface is now explicit."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(overview
-              ? [
-                  `${formatMetricLabel(overview.jobCount, "job shell", "job shells")} are visible, including ${formatMetricLabel(overview.openJobCount, "open role", "open roles")}.`,
-                  `${formatMetricLabel(overview.taskCount, "task", "tasks")} are seeded, with ${formatMetricLabel(overview.overdueTaskCount, "overdue follow-up", "overdue follow-ups")} ready for QA.`,
-                  `${formatMetricLabel(overview.auditCount, "audit event", "audit events")} give the workspace a believable baseline history.`,
-                  "Downstream branches can now replace these foundation summaries without having to invent demo data first.",
-                ]
-              : dashboardSignals
-            ).map((signal) => (
-              <div
-                key={signal}
-                className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 px-4 py-4"
-              >
-                <p className="text-sm leading-6 text-foreground">{signal}</p>
+                ))}
               </div>
-            ))}
-
-            <Button asChild className="rounded-full">
-              <TrackedLink href="/settings">Open workspace settings</TrackedLink>
-            </Button>
-          </CardContent>
-        </Card>
+            ) : (
+              <DashboardFallback message="No placements have been recorded yet. Keep using the dashboard to explain pipeline health, overdue follow-ups, and time-to-submit while the outcome layer fills in." />
+            )
+          ) : (
+            <DashboardFallback message="Placement history could not be loaded." />
+          )}
+        </DashboardSection>
       </div>
+
+      <DashboardSection
+        eyebrow="Navigation"
+        title="Ready entry points"
+        description="The broader backend keeps inheriting the new shell while each module still owns its own business detail."
+      >
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {quickLinks.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <TrackedLink
+                key={item.href}
+                href={item.href}
+                className="rounded-[1.5rem] border border-border/70 bg-workspace-muted-surface/55 p-4 transition-colors hover:bg-surface-2"
+              >
+                <div className="flex size-11 items-center justify-center rounded-[1.1rem] border border-border/70 bg-background/75">
+                  <Icon className="size-4 text-foreground" />
+                </div>
+                <p className="mt-4 text-sm font-medium text-foreground">
+                  {item.title}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {item.description}
+                </p>
+              </TrackedLink>
+            );
+          })}
+        </div>
+      </DashboardSection>
     </section>
   );
 };

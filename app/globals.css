@@ -43,6 +43,15 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-workspace-rail: var(--workspace-rail);
+  --color-workspace-rail-foreground: var(--workspace-rail-foreground);
+  --color-workspace-muted-surface: var(--workspace-muted-surface);
+  --color-workspace-divider: var(--workspace-divider);
+  --color-chart-primary: var(--chart-primary);
+  --color-chart-secondary: var(--chart-secondary);
+  --color-chart-accent: var(--chart-accent);
+  --color-chart-muted: var(--chart-muted);
+  --color-chart-strong: var(--chart-strong);
 }
 
 :root {
@@ -81,6 +90,15 @@
   --sidebar-accent-foreground: oklch(0.248 0.005 258);
   --sidebar-border: oklch(0.884 0.004 258);
   --sidebar-ring: oklch(0.663 0.006 258);
+  --workspace-rail: oklch(0.992 0.001 258);
+  --workspace-rail-foreground: oklch(0.214 0.005 258);
+  --workspace-muted-surface: oklch(0.965 0.003 258);
+  --workspace-divider: oklch(0.89 0.004 258);
+  --chart-primary: oklch(0.58 0.13 229);
+  --chart-secondary: oklch(0.72 0.11 168);
+  --chart-accent: oklch(0.76 0.12 88);
+  --chart-muted: oklch(0.73 0.016 258);
+  --chart-strong: oklch(0.63 0.17 15);
   --hero-glow: 245, 247, 255;
   --shadow-color: rgba(15, 23, 42, 0.18);
   --chart-1: oklch(0.32 0 none);
@@ -145,6 +163,15 @@
   --sidebar-accent-foreground: oklch(0.945 0.002 258);
   --sidebar-border: oklch(0.31 0.004 258);
   --sidebar-ring: oklch(0.58 0.004 258);
+  --workspace-rail: oklch(0.195 0.004 258);
+  --workspace-rail-foreground: oklch(0.945 0.002 258);
+  --workspace-muted-surface: oklch(0.238 0.004 258);
+  --workspace-divider: oklch(0.315 0.004 258);
+  --chart-primary: oklch(0.72 0.12 229);
+  --chart-secondary: oklch(0.78 0.1 168);
+  --chart-accent: oklch(0.82 0.1 88);
+  --chart-muted: oklch(0.58 0.008 258);
+  --chart-strong: oklch(0.75 0.15 18);
   --hero-glow: 255, 255, 255;
   --shadow-color: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
@@ -245,6 +272,7 @@
 
 @layer components {
   .panel-shell,
+  .workspace-rail,
   .card {
     position: relative;
     overflow: hidden;
@@ -259,6 +287,7 @@
   }
 
   .dark .panel-shell,
+  .dark .workspace-rail,
   .dark .card {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 26%),
@@ -269,6 +298,7 @@
   }
 
   .panel-shell::before,
+  .workspace-rail::before,
   .card::before {
     content: "";
     position: absolute;
@@ -279,6 +309,14 @@
 
   .card {
     @apply flex flex-col gap-6 rounded-[1.75rem] py-6 text-card-foreground;
+  }
+
+  .workspace-rail {
+    color: var(--workspace-rail-foreground);
+    border-color: color-mix(in srgb, var(--workspace-divider) 78%, transparent);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 24%),
+      var(--workspace-rail);
   }
 
   .card > header {
@@ -450,29 +488,29 @@
 }
 
 @theme inline {
-  --color-chart-1: var(----chart-1);
-  --color-chart-2: var(----chart-2);
-  --color-chart-3: var(----chart-3);
-  --color-chart-4: var(----chart-4);
-  --color-chart-5: var(----chart-5);
-  --color-chart-background: var(----chart-background);
-  --color-chart-foreground: var(----chart-foreground);
-  --color-chart-foreground-muted: var(----chart-foreground-muted);
-  --chart-line-primary: var(----chart-line-primary);
-  --chart-line-secondary: var(----chart-line-secondary);
-  --color-chart-crosshair: var(----chart-crosshair);
-  --color-chart-grid: var(----chart-grid);
-  --color-chart-tooltip-background: var(----chart-tooltip-background);
-  --color-chart-tooltip-foreground: var(----chart-tooltip-foreground);
-  --color-chart-tooltip-muted: var(----chart-tooltip-muted);
-  --color-chart-marker-background: var(----chart-marker-background);
-  --color-chart-marker-border: var(----chart-marker-border);
-  --color-chart-marker-foreground: var(----chart-marker-foreground);
-  --color-chart-ring-background: var(----chart-ring-background);
-  --color-chart-label: var(----chart-label);
-  --color-legend-track: var(----legend-track);
-  --color-legend-muted-foreground: var(----legend-muted-foreground);
-  --color-legend-muted: var(----legend-muted);
-  --color-legend-foreground: var(----legend-foreground);
-  --color-legend: var(----legend);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-background: var(--chart-background);
+  --color-chart-foreground: var(--chart-foreground);
+  --color-chart-foreground-muted: var(--chart-foreground-muted);
+  --chart-line-primary: var(--chart-line-primary);
+  --chart-line-secondary: var(--chart-line-secondary);
+  --color-chart-crosshair: var(--chart-crosshair);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-marker-background: var(--chart-marker-background);
+  --color-chart-marker-border: var(--chart-marker-border);
+  --color-chart-marker-foreground: var(--chart-marker-foreground);
+  --color-chart-ring-background: var(--chart-ring-background);
+  --color-chart-label: var(--chart-label);
+  --color-legend-track: var(--legend-track);
+  --color-legend-muted-foreground: var(--legend-muted-foreground);
+  --color-legend-muted: var(--legend-muted);
+  --color-legend-foreground: var(--legend-foreground);
+  --color-legend: var(--legend);
 }

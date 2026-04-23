@@ -42,11 +42,13 @@ const isRouteActive = (pathname: string, href: string) => {
 
 type WorkspaceShellProps = {
   children: React.ReactNode;
+  contextPanel?: React.ReactNode;
   workspaceName: string;
 };
 
 const WorkspaceShell = ({
   children,
+  contextPanel,
   workspaceName,
 }: WorkspaceShellProps) => {
   const pathname = usePathname();
@@ -56,8 +58,8 @@ const WorkspaceShell = ({
     navItems.find((item) => isRouteActive(pathname, item.href)) || navItems[0];
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-10 pt-6 sm:px-6 lg:flex-row lg:gap-6 lg:px-8">
-      <div className="panel-shell flex items-center justify-between px-4 py-3 lg:hidden">
+    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 pb-10 pt-6 sm:px-6 xl:grid xl:grid-cols-[280px_minmax(0,1fr)_340px] xl:items-start xl:gap-5 xl:px-6 2xl:px-8">
+      <div className="workspace-rail flex items-center justify-between rounded-[1.8rem] px-4 py-3 xl:hidden">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             {workspaceName}
@@ -84,7 +86,7 @@ const WorkspaceShell = ({
       <button
         type="button"
         className={cn(
-          "fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity lg:hidden",
+          "fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity xl:hidden",
           isSidebarOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
@@ -95,18 +97,18 @@ const WorkspaceShell = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-4 transition-transform duration-300 lg:sticky lg:top-[104px] lg:z-auto lg:block lg:w-[280px] lg:translate-x-0 lg:self-start lg:p-0",
+          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-4 transition-transform duration-300 xl:sticky xl:top-6 xl:z-auto xl:block xl:w-auto xl:translate-x-0 xl:self-start xl:p-0",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="panel-shell flex h-full min-h-[calc(100dvh-140px)] flex-col p-4">
+        <div className="workspace-rail flex h-full min-h-[calc(100dvh-140px)] flex-col rounded-[2rem] p-4">
           <div className="flex items-center justify-between border-b border-border/70 pb-4">
             <BrandLockup compact />
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="rounded-full lg:hidden"
+              className="rounded-full xl:hidden"
               onClick={() => setIsSidebarOpen(false)}
             >
               <X className="size-4" />
@@ -122,8 +124,8 @@ const WorkspaceShell = ({
               {workspaceName}
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Foundation now owns the route shell so downstream module branches
-              can land inside one stable navigation model.
+              The authenticated shell now stays focused on live recruiting work,
+              not marketing chrome.
             </p>
           </div>
 
@@ -136,11 +138,11 @@ const WorkspaceShell = ({
                 <Button
                   key={item.href}
                   asChild
-                  variant={isActive ? "secondary" : "ghost"}
+                  variant="ghost"
                   className={cn(
-                    "h-11 w-full justify-start rounded-2xl px-4",
+                    "h-11 w-full justify-start rounded-[1.15rem] px-4 text-sm",
                     isActive &&
-                      "border-foreground/5 bg-foreground text-background hover:bg-foreground/96 hover:text-background"
+                      "border-transparent bg-primary text-primary-foreground shadow-[0_20px_48px_-34px_var(--shadow-color)] hover:bg-primary/94 hover:text-primary-foreground"
                   )}
                 >
                   <TrackedLink
@@ -155,7 +157,16 @@ const WorkspaceShell = ({
             })}
           </nav>
 
-          <div className="mt-auto rounded-[1.5rem] border border-border/70 bg-surface-1/80 p-3">
+          <div className="mt-auto space-y-3 rounded-[1.55rem] border border-border/70 bg-workspace-muted-surface/85 p-3">
+            <div>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Shell mode
+              </p>
+              <p className="mt-1 text-sm leading-6 text-foreground">
+                Stable left rail, central work canvas, and contextual side
+                digest.
+              </p>
+            </div>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -172,6 +183,12 @@ const WorkspaceShell = ({
       </aside>
 
       <main className="min-w-0 flex-1">{children}</main>
+
+      {contextPanel ? (
+        <div className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+          {contextPanel}
+        </div>
+      ) : null}
     </div>
   );
 };
