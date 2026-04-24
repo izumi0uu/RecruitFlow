@@ -10,7 +10,7 @@ type AuditEventSource = "ui" | "server_action" | "worker" | "seed";
 
 type WriteAuditLogInput = {
   action: AuditAction;
-  actorRole: WorkspaceRole;
+  actorRole?: WorkspaceRole | null;
   actorUserId: number | null | undefined;
   createdAt?: Date;
   entityId?: number | null;
@@ -33,19 +33,19 @@ export const writeAuditLog = async ({
   source,
   workspaceId,
 }: WriteAuditLogInput) => {
-  if (workspaceId == null || actorUserId == null) {
+  if (workspaceId == null) {
     return;
   }
 
   await db.insert(auditLogs).values({
     workspaceId,
-    actorUserId,
+    actorUserId: actorUserId ?? null,
     action,
     entityType: entityType ?? null,
     entityId: entityId ?? null,
     metadataJson: {
-      actorRole,
       source,
+      ...(actorRole ? { actorRole } : {}),
       ...(metadata ?? {}),
     },
     ipAddress: ipAddress ?? null,
