@@ -20,6 +20,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@base-ui/react": "^1.4.1",
     "@number-flow/react": "^0.6.0",
     "@recruitflow/config": "workspace:*",
     "@tailwindcss/postcss": "4.1.7",
@@ -32,6 +33,7 @@
     "@visx/geo": "4.0.1-alpha.0",
     "@visx/gradient": "4.0.1-alpha.0",
     "@visx/grid": "4.0.1-alpha.0",
+    "@visx/group": "4.0.1-alpha.0",
     "@visx/pattern": "4.0.1-alpha.0",
     "@visx/responsive": "4.0.1-alpha.0",
     "@visx/sankey": "4.0.1-alpha.0",
@@ -44,6 +46,7 @@
     "clsx": "^2.1.1",
     "d3-array": "^3.2.4",
     "d3-geo": "^3.1.1",
+    "d3-sankey": "^0.12.3",
     "d3-shape": "^3.2.0",
     "dotenv": "^16.5.0",
     "drizzle-kit": "^0.18.1",
@@ -68,6 +71,11 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@types/d3-array": "^3.2.2",
+    "@types/d3-geo": "^3.1.0",
+    "@types/d3-sankey": "^0.12.5",
+    "@types/d3-shape": "^3.1.8",
+    "@types/geojson": "^7946.0.16",
     "baseline-browser-mapping": "^2.10.20",
     "tsx": "^4.20.6"
   }
