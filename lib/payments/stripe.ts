@@ -1,47 +1,16 @@
 import Stripe from "stripe";
 import { redirect } from "next/navigation";
-import { Workspace } from "@/lib/db/schema";
-import {
-  getTeamByStripeCustomerId,
-  getUser,
-  updateTeamSubscription,
-} from "@/lib/db/queries";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+import { getStripeConfig, loadRootEnv } from "@recruitflow/config";
+
+import { Workspace } from "@/lib/db/schema";
+
+loadRootEnv();
+const stripeConfig = getStripeConfig();
+
+export const stripe = new Stripe(stripeConfig.secretKey, {
   apiVersion: "2025-04-30.basil",
 });
-
-export const createCheckoutSession = async ({
-  workspace,
-  priceId,
-}: {
-  workspace: Workspace | null;
-  priceId: string;
-}) => {
-  const user = await getUser();
-  if (!workspace || !user) {
-    redirect(`/sign-up?redirect=checkout&priceId=${priceId}`);
-  }
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    mode: "subscription",
-    success_url: `${process.env.BASE_URL}/api/stripe/checkout?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.BASE_URL}/pricing`,
-    customer: workspace.stripeCustomerId || undefined,
-    client_reference_id: user.id.toString(),
-    allow_promotion_codes: true,
-    subscription_data: {
-      trial_period_days: 14,
-    },
-  });
-  redirect(session.url!);
-};
 
 export const createCustomerPortalSession = async (workspace: Workspace) => {
   if (!workspace.stripeCustomerId || !workspace.stripeProductId) {
@@ -101,38 +70,9 @@ export const createCustomerPortalSession = async (workspace: Workspace) => {
   }
   return stripe.billingPortal.sessions.create({
     customer: workspace.stripeCustomerId,
-    return_url: `${process.env.BASE_URL}/dashboard`,
+    return_url: `${stripeConfig.baseUrl}/dashboard`,
     configuration: configuration.id,
   });
-};
-
-export const handleSubscriptionChange = async (
-  subscription: Stripe.Subscription,
-) => {
-  const customerId = subscription.customer as string;
-  const subscriptionId = subscription.id;
-  const status = subscription.status;
-  const workspace = await getTeamByStripeCustomerId(customerId);
-  if (!workspace) {
-    console.error("Workspace not found for Stripe customer:", customerId);
-    return;
-  }
-  if (status === "active" || status === "trialing") {
-    const plan = subscription.items.data[0]?.plan;
-    await updateTeamSubscription(workspace.id, {
-      stripeSubscriptionId: subscriptionId,
-      stripeProductId: plan?.product as string,
-      planName: (plan?.product as Stripe.Product).name,
-      subscriptionStatus: status,
-    });
-  } else if (status === "canceled" || status === "unpaid") {
-    await updateTeamSubscription(workspace.id, {
-      stripeSubscriptionId: null,
-      stripeProductId: null,
-      planName: null,
-      subscriptionStatus: status,
-    });
-  }
 };
 export const getStripePrices = async () => {
   const prices = await stripe.prices.list({

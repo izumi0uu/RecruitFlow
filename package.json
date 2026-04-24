@@ -1,9 +1,18 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --port 3001",
-    "build": "next build",
-    "start": "next start",
+    "dev": "pnpm dev:web",
+    "dev:web": "pnpm --filter @recruitflow/web dev",
+    "dev:web:root": "next dev --turbopack --port ${PORT:-3001}",
+    "dev:api": "pnpm --filter @recruitflow/api dev",
+    "dev:stack": "pnpm --parallel --stream --filter @recruitflow/web --filter @recruitflow/api dev",
+    "build": "pnpm build:web",
+    "build:web": "pnpm --filter @recruitflow/web build",
+    "build:web:root": "next build",
+    "start": "pnpm start:web",
+    "start:web": "pnpm --filter @recruitflow/web start",
+    "start:web:root": "next start -p ${PORT:-3001}",
+    "start:api": "pnpm --filter @recruitflow/api start",
     "db:setup": "npx tsx lib/db/setup.ts",
     "db:seed": "npx tsx lib/db/seed.ts",
     "db:generate": "drizzle-kit generate",
@@ -12,6 +21,7 @@
   },
   "dependencies": {
     "@number-flow/react": "^0.6.0",
+    "@recruitflow/config": "workspace:*",
     "@tailwindcss/postcss": "4.1.7",
     "@tanstack/react-query": "^5.99.0",
     "@types/node": "^22.15.18",
@@ -58,6 +68,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "baseline-browser-mapping": "^2.10.20"
+    "baseline-browser-mapping": "^2.10.20",
+    "tsx": "^4.20.6"
   }
 }

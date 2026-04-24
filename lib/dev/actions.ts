@@ -3,6 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { SESSION_COOKIE_NAME } from "@recruitflow/config";
+
 import { setSession } from "@/lib/auth/session";
 
 import {
@@ -75,6 +77,6 @@ export const clearDevSessionAction = async (formData: FormData) => {
   assertDevToolsEnabled();
 
   const redirectTo = normalizeRedirectTarget(formData.get("redirectTo"));
-  (await cookies()).delete("session");
+  (await cookies()).delete(SESSION_COOKIE_NAME);
   redirect(redirectTo);
 };

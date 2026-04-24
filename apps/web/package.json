@@ -1,0 +1,9 @@
+{
+  "name": "@recruitflow/web",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --dir ../.. dev:web:root",
+    "build": "pnpm --dir ../.. build:web:root",
+    "start": "pnpm --dir ../.. start:web:root"
+  }
+}

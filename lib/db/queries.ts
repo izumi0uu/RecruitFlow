@@ -1,4 +1,7 @@
 import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
+import { SESSION_COOKIE_NAME } from "@recruitflow/config";
+import { cookies } from "next/headers";
+
 import { db } from "./drizzle";
 import {
   activityLogs,
@@ -20,7 +23,7 @@ import {
   type WorkspaceRole,
   workspaceRoleValues,
 } from "./schema";
-import { cookies } from "next/headers";
+
 import { verifyToken } from "@/lib/auth/session";
 
 const toWorkspaceData = (
@@ -144,7 +147,7 @@ export const hasRequiredRole = (
 };
 
 export const getUser = async () => {
-  const sessionCookie = (await cookies()).get("session");
+  const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME);
   if (!sessionCookie || !sessionCookie.value) {
     return null;
   }
