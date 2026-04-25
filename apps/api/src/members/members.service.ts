@@ -28,8 +28,8 @@ import {
 @Injectable()
 export class MembersService {
   private async logActivity(
-    teamId: number | null | undefined,
-    userId: number,
+    teamId: string | null | undefined,
+    userId: string,
     action: ActivityType,
   ) {
     if (teamId == null) {
@@ -130,7 +130,7 @@ export class MembersService {
 
   async removeMember(
     context: ApiWorkspaceContext,
-    memberId: number,
+    memberId: string,
   ): Promise<MemberRemovalResponse> {
     const workspaceId = context.workspace.id;
     const actorUserId = context.membership.userId;

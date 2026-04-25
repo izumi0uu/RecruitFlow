@@ -4,7 +4,7 @@ import { getAuthConfig } from "@recruitflow/config";
 
 export type SessionData = {
   user: {
-    id: number;
+    id: string;
   };
   expires: string;
 };

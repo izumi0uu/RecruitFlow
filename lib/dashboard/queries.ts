@@ -91,7 +91,7 @@ export type DashboardRiskSegment = {
 export type DashboardSubmissionDigestItem = {
   candidateName: string;
   clientName: string;
-  id: number;
+  id: string;
   jobTitle: string;
   lastTouchAt: Date | null;
   nextStep: string | null;
@@ -104,7 +104,7 @@ export type DashboardTaskDigestItem = {
   assigneeName: string | null;
   candidateName: string | null;
   dueAt: Date | null;
-  id: number;
+  id: string;
   jobTitle: string | null;
   status: TaskStatus;
   title: string;
@@ -113,7 +113,7 @@ export type DashboardTaskDigestItem = {
 export type DashboardPlacementItem = {
   candidateName: string;
   clientName: string;
-  id: number;
+  id: string;
   jobTitle: string;
   placedAt: Date;
   ownerName: string | null;
@@ -224,7 +224,7 @@ const selectCount = async (
   return result?.count ?? 0;
 };
 
-export const getDashboardKpis = cache(async (workspaceId: number) => {
+export const getDashboardKpis = cache(async (workspaceId: string) => {
   const [activeClients, openJobs, activeSubmissions, overdueTasks] =
     await Promise.all([
       selectCount(
@@ -281,7 +281,7 @@ export const getDashboardKpis = cache(async (workspaceId: number) => {
 });
 
 export const getDashboardOperationalPulse = cache(
-  async (workspaceId: number, days = 7) => {
+  async (workspaceId: string, days = 7) => {
     const today = startOfDay(new Date());
     const rangeStart = addDays(today, -(days - 1));
 
@@ -352,7 +352,7 @@ export const getDashboardOperationalPulse = cache(
   },
 );
 
-export const getDashboardStageDistribution = cache(async (workspaceId: number) => {
+export const getDashboardStageDistribution = cache(async (workspaceId: string) => {
   const rows = await db
     .select({
       stage: submissions.stage,
@@ -374,7 +374,7 @@ export const getDashboardStageDistribution = cache(async (workspaceId: number) =
   })) satisfies DashboardStageDatum[];
 });
 
-export const getDashboardRiskBreakdown = cache(async (workspaceId: number) => {
+export const getDashboardRiskBreakdown = cache(async (workspaceId: string) => {
   const rows = await db
     .select({
       riskFlag: submissions.riskFlag,
@@ -399,7 +399,7 @@ export const getDashboardRiskBreakdown = cache(async (workspaceId: number) => {
 });
 
 const selectSubmissionDigest = async (
-  workspaceId: number,
+  workspaceId: string,
   whereClause: ReturnType<typeof and>,
   limit: number,
 ) => {
@@ -426,7 +426,7 @@ const selectSubmissionDigest = async (
 };
 
 export const getDashboardAtRiskSubmissions = cache(
-  async (workspaceId: number, limit = 4) => {
+  async (workspaceId: string, limit = 4) => {
     return selectSubmissionDigest(
       workspaceId,
       and(
@@ -439,7 +439,7 @@ export const getDashboardAtRiskSubmissions = cache(
 );
 
 export const getDashboardStaleSubmissions = cache(
-  async (workspaceId: number, limit = 4) => {
+  async (workspaceId: string, limit = 4) => {
     const staleThreshold = startOfDay(new Date());
 
     return selectSubmissionDigest(
@@ -455,7 +455,7 @@ export const getDashboardStaleSubmissions = cache(
 );
 
 const selectTaskDigest = async (
-  workspaceId: number,
+  workspaceId: string,
   whereClause: ReturnType<typeof and>,
   limit: number,
 ) => {
@@ -480,7 +480,7 @@ const selectTaskDigest = async (
 };
 
 export const getDashboardOverdueTasks = cache(
-  async (workspaceId: number, limit = 4) => {
+  async (workspaceId: string, limit = 4) => {
     return selectTaskDigest(
       workspaceId,
       and(
@@ -494,7 +494,7 @@ export const getDashboardOverdueTasks = cache(
 );
 
 export const getDashboardUserTasks = cache(
-  async (workspaceId: number, userId: number, limit = 4) => {
+  async (workspaceId: string, userId: string, limit = 4) => {
     return selectTaskDigest(
       workspaceId,
       and(
@@ -508,7 +508,7 @@ export const getDashboardUserTasks = cache(
   },
 );
 
-export const getDashboardOutcomeSummary = cache(async (workspaceId: number) => {
+export const getDashboardOutcomeSummary = cache(async (workspaceId: string) => {
   const [recentPlacements, timeToSubmitRows] = await Promise.all([
     db
       .select({
@@ -540,7 +540,7 @@ export const getDashboardOutcomeSummary = cache(async (workspaceId: number) => {
       .where(and(eq(jobs.workspaceId, workspaceId), isNotNull(jobs.openedAt))),
   ]);
 
-  const earliestSubmissionByJob = new Map<number, { openedAt: Date; submittedAt: Date }>();
+  const earliestSubmissionByJob = new Map<string, { openedAt: Date; submittedAt: Date }>();
 
   timeToSubmitRows.forEach((row) => {
     if (!row.openedAt || !row.submittedAt) {
@@ -580,7 +580,7 @@ export const getDashboardOutcomeSummary = cache(async (workspaceId: number) => {
 });
 
 export const getDashboardActivityDigest = cache(
-  async (workspaceId: number, limit = 5) => {
+  async (workspaceId: string, limit = 5) => {
     const [auditRows, activityRows] = await Promise.all([
       db
         .select({

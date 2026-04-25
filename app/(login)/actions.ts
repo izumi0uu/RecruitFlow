@@ -30,7 +30,7 @@ import {
     getUser,
     getUserWithTeam,
 } from '@/lib/db/queries';
-const logActivity = async (teamId: number | null | undefined, userId: number, type: ActivityType, ipAddress?: string) => {
+const logActivity = async (teamId: string | null | undefined, userId: string, type: ActivityType, ipAddress?: string) => {
     if (teamId === null || teamId === undefined) {
         return;
     }
@@ -235,7 +235,7 @@ export const updateAccount = validatedActionWithUser(updateAccountSchema, async 
     return { name, success: 'Account updated successfully.' };
 });
 const removeTeamMemberSchema = z.object({
-    memberId: z.coerce.number().int().positive()
+    memberId: z.string().uuid()
 });
 export const removeTeamMember = validatedActionWithUser(removeTeamMemberSchema, async (data) => {
     const { memberId } = data;

@@ -11,14 +11,14 @@ type AuditEventSource = "ui" | "server_action" | "worker" | "seed";
 type WriteAuditLogInput = {
   action: AuditAction;
   actorRole?: WorkspaceRole | null;
-  actorUserId: number | null | undefined;
+  actorUserId: string | null | undefined;
   createdAt?: Date;
-  entityId?: number | null;
+  entityId?: string | null;
   entityType?: AuditEntityType | null;
   ipAddress?: string | null;
   metadata?: Record<string, unknown>;
   source: AuditEventSource;
-  workspaceId: number | null | undefined;
+  workspaceId: string | null | undefined;
 };
 
 export const writeAuditLog = async ({

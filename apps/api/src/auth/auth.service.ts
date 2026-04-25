@@ -32,7 +32,7 @@ import {
 
 export type ApiAuthContext = {
   expires: string;
-  userId: number;
+  userId: string;
 };
 
 type SessionRequest = {
@@ -46,8 +46,8 @@ const unauthorized = () => new UnauthorizedException("Unauthorized");
 @Injectable()
 export class AuthService {
   private async logActivity(
-    teamId: number | null | undefined,
-    userId: number,
+    teamId: string | null | undefined,
+    userId: string,
     action: ActivityType,
   ) {
     if (teamId == null) {
@@ -98,7 +98,7 @@ export class AuthService {
 
     if (
       !sessionData?.user ||
-      typeof sessionData.user.id !== "number" ||
+      typeof sessionData.user.id !== "string" ||
       typeof sessionData.expires !== "string"
     ) {
       throw unauthorized();
@@ -138,7 +138,7 @@ export class AuthService {
       throw new InternalServerErrorException("Failed to create user");
     }
 
-    let teamId: number;
+    let teamId: string;
     let userRole: WorkspaceRole;
     let workspaceName: string;
 

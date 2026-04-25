@@ -12,7 +12,7 @@ export interface HealthResponse {
 export interface AuthSessionResponse {
   expires: string;
   user: {
-    id: number;
+    id: string;
   };
 }
 
@@ -29,7 +29,7 @@ export function createHealthResponse(
 
 export function createAuthSessionResponse(overrides: {
   expires: string;
-  userId: number;
+  userId: string;
 }): AuthSessionResponse {
   return {
     expires: overrides.expires,
@@ -50,7 +50,7 @@ export type ApiWorkspaceRole = (typeof apiWorkspaceRoleValues)[number];
 export const authSignUpRequestSchema = z.object({
   email: z.string().email().min(3).max(255),
   password: z.string().min(8).max(100),
-  inviteId: z.coerce.number().int().positive().optional(),
+  inviteId: z.string().uuid().optional(),
 });
 
 export type AuthSignUpRequest = z.infer<typeof authSignUpRequestSchema>;
@@ -60,7 +60,7 @@ export interface AuthSignUpResponse {
   role: ApiWorkspaceRole;
   token: string;
   user: {
-    id: number;
+    id: string;
   };
 }
 
@@ -76,22 +76,22 @@ export type MemberInvitationRequest = z.infer<
 export interface MemberInvitationResponse {
   invitation: {
     email: string;
-    id: number;
+    id: string;
     role: ApiWorkspaceRole;
     status: "pending";
-    teamId: number;
+    teamId: string;
   };
   message: string;
 }
 
 export const memberRemovalParamsSchema = z.object({
-  memberId: z.coerce.number().int().positive(),
+  memberId: z.string().uuid(),
 });
 
 export type MemberRemovalParams = z.infer<typeof memberRemovalParamsSchema>;
 
 export interface MemberRemovalResponse {
-  memberId: number;
+  memberId: string;
   message: string;
   removed: true;
 }

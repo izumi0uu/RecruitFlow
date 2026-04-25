@@ -5,9 +5,9 @@ import {
   jsonb,
   pgEnum,
   pgTable,
-  serial,
   text,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -108,8 +108,15 @@ const timestamps = () => ({
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+const idColumn = () => uuid("id").defaultRandom().primaryKey();
+const userIdColumn = (name: string) => uuid(name).references(() => users.id);
+const workspaceIdColumn = () =>
+  uuid("workspace_id")
+    .notNull()
+    .references(() => teams.id);
+
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   name: varchar("name", { length: 100 }),
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
@@ -119,7 +126,7 @@ export const users = pgTable("users", {
 });
 
 export const teams = pgTable("teams", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   name: varchar("name", { length: 100 }).notNull(),
   slug: varchar("slug", { length: 120 }).unique(),
   ...timestamps(),
@@ -130,20 +137,15 @@ export const teams = pgTable("teams", {
   subscriptionStatus: varchar("subscription_status", { length: 20 }),
 });
 
-const workspaceIdColumn = () =>
-  integer("workspace_id")
-    .notNull()
-    .references(() => teams.id);
-
 export const teamMembers = pgTable("team_members", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id")
+  id: idColumn(),
+  userId: uuid("user_id")
     .notNull()
     .references(() => users.id),
-  teamId: integer("team_id")
+  teamId: uuid("team_id")
     .notNull()
     .references(() => teams.id),
-  invitedByUserId: integer("invited_by_user_id").references(() => users.id),
+  invitedByUserId: userIdColumn("invited_by_user_id"),
   role: workspaceRoleEnum("role").notNull().default("coordinator"),
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
   ...timestamps(),
@@ -152,24 +154,24 @@ export const teamMembers = pgTable("team_members", {
 // Legacy audit storage kept live for the current starter flows.
 // RF-007 will decide the real cutover into the shared `audit_logs` table.
 export const activityLogs = pgTable("activity_logs", {
-  id: serial("id").primaryKey(),
-  teamId: integer("team_id")
+  id: idColumn(),
+  teamId: uuid("team_id")
     .notNull()
     .references(() => teams.id),
-  userId: integer("user_id").references(() => users.id),
+  userId: userIdColumn("user_id"),
   action: text("action").notNull(),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
   ipAddress: varchar("ip_address", { length: 45 }),
 });
 
 export const invitations = pgTable("invitations", {
-  id: serial("id").primaryKey(),
-  teamId: integer("team_id")
+  id: idColumn(),
+  teamId: uuid("team_id")
     .notNull()
     .references(() => teams.id),
   email: varchar("email", { length: 255 }).notNull(),
   role: workspaceRoleEnum("role").notNull().default("coordinator"),
-  invitedBy: integer("invited_by")
+  invitedBy: uuid("invited_by")
     .notNull()
     .references(() => users.id),
   invitedAt: timestamp("invited_at").notNull().defaultNow(),
@@ -178,7 +180,7 @@ export const invitations = pgTable("invitations", {
 
 // Phase 1 shared-schema placeholders owned by foundation.
 export const clients = pgTable("clients", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
   name: varchar("name", { length: 160 }).notNull(),
   industry: varchar("industry", { length: 120 }),
@@ -186,18 +188,18 @@ export const clients = pgTable("clients", {
   hqLocation: varchar("hq_location", { length: 160 }),
   status: clientStatusEnum("status").notNull().default("active"),
   priority: clientPriorityEnum("priority").notNull().default("medium"),
-  ownerUserId: integer("owner_user_id").references(() => users.id),
+  ownerUserId: userIdColumn("owner_user_id"),
   lastContactedAt: timestamp("last_contacted_at"),
   notesPreview: text("notes_preview"),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  createdByUserId: userIdColumn("created_by_user_id"),
   ...timestamps(),
   archivedAt: timestamp("archived_at"),
 });
 
 export const clientContacts = pgTable("client_contacts", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
-  clientId: integer("client_id")
+  clientId: uuid("client_id")
     .notNull()
     .references(() => clients.id),
   fullName: varchar("full_name", { length: 160 }).notNull(),
@@ -212,9 +214,9 @@ export const clientContacts = pgTable("client_contacts", {
 });
 
 export const jobs = pgTable("jobs", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
-  clientId: integer("client_id")
+  clientId: uuid("client_id")
     .notNull()
     .references(() => clients.id),
   title: varchar("title", { length: 180 }).notNull(),
@@ -224,7 +226,7 @@ export const jobs = pgTable("jobs", {
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),
   currency: varchar("currency", { length: 8 }),
-  ownerUserId: integer("owner_user_id").references(() => users.id),
+  ownerUserId: userIdColumn("owner_user_id"),
   status: jobStatusEnum("status").notNull().default("intake"),
   priority: jobPriorityEnum("priority").notNull().default("medium"),
   headcount: integer("headcount"),
@@ -233,15 +235,15 @@ export const jobs = pgTable("jobs", {
   targetFillDate: timestamp("target_fill_date"),
   description: text("description"),
   intakeSummary: text("intake_summary"),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  createdByUserId: userIdColumn("created_by_user_id"),
   ...timestamps(),
   archivedAt: timestamp("archived_at"),
 });
 
 export const jobStages = pgTable("job_stages", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
-  jobId: integer("job_id")
+  jobId: uuid("job_id")
     .notNull()
     .references(() => jobs.id),
   key: varchar("key", { length: 80 }).notNull(),
@@ -252,7 +254,7 @@ export const jobStages = pgTable("job_stages", {
 });
 
 export const candidates = pgTable("candidates", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
   fullName: varchar("full_name", { length: 160 }).notNull(),
   email: varchar("email", { length: 255 }),
@@ -268,22 +270,22 @@ export const candidates = pgTable("candidates", {
   portfolioUrl: text("portfolio_url"),
   skillsText: text("skills_text"),
   summary: text("summary"),
-  ownerUserId: integer("owner_user_id").references(() => users.id),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  ownerUserId: userIdColumn("owner_user_id"),
+  createdByUserId: userIdColumn("created_by_user_id"),
   ...timestamps(),
   archivedAt: timestamp("archived_at"),
 });
 
 export const submissions = pgTable("submissions", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
-  jobId: integer("job_id")
+  jobId: uuid("job_id")
     .notNull()
     .references(() => jobs.id),
-  candidateId: integer("candidate_id")
+  candidateId: uuid("candidate_id")
     .notNull()
     .references(() => candidates.id),
-  ownerUserId: integer("owner_user_id").references(() => users.id),
+  ownerUserId: userIdColumn("owner_user_id"),
   stage: submissionStageEnum("stage").notNull().default("sourced"),
   riskFlag: riskFlagEnum("risk_flag").notNull().default("none"),
   nextStep: text("next_step"),
@@ -293,52 +295,52 @@ export const submissions = pgTable("submissions", {
   lostReason: text("lost_reason"),
   offerAmount: integer("offer_amount"),
   currency: varchar("currency", { length: 8 }),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  createdByUserId: userIdColumn("created_by_user_id"),
   ...timestamps(),
 });
 
 export const tasks = pgTable("tasks", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
   title: varchar("title", { length: 180 }).notNull(),
   description: text("description"),
   status: taskStatusEnum("status").notNull().default("open"),
   dueAt: timestamp("due_at"),
   snoozedUntil: timestamp("snoozed_until"),
-  assignedToUserId: integer("assigned_to_user_id").references(() => users.id),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  assignedToUserId: userIdColumn("assigned_to_user_id"),
+  createdByUserId: userIdColumn("created_by_user_id"),
   entityType: varchar("entity_type", { length: 50 }),
-  entityId: integer("entity_id"),
-  submissionId: integer("submission_id").references(() => submissions.id),
+  entityId: uuid("entity_id"),
+  submissionId: uuid("submission_id").references(() => submissions.id),
   completedAt: timestamp("completed_at"),
   ...timestamps(),
 });
 
 export const notes = pgTable("notes", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
   entityType: varchar("entity_type", { length: 50 }).notNull(),
-  entityId: integer("entity_id"),
+  entityId: uuid("entity_id"),
   body: text("body").notNull(),
   visibility: varchar("visibility", { length: 20 })
     .notNull()
     .default("workspace"),
-  createdByUserId: integer("created_by_user_id").references(() => users.id),
+  createdByUserId: userIdColumn("created_by_user_id"),
   ...timestamps(),
 });
 
 export const documents = pgTable("documents", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
   entityType: varchar("entity_type", { length: 50 }),
-  entityId: integer("entity_id"),
+  entityId: uuid("entity_id"),
   type: documentTypeEnum("type").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   storageKey: text("storage_key"),
   mimeType: varchar("mime_type", { length: 255 }),
   sizeBytes: integer("size_bytes"),
   sourceFilename: varchar("source_filename", { length: 255 }),
-  uploadedByUserId: integer("uploaded_by_user_id").references(() => users.id),
+  uploadedByUserId: userIdColumn("uploaded_by_user_id"),
   summaryStatus: automationStatusEnum("summary_status")
     .notNull()
     .default("queued"),
@@ -350,13 +352,13 @@ export const documents = pgTable("documents", {
 });
 
 export const automationRuns = pgTable("automation_runs", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
   type: automationTypeEnum("type").notNull(),
   status: automationStatusEnum("status").notNull().default("queued"),
   entityType: varchar("entity_type", { length: 50 }),
-  entityId: integer("entity_id"),
-  documentId: integer("document_id").references(() => documents.id),
+  entityId: uuid("entity_id"),
+  documentId: uuid("document_id").references(() => documents.id),
   attemptCount: integer("attempt_count").notNull().default(0),
   errorMessage: text("error_message"),
   startedAt: timestamp("started_at"),
@@ -365,12 +367,12 @@ export const automationRuns = pgTable("automation_runs", {
 });
 
 export const auditLogs = pgTable("audit_logs", {
-  id: serial("id").primaryKey(),
+  id: idColumn(),
   workspaceId: workspaceIdColumn(),
-  actorUserId: integer("actor_user_id").references(() => users.id),
+  actorUserId: userIdColumn("actor_user_id"),
   action: varchar("action", { length: 120 }).notNull(),
   entityType: varchar("entity_type", { length: 50 }),
-  entityId: integer("entity_id"),
+  entityId: uuid("entity_id"),
   metadataJson: jsonb("metadata_json"),
   ipAddress: varchar("ip_address", { length: 45 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),

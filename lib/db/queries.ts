@@ -112,7 +112,7 @@ const toCurrentMembership = (
   workspace,
 });
 
-const getCurrentWorkspaceRecord = async (userId: number) => {
+const getCurrentWorkspaceRecord = async (userId: string) => {
   return db.query.teamMembers.findFirst({
     where: eq(teamMembers.userId, userId),
     with: {
@@ -155,7 +155,7 @@ export const getUser = async () => {
   if (
     !sessionData ||
     !sessionData.user ||
-    typeof sessionData.user.id !== "number"
+    typeof sessionData.user.id !== "string"
   ) {
     return null;
   }
@@ -187,7 +187,7 @@ export const getTeamByStripeCustomerId = async (customerId: string) => {
   return result.length > 0 ? result[0] : null;
 };
 export const updateTeamSubscription = async (
-  teamId: number,
+  teamId: string,
   subscriptionData: {
     stripeSubscriptionId: string | null;
     stripeProductId: string | null;
@@ -203,7 +203,7 @@ export const updateTeamSubscription = async (
     })
     .where(eq(teams.id, teamId));
 };
-export const getUserWithTeam = async (userId: number) => {
+export const getUserWithTeam = async (userId: string) => {
   const result = await db
     .select({
       user: users,
@@ -325,7 +325,7 @@ const countRows = async (
     | typeof tasks
     | typeof documents
     | typeof auditLogs,
-  workspaceId: number,
+  workspaceId: string,
 ) => {
   const [result] = await db
     .select({

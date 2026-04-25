@@ -1,5 +1,3 @@
-import "server-only";
-
 import { and, eq, ne } from "drizzle-orm";
 
 import { hashPassword } from "@/lib/auth/session";
@@ -77,7 +75,7 @@ const findWorkspaceBySlug = async (slug: string) => {
   });
 };
 
-const findWorkspaceForUser = async (userId: number) => {
+const findWorkspaceForUser = async (userId: string) => {
   return db.query.teamMembers.findFirst({
     where: eq(teamMembers.userId, userId),
     with: {
@@ -87,7 +85,7 @@ const findWorkspaceForUser = async (userId: number) => {
 };
 
 const updateWorkspace = async (
-  workspaceId: number,
+  workspaceId: string,
   definition: DevWorkspaceDefinition,
 ) => {
   const [workspace] = await db
@@ -107,7 +105,7 @@ const updateWorkspace = async (
 
 const ensureWorkspace = async (
   definition: DevWorkspaceDefinition,
-  preferredOwnerUserId?: number,
+  preferredOwnerUserId?: string,
 ) => {
   const workspaceBySlug = await findWorkspaceBySlug(definition.slug);
   const workspaceByName = workspaceBySlug
@@ -144,10 +142,10 @@ const ensureWorkspace = async (
 };
 
 const ensureMembership = async (options: {
-  invitedByUserId?: number;
+  invitedByUserId?: string;
   role: DevTestAccountDefinition["role"];
-  teamId: number;
-  userId: number;
+  teamId: string;
+  userId: string;
 }) => {
   const existingMembership = await db.query.teamMembers.findFirst({
     where: and(
@@ -184,8 +182,8 @@ const ensureMembership = async (options: {
 };
 
 const ensureExclusiveMembership = async (
-  userId: number,
-  allowedTeamId?: number,
+  userId: string,
+  allowedTeamId?: string,
 ) => {
   if (!allowedTeamId) {
     await db.delete(teamMembers).where(eq(teamMembers.userId, userId));

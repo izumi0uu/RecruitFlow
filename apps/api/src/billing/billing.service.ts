@@ -40,14 +40,15 @@ type StripeMetadata = {
 
 @Injectable()
 export class BillingService {
-  private parseMetadataNumber(input: string | undefined) {
+  private parseMetadataUuid(input: string | undefined) {
     if (!input) {
       return null;
     }
 
-    const parsedValue = Number.parseInt(input, 10);
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-    return Number.isFinite(parsedValue) ? parsedValue : null;
+    return uuidPattern.test(input) ? input : null;
   }
 
   private async resolveWorkspaceId(
@@ -66,7 +67,7 @@ export class BillingService {
       }
     }
 
-    return this.parseMetadataNumber(metadata?.workspaceId) ?? null;
+    return this.parseMetadataUuid(metadata?.workspaceId) ?? null;
   }
 
   private async getPlanDetails(subscription: Stripe.Subscription) {
@@ -130,7 +131,7 @@ export class BillingService {
 
     await writeAuditLog({
       workspaceId,
-      actorUserId: this.parseMetadataNumber(metadata?.actorUserId),
+      actorUserId: this.parseMetadataUuid(metadata?.actorUserId),
       action: AuditAction.BILLING_SUBSCRIPTION_SYNCED,
       entityType: "workspace",
       entityId: workspaceId,

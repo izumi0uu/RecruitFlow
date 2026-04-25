@@ -11,21 +11,21 @@ import {
 } from "@/lib/db/schema";
 
 export type ApiWorkspaceMember = {
-  id: number;
+  id: string;
   joinedAt: Date | null;
   role: WorkspaceRole;
-  teamId: number;
+  teamId: string;
   user: {
     email: string;
-    id: number;
+    id: string;
     name: string | null;
   };
-  userId: number;
+  userId: string;
 };
 
 export type ApiWorkspace = {
   createdAt: Date;
-  id: number;
+  id: string;
   memberships: ApiWorkspaceMember[];
   name: string;
   planName: string | null;
@@ -37,11 +37,11 @@ export type ApiWorkspace = {
 };
 
 export type ApiCurrentMembership = {
-  id: number;
+  id: string;
   joinedAt: Date | null;
   role: WorkspaceRole;
-  teamId: number;
-  userId: number;
+  teamId: string;
+  userId: string;
   workspace: Omit<ApiWorkspace, "memberships">;
 };
 
@@ -54,7 +54,7 @@ const workspaceNotFound = () => new NotFoundException("Workspace not found");
 
 @Injectable()
 export class WorkspaceService {
-  private async getCurrentMembershipRecord(userId: number) {
+  private async getCurrentMembershipRecord(userId: string) {
     const [membership] = await db
       .select({
         joinedAt: teamMembers.joinedAt,
@@ -80,7 +80,7 @@ export class WorkspaceService {
     return membership ?? null;
   }
 
-  private async getWorkspaceMembers(teamId: number): Promise<ApiWorkspaceMember[]> {
+  private async getWorkspaceMembers(teamId: string): Promise<ApiWorkspaceMember[]> {
     return db
       .select({
         id: teamMembers.id,
@@ -99,7 +99,7 @@ export class WorkspaceService {
       .where(eq(teamMembers.teamId, teamId));
   }
 
-  private async getCurrentWorkspaceBundle(userId: number) {
+  private async getCurrentWorkspaceBundle(userId: string) {
     const membership = await this.getCurrentMembershipRecord(userId);
 
     if (!membership) {
@@ -146,19 +146,19 @@ export class WorkspaceService {
     } satisfies ApiWorkspaceContext;
   }
 
-  async getCurrentWorkspace(userId: number) {
+  async getCurrentWorkspace(userId: string) {
     const bundle = await this.getCurrentWorkspaceBundle(userId);
 
     return bundle?.workspace ?? null;
   }
 
-  async getCurrentMembership(userId: number) {
+  async getCurrentMembership(userId: string) {
     const bundle = await this.getCurrentWorkspaceBundle(userId);
 
     return bundle?.membership ?? null;
   }
 
-  async requireWorkspaceContext(userId: number): Promise<ApiWorkspaceContext> {
+  async requireWorkspaceContext(userId: string): Promise<ApiWorkspaceContext> {
     const bundle = await this.getCurrentWorkspaceBundle(userId);
 
     if (!bundle) {
