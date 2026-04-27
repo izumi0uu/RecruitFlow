@@ -28,14 +28,14 @@ const DashboardBarChart = ({
     <div
       className={cn(
         "space-y-3",
-        fillHeight && "h-full min-h-[30rem]",
+        fillHeight && "h-full min-h-[30rem] min-w-0 flex-1",
         className,
       )}
     >
       <div
         className={cn(
           "overflow-hidden rounded-[1.4rem] border border-border/70 bg-workspace-muted-surface/60 p-3",
-          fillHeight && "h-full",
+          fillHeight && "h-full min-w-0 w-full",
         )}
       >
         <BarChart
