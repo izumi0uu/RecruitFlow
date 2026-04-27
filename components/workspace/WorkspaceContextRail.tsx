@@ -1,4 +1,10 @@
-import { ArrowRight, BriefcaseBusiness, LayoutDashboard, SquareKanban, Workflow } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  LayoutDashboard,
+  SquareKanban,
+  Workflow,
+} from "lucide-react";
 
 import { ActivityDigestList } from "@/components/dashboard/ActivityDigestList";
 import { DashboardMetricPill } from "@/components/dashboard/DashboardStatCard";
@@ -13,7 +19,10 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { formatRoleLabel, getInitials } from "@/lib/dashboard/formatters";
-import type { DashboardActivityItem, DashboardKpis } from "@/lib/dashboard/queries";
+import type {
+  DashboardActivityItem,
+  DashboardKpis,
+} from "@/lib/dashboard/queries";
 import type { WorkspaceRole } from "@/lib/db/schema";
 
 type WorkspaceContextRailProps = {
@@ -83,8 +92,8 @@ const WorkspaceContextRail = ({
             </div>
           ) : (
             <div className="rounded-[1.35rem] border border-dashed border-border/70 bg-workspace-muted-surface/70 px-4 py-4 text-sm leading-6 text-muted-foreground">
-              Workspace summary metrics are temporarily unavailable, but the shell
-              remains active.
+              Workspace summary metrics are temporarily unavailable, but the
+              shell remains active.
             </div>
           )}
         </CardContent>
@@ -92,13 +101,19 @@ const WorkspaceContextRail = ({
 
       <Card className="rounded-[1.85rem]">
         <CardHeader>
-          <CardTitle className="text-lg tracking-[-0.03em]">Quick jumps</CardTitle>
+          <CardTitle className="text-lg tracking-[-0.03em]">
+            Quick jumps
+          </CardTitle>
           <CardDescription>
             Keep the workspace moving without dropping into the marketing shell.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Button asChild variant="outline" className="h-11 w-full justify-between rounded-2xl">
+          <Button
+            asChild
+            variant="outline"
+            className="h-11 w-full justify-between rounded-2xl"
+          >
             <TrackedLink href="/dashboard">
               <span className="inline-flex items-center gap-2">
                 <LayoutDashboard className="size-4" />
@@ -107,7 +122,11 @@ const WorkspaceContextRail = ({
               <ArrowRight className="size-4" />
             </TrackedLink>
           </Button>
-          <Button asChild variant="outline" className="h-11 w-full justify-between rounded-2xl">
+          <Button
+            asChild
+            variant="outline"
+            className="h-11 w-full justify-between rounded-2xl"
+          >
             <TrackedLink href="/pipeline">
               <span className="inline-flex items-center gap-2">
                 <Workflow className="size-4" />
@@ -116,7 +135,11 @@ const WorkspaceContextRail = ({
               <ArrowRight className="size-4" />
             </TrackedLink>
           </Button>
-          <Button asChild variant="outline" className="h-11 w-full justify-between rounded-2xl">
+          <Button
+            asChild
+            variant="outline"
+            className="h-11 w-full justify-between rounded-2xl"
+          >
             <TrackedLink href="/tasks">
               <span className="inline-flex items-center gap-2">
                 <SquareKanban className="size-4" />
@@ -125,7 +148,11 @@ const WorkspaceContextRail = ({
               <ArrowRight className="size-4" />
             </TrackedLink>
           </Button>
-          <Button asChild variant="outline" className="h-11 w-full justify-between rounded-2xl">
+          <Button
+            asChild
+            variant="outline"
+            className="h-11 w-full justify-between rounded-2xl"
+          >
             <TrackedLink href="/jobs">
               <span className="inline-flex items-center gap-2">
                 <BriefcaseBusiness className="size-4" />
@@ -139,7 +166,9 @@ const WorkspaceContextRail = ({
 
       <Card className="rounded-[1.85rem]">
         <CardHeader>
-          <CardTitle className="text-lg tracking-[-0.03em]">Recent activity</CardTitle>
+          <CardTitle className="text-lg tracking-[-0.03em]">
+            Recent activity
+          </CardTitle>
           <CardDescription>
             A compact digest from the real audit and account activity stream.
           </CardDescription>

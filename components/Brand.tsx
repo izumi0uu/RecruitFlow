@@ -15,11 +15,16 @@ const BrandMark = ({ className }: BrandMarkProps) => {
   return (
     <span
       className={cn(
-        "relative inline-flex size-11 items-center justify-center overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(180deg,var(--panel),var(--surface-2))] text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-foreground shadow-[0_26px_72px_-42px_var(--shadow-color)] before:pointer-events-none before:absolute before:inset-[1px] before:rounded-[calc(1.35rem-1px)] before:bg-[linear-gradient(180deg,rgba(255,255,255,0.28),transparent_46%)] before:opacity-80",
+        "relative inline-flex size-11 items-center justify-center overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(180deg,var(--panel),var(--surface-2))] text-foreground shadow-[0_26px_72px_-42px_var(--shadow-color)] before:pointer-events-none before:absolute before:inset-[1px] before:rounded-[calc(1.35rem-1px)] before:bg-[linear-gradient(180deg,rgba(255,255,255,0.28),transparent_46%)] before:opacity-80",
         className
       )}
     >
-      <span className="relative z-10">RF</span>
+      <img
+        src="/icon.svg"
+        alt=""
+        aria-hidden="true"
+        className="relative z-10 size-[72%] object-contain"
+      />
     </span>
   );
 };

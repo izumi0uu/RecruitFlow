@@ -85,31 +85,35 @@ const UserMenu = () => {
 
   if (!mounted) {
     return (
-      <button
+      <Button
         type="button"
-        className="rounded-full focus-visible:outline-none"
+        variant="ghost"
+        size="icon"
+        className="size-10 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-transparent focus-visible:outline-none"
         aria-label="Open user menu"
       >
         <Avatar className="size-10">
           <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
         </Avatar>
-      </button>
+      </Button>
     );
   }
 
   return (
     <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
           type="button"
-          className="rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20"
+          variant="ghost"
+          size="icon"
+          className="size-10 rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-transparent focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20"
           aria-label="Open user menu"
         >
           <Avatar className="size-10 cursor-pointer">
             <AvatarImage alt={user.name || user.email || "RecruitFlow user"} />
             <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
           </Avatar>
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel className="space-y-1 normal-case tracking-normal">

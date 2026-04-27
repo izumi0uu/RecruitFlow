@@ -1,17 +1,9 @@
 import {
-  Activity,
   BriefcaseBusiness,
   Building2,
-  CalendarDays,
-  CircleAlert,
-  Clock3,
   FileText,
-  LayoutDashboard,
-  ShieldAlert,
   Settings,
   SquareKanban,
-  Target,
-  TrendingUp,
   UsersRound,
   Workflow,
   type LucideIcon,
@@ -19,14 +11,15 @@ import {
 
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
 import {
+  DashboardHeroMetricTile,
   DashboardMetricPill,
-  DashboardStatCard,
 } from "@/components/dashboard/DashboardStatCard";
 import { DashboardAreaChart } from "@/components/dashboard/DashboardAreaChart";
 import { DashboardBarChart } from "@/components/dashboard/DashboardBarChart";
 import { DashboardRingChart } from "@/components/dashboard/DashboardRingChart";
 import { SubmissionDigestList } from "@/components/dashboard/SubmissionDigestList";
 import { TaskDigestList } from "@/components/dashboard/TaskDigestList";
+import { TaskTodoTable } from "@/components/dashboard/TaskTodoTable";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -155,144 +148,152 @@ const DashboardPage = async () => {
   const heroSummary = kpis
     ? `${kpis.activeClients} client accounts are in motion, ${kpis.openJobs} roles remain open, and ${kpis.overdueTasks} follow-ups need attention today.`
     : "The workspace shell is live, but some dashboard aggregates are still loading.";
+  const heroMetrics = [
+    {
+      href: "/clients",
+      icon: <Building2 className="size-4" />,
+      label: "Active Clients",
+      value: kpis ? `${kpis.activeClients}` : "—",
+    },
+    {
+      href: "/jobs",
+      icon: <BriefcaseBusiness className="size-4" />,
+      label: "Open Jobs",
+      value: kpis ? `${kpis.openJobs}` : "—",
+    },
+    {
+      href: "/pipeline",
+      icon: <Workflow className="size-4" />,
+      label: "Submissions",
+      value: kpis ? `${kpis.activeSubmissions}` : "—",
+    },
+    {
+      href: "/tasks",
+      icon: <SquareKanban className="size-4" />,
+      label: "Overdue Tasks",
+      value: kpis ? `${kpis.overdueTasks}` : "—",
+    },
+  ];
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <Card className="rounded-[2.1rem]">
-        <CardContent className="grid gap-6 pt-1 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="space-y-4">
-            <span className="inline-kicker">Workspace operating surface</span>
-            <div className="space-y-3">
-              <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-                Hello, {getFirstName(user.name)}.
-              </h1>
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-                {heroSummary}
-              </p>
+        <CardContent className="grid gap-6 pt-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.48fr)] xl:items-stretch">
+          <div className="flex min-h-[18rem] flex-col justify-between gap-6">
+            <div className="space-y-4">
+              <span className="inline-kicker">Workspace operating surface</span>
+              <div className="space-y-3">
+                <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
+                  Hello, {getFirstName(user.name)}.
+                </h1>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  {heroSummary}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <DashboardMetricPill>{workspace.name}</DashboardMetricPill>
+                <DashboardMetricPill>
+                  {formatRoleLabel(membership.role)}
+                </DashboardMetricPill>
+                <DashboardMetricPill>
+                  {kpis
+                    ? formatCountLabel(
+                        kpis.activeSubmissions,
+                        "live submission",
+                      )
+                    : "Dashboard sync pending"}
+                </DashboardMetricPill>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <DashboardMetricPill>{workspace.name}</DashboardMetricPill>
-              <DashboardMetricPill>
-                {formatRoleLabel(membership.role)}
-              </DashboardMetricPill>
-              <DashboardMetricPill>
-                {kpis
-                  ? formatCountLabel(kpis.activeSubmissions, "live submission")
-                  : "Dashboard sync pending"}
-              </DashboardMetricPill>
+
+            <div className="flex flex-col items-start gap-3">
+              <div className="rounded-full border border-border/70 bg-workspace-muted-surface px-4 py-2 text-sm font-medium text-muted-foreground">
+                {formatLongDate(new Date())}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild className="rounded-full">
+                  <TrackedLink href="/pipeline">Open pipeline</TrackedLink>
+                </Button>
+                <Button asChild variant="outline" className="rounded-full">
+                  <TrackedLink href="/tasks">Review tasks</TrackedLink>
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-start gap-3 lg:items-end">
-            <div className="rounded-full border border-border/70 bg-workspace-muted-surface px-4 py-2 text-sm font-medium text-muted-foreground">
-              {formatLongDate(new Date())}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild className="rounded-full">
-                <TrackedLink href="/pipeline">Open pipeline</TrackedLink>
-              </Button>
-              <Button asChild variant="outline" className="rounded-full">
-                <TrackedLink href="/tasks">Review tasks</TrackedLink>
-              </Button>
+          <div className="rounded-[1.7rem] border border-border/70 bg-background/46 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+            <div className="grid gap-3 sm:grid-cols-2 xl:h-full">
+              {heroMetrics.map((metric) => (
+                <DashboardHeroMetricTile
+                  key={metric.href}
+                  href={metric.href}
+                  icon={metric.icon}
+                  label={metric.label}
+                  value={metric.value}
+                />
+              ))}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-        <DashboardStatCard
-          title="Active Clients"
-          value={kpis ? `${kpis.activeClients}` : "—"}
-          detail={
-            kpis
-              ? "Accounts still in play across retained and warm prospect searches."
-              : "Client activity is temporarily unavailable."
-          }
-          href="/clients"
-          icon={<Building2 className="size-4" />}
-        />
-        <DashboardStatCard
-          title="Open Jobs"
-          value={kpis ? `${kpis.openJobs}` : "—"}
-          detail={
-            kpis
-              ? "Roles currently sitting in intake, open, or on-hold execution."
-              : "Job counts are temporarily unavailable."
-          }
-          href="/jobs"
-          icon={<BriefcaseBusiness className="size-4" />}
-        />
-        <DashboardStatCard
-          title="Active Submissions"
-          value={kpis ? `${kpis.activeSubmissions}` : "—"}
-          detail={
-            kpis
-              ? "Candidate-to-job relationships still moving through the pipeline."
-              : "Submission volume is temporarily unavailable."
-          }
-          href="/pipeline"
-          icon={<Workflow className="size-4" />}
-        />
-        <DashboardStatCard
-          title="Overdue Tasks"
-          value={kpis ? `${kpis.overdueTasks}` : "—"}
-          detail={
-            kpis
-              ? "Follow-ups that already slipped past their intended due date."
-              : "Task urgency is temporarily unavailable."
-          }
-          href="/tasks"
-          icon={<SquareKanban className="size-4" />}
-        />
-      </div>
+      <DashboardSection
+        eyebrow="To do"
+        title="Recent tasks"
+        description="Current-user work due by the end of today, including overdue carryover."
+        action={
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <TrackedLink href="/tasks">Review all</TrackedLink>
+          </Button>
+        }
+      >
+        {myTasksResult.status === "fulfilled" ? (
+          <TaskTodoTable
+            items={myTaskItems}
+            emptyMessage={`${getFirstName(user.name)}, you do not have any tasks due today.`}
+          />
+        ) : (
+          <DashboardFallback message="Your current task queue could not be loaded." />
+        )}
+      </DashboardSection>
 
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <DashboardSection
-          eyebrow="Trend"
-          title="Operational pulse"
-          description="Submission touches and follow-up demand over the last seven days."
-          action={
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-            >
-              <TrackedLink href="/pipeline">Pipeline view</TrackedLink>
-            </Button>
-          }
-        >
-          {pulse ? (
-            <DashboardAreaChart
-              data={pulse}
-              series={[
-                {
-                  color: "var(--chart-primary)",
-                  dataKey: "submissionTouches",
-                  label: "Submission touches",
-                },
-                {
-                  color: "var(--chart-secondary)",
-                  dataKey: "followUps",
-                  label: "Follow-up load",
-                },
-              ]}
-            />
-          ) : (
-            <DashboardFallback message="Operational trend data could not be loaded, but the rest of the dashboard remains available." />
-          )}
-        </DashboardSection>
-
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] xl:items-stretch">
         <div className="grid gap-6">
           <DashboardSection
-            eyebrow="Flow"
-            title="Stage distribution"
-            description="Pipeline volume grouped by the current submission stage."
+            eyebrow="Trend"
+            title="Operational pulse"
+            description="Submission touches and follow-up demand over the last seven days."
+            className="h-auto self-start"
+            action={
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+              >
+                <TrackedLink href="/pipeline">Pipeline view</TrackedLink>
+              </Button>
+            }
           >
-            {stageDistribution ? (
-              <DashboardBarChart data={stageDistribution} />
+            {pulse ? (
+              <DashboardAreaChart
+                aspectRatio="640 / 210"
+                data={pulse}
+                series={[
+                  {
+                    color: "var(--chart-primary)",
+                    dataKey: "submissionTouches",
+                    label: "Submission touches",
+                  },
+                  {
+                    color: "var(--chart-secondary)",
+                    dataKey: "followUps",
+                    label: "Follow-up load",
+                  },
+                ]}
+              />
             ) : (
-              <DashboardFallback message="Stage distribution is temporarily unavailable." />
+              <DashboardFallback message="Operational trend data could not be loaded, but the rest of the dashboard remains available." />
             )}
           </DashboardSection>
 
@@ -316,6 +317,19 @@ const DashboardPage = async () => {
             )}
           </DashboardSection>
         </div>
+
+        <DashboardSection
+          eyebrow="Flow"
+          title="Stage distribution"
+          description="Pipeline volume grouped by the current submission stage."
+          contentClassName="flex flex-1 min-h-0"
+        >
+          {stageDistribution ? (
+            <DashboardBarChart data={stageDistribution} fillHeight />
+          ) : (
+            <DashboardFallback message="Stage distribution is temporarily unavailable." />
+          )}
+        </DashboardSection>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -350,7 +364,7 @@ const DashboardPage = async () => {
         </DashboardSection>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6">
         <DashboardSection
           eyebrow="Execution"
           title="Overdue follow-ups"
@@ -373,21 +387,6 @@ const DashboardPage = async () => {
             />
           ) : (
             <DashboardFallback message="Overdue task data could not be loaded." />
-          )}
-        </DashboardSection>
-
-        <DashboardSection
-          eyebrow="Execution"
-          title="My tasks today"
-          description="Current-user work due by the end of today, including overdue carryover."
-        >
-          {myTasksResult.status === "fulfilled" ? (
-            <TaskDigestList
-              items={myTaskItems}
-              emptyMessage={`${getFirstName(user.name)}, you do not have any tasks due today.`}
-            />
-          ) : (
-            <DashboardFallback message="Your current task queue could not be loaded." />
           )}
         </DashboardSection>
       </div>
@@ -478,36 +477,6 @@ const DashboardPage = async () => {
           )}
         </DashboardSection>
       </div>
-
-      <DashboardSection
-        eyebrow="Navigation"
-        title="Ready entry points"
-        description="The broader backend keeps inheriting the new shell while each module still owns its own business detail."
-      >
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {quickLinks.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <TrackedLink
-                key={item.href}
-                href={item.href}
-                className="rounded-[1.5rem] border border-border/70 bg-workspace-muted-surface/55 p-4 transition-colors hover:bg-surface-2"
-              >
-                <div className="flex size-11 items-center justify-center rounded-[1.1rem] border border-border/70 bg-background/75">
-                  <Icon className="size-4 text-foreground" />
-                </div>
-                <p className="mt-4 text-sm font-medium text-foreground">
-                  {item.title}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {item.description}
-                </p>
-              </TrackedLink>
-            );
-          })}
-        </div>
-      </DashboardSection>
     </section>
   );
 };

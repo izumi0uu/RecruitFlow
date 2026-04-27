@@ -105,7 +105,7 @@ const GeneralPage = () => {
     <section className="px-0 py-1 lg:py-2">
       <SectionHeader />
 
-      <Card className="max-w-3xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Account information</CardTitle>
           <CardDescription>

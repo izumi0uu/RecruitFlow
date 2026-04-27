@@ -96,7 +96,7 @@ const ActivityPage = async () => {
         </p>
       </div>
 
-      <Card className="max-w-4xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Recent activity</CardTitle>
           <CardDescription>

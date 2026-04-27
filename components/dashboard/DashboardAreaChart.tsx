@@ -16,6 +16,7 @@ type AreaSeries = {
 };
 
 type DashboardAreaChartProps = {
+  aspectRatio?: string;
   className?: string;
   data: Array<Record<string, number | string>>;
   series: [AreaSeries, AreaSeries];
@@ -28,6 +29,7 @@ const addDays = (date: Date, days: number) => {
 };
 
 const DashboardAreaChart = ({
+  aspectRatio = "640 / 240",
   className,
   data,
   series,
@@ -72,7 +74,7 @@ const DashboardAreaChart = ({
 
       <div className="overflow-hidden rounded-[1.4rem] border border-border/70 bg-workspace-muted-surface/60 p-3">
         <AreaChart
-          aspectRatio="640 / 240"
+          aspectRatio={aspectRatio}
           className="w-full"
           data={normalizedData}
           margin={{ top: 18, right: 16, bottom: 32, left: 16 }}

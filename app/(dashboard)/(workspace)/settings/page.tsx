@@ -459,7 +459,7 @@ const SettingsGateSkeleton = () => {
 
 const SettingsRestrictedState = () => {
   return (
-    <Card className="max-w-4xl">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Restricted workspace settings</CardTitle>
         <CardDescription>

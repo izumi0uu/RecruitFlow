@@ -71,4 +71,38 @@ const DashboardMetricPill = ({
   );
 };
 
-export { DashboardMetricPill, DashboardStatCard };
+type DashboardHeroMetricTileProps = {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  value: string;
+};
+
+const DashboardHeroMetricTile = ({
+  href,
+  icon,
+  label,
+  value,
+}: DashboardHeroMetricTileProps) => {
+  return (
+    <TrackedLink
+      href={href}
+      className="group rounded-[1.2rem] border border-border/70 bg-workspace-muted-surface/72 p-3 text-left transition-all hover:-translate-y-0.5 hover:bg-surface-2 hover:shadow-[0_20px_48px_-38px_var(--shadow-color)]"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex size-8 items-center justify-center rounded-[0.85rem] border border-border/70 bg-background/75 text-foreground">
+          {icon}
+        </span>
+        <ArrowUpRight className="size-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </div>
+      <p className="mt-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold tracking-[-0.05em] text-foreground">
+        {value}
+      </p>
+    </TrackedLink>
+  );
+};
+
+export { DashboardHeroMetricTile, DashboardMetricPill, DashboardStatCard };

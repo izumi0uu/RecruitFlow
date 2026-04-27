@@ -16,16 +16,32 @@ type DashboardBarDatum = {
 type DashboardBarChartProps = {
   className?: string;
   data: DashboardBarDatum[];
+  fillHeight?: boolean;
 };
 
-const DashboardBarChart = ({ className, data }: DashboardBarChartProps) => {
+const DashboardBarChart = ({
+  className,
+  data,
+  fillHeight = false,
+}: DashboardBarChartProps) => {
   return (
-    <div className={cn("space-y-3", className)}>
-      <div className="overflow-hidden rounded-[1.4rem] border border-border/70 bg-workspace-muted-surface/60 p-3">
+    <div
+      className={cn(
+        "space-y-3",
+        fillHeight && "h-full min-h-[30rem]",
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          "overflow-hidden rounded-[1.4rem] border border-border/70 bg-workspace-muted-surface/60 p-3",
+          fillHeight && "h-full",
+        )}
+      >
         <BarChart
-          aspectRatio="1.28 / 1"
+          aspectRatio={fillHeight ? "auto" : "1.28 / 1"}
           barGap={0.24}
-          className="w-full"
+          className={cn("w-full", fillHeight && "h-full")}
           data={data}
           margin={{ top: 12, right: 18, bottom: 12, left: 132 }}
           orientation="horizontal"

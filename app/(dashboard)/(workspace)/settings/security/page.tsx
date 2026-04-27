@@ -58,7 +58,7 @@ const SecurityPage = () => {
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <SectionHeader />
 
-      <Card className="max-w-3xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Password</CardTitle>
           <CardDescription>
@@ -136,7 +136,7 @@ const SecurityPage = () => {
         </CardContent>
       </Card>
 
-      <Card className="max-w-3xl border-destructive/20">
+      <Card className="w-full border-destructive/20">
         <CardHeader>
           <CardTitle>Delete account</CardTitle>
           <CardDescription>

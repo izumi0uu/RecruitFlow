@@ -50,6 +50,14 @@ export const metadata: Metadata = {
   title: "RecruitFlow",
   description:
     "A monochrome recruiting workspace for member collaboration, candidate reviews, and subscription-managed growth.",
+  icons: {
+    apple: "/apple-icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+  },
+  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {

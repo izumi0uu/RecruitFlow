@@ -22,7 +22,7 @@ const SettingsLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-10 pt-6 sm:px-6 lg:flex-row lg:gap-6 lg:px-8">
+    <div className="flex w-full max-w-none flex-col gap-4 pb-8 pt-0 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6">
       <div className="panel-shell flex items-center justify-between px-4 py-3 lg:hidden">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -47,10 +47,11 @@ const SettingsLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </div>
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
         className={cn(
-          "fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity lg:hidden",
+          "fixed inset-0 z-40 block h-auto w-auto rounded-none border-0 bg-black/30 p-0 shadow-none backdrop-blur-sm transition-opacity hover:bg-black/30 lg:hidden",
           isSidebarOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
@@ -61,11 +62,11 @@ const SettingsLayout = ({ children }: { children: React.ReactNode }) => {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-4 transition-transform duration-300 lg:sticky lg:top-[104px] lg:z-auto lg:block lg:w-[280px] lg:translate-x-0 lg:p-0",
+          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-4 transition-transform duration-300 lg:sticky lg:top-6 lg:z-auto lg:block lg:w-auto lg:translate-x-0 lg:p-0",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="panel-shell flex h-full min-h-[calc(100dvh-140px)] flex-col p-4">
+        <div className="panel-shell flex h-full min-h-[calc(100dvh-9rem)] flex-col rounded-[1.65rem] p-4">
           <div className="flex items-center justify-between border-b border-border/70 pb-4">
             <BrandLockup compact />
             <Button
@@ -132,7 +133,7 @@ const SettingsLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 w-full">{children}</main>
     </div>
   );
 };
