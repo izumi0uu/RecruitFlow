@@ -6,7 +6,7 @@ import {
   type WorkspaceRole,
 } from "@/lib/db/schema";
 
-type AuditEventSource = "ui" | "server_action" | "worker" | "seed";
+type AuditEventSource = "api" | "ui" | "server_action" | "worker" | "seed";
 
 type WriteAuditLogInput = {
   action: AuditAction;

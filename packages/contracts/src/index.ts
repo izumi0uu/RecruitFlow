@@ -55,13 +55,68 @@ export const authSignUpRequestSchema = z.object({
 
 export type AuthSignUpRequest = z.infer<typeof authSignUpRequestSchema>;
 
-export interface AuthSignUpResponse {
+export interface AuthSessionTokenResponse {
   expires: string;
   role: ApiWorkspaceRole;
   token: string;
   user: {
     id: string;
   };
+}
+
+export type AuthSignUpResponse = AuthSessionTokenResponse;
+
+export const authSignInRequestSchema = z.object({
+  email: z.string().email().min(3).max(255),
+  password: z.string().min(8).max(100),
+});
+
+export type AuthSignInRequest = z.infer<typeof authSignInRequestSchema>;
+
+export type AuthSignInResponse = AuthSessionTokenResponse;
+
+export interface AuthSignOutResponse {
+  success: true;
+}
+
+export const authPasswordUpdateRequestSchema = z.object({
+  currentPassword: z.string().min(8).max(100),
+  newPassword: z.string().min(8).max(100),
+  confirmPassword: z.string().min(8).max(100),
+});
+
+export type AuthPasswordUpdateRequest = z.infer<
+  typeof authPasswordUpdateRequestSchema
+>;
+
+export interface AuthPasswordUpdateResponse {
+  success: string;
+}
+
+export const authAccountUpdateRequestSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  name: z.string().min(1, "Name is required").max(100),
+});
+
+export type AuthAccountUpdateRequest = z.infer<
+  typeof authAccountUpdateRequestSchema
+>;
+
+export interface AuthAccountUpdateResponse {
+  name: string;
+  success: string;
+}
+
+export const authAccountDeleteRequestSchema = z.object({
+  password: z.string().min(8).max(100),
+});
+
+export type AuthAccountDeleteRequest = z.infer<
+  typeof authAccountDeleteRequestSchema
+>;
+
+export interface AuthAccountDeleteResponse {
+  success: true;
 }
 
 export const memberInvitationRequestSchema = z.object({
