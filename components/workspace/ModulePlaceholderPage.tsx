@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 
 type PlaceholderViewState = "default" | "restricted" | "loading";
 
@@ -67,16 +68,11 @@ const ModulePlaceholderPage = ({
   if (state === "restricted") {
     return (
       <section className="space-y-6 px-0 py-1 lg:py-2">
-        <div className="space-y-3">
-          <span className="inline-kicker">{kicker}</span>
-          <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-            {title}
-          </h1>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            This route is already attached to the shared shell, but the current
-            role does not have access to the next action yet.
-          </p>
-        </div>
+        <WorkspacePageHeader
+          kicker={kicker}
+          title={title}
+          description="This route is already attached to the shared shell, but the current role does not have access to the next action yet."
+        />
 
         <Card className="max-w-4xl">
           <CardHeader>
@@ -116,15 +112,11 @@ const ModulePlaceholderPage = ({
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
-      <div className="space-y-3">
-        <span className="inline-kicker">{kicker}</span>
-        <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-          {title}
-        </h1>
-        <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          {description}
-        </p>
-      </div>
+      <WorkspacePageHeader
+        kicker={kicker}
+        title={title}
+        description={description}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <Card>

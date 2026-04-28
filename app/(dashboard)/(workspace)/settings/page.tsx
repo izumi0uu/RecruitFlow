@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, Suspense, useActionState } from "react";
+import { forwardRef, Suspense, useActionState, useEffect } from "react";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { Loader2, PlusCircle } from "lucide-react";
+import {
+  CreditCard,
+  Loader2,
+  PlusCircle,
+  ShieldCheck,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
+import { motion, type HTMLMotionProps } from "motion/react";
 
 import { inviteTeamMember, removeTeamMember } from "@/app/(login)/actions";
 import { Button } from "@/components/ui/Button";
@@ -14,10 +22,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/Dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/RadioGroup";
+import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { customerPortalAction } from "@/lib/payments/actions";
 import {
   currentUserQueryOptions,
@@ -25,6 +42,7 @@ import {
   workspaceQueryKey,
 } from "@/lib/query/options";
 import type { CurrentUserDto } from "@/lib/query/types";
+import { cn } from "@/lib/utils";
 
 type ActionState = {
   error?: string;
@@ -62,26 +80,6 @@ const getUserInitials = (user: UserIdentity) => {
     .slice(0, 2)
     .map((part) => part[0])
     .join("");
-};
-
-const SectionHeader = ({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) => {
-  return (
-    <div className="mb-8 space-y-3">
-      <span className="inline-kicker">Workspace settings</span>
-      <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-        {title}
-      </h1>
-      <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-        {description}
-      </p>
-    </div>
-  );
 };
 
 const SubscriptionSkeleton = () => {
@@ -171,7 +169,7 @@ const ManageSubscription = () => {
 
 const TeamMembersSkeleton = () => {
   return (
-    <Card>
+    <Card className="h-full min-h-0">
       <CardHeader>
         <CardTitle>Workspace members</CardTitle>
         <CardDescription>Loading your workspace roster.</CardDescription>
@@ -216,7 +214,7 @@ const TeamMembers = () => {
 
   if (!workspaceData?.memberships?.length) {
     return (
-      <Card>
+      <Card className="h-full min-h-0">
         <CardHeader>
           <CardTitle>Workspace members</CardTitle>
           <CardDescription>
@@ -233,14 +231,14 @@ const TeamMembers = () => {
   }
 
   return (
-    <Card>
+    <Card className="h-full min-h-0">
       <CardHeader>
         <CardTitle>Workspace members</CardTitle>
         <CardDescription>
           See who currently has access to this workspace.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-h-0 flex-1 overflow-y-auto">
         <ul className="space-y-3">
           {workspaceData.memberships.map((member, index) => (
             <li
@@ -297,162 +295,282 @@ const TeamMembers = () => {
   );
 };
 
-const InviteTeamMemberSkeleton = () => {
-  return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Invite member</CardTitle>
-        <CardDescription>Loading access controls.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="animate-pulse space-y-4">
-          <div className="h-11 rounded-[1.25rem] bg-surface-2" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="h-24 rounded-[1.5rem] bg-surface-2" />
-            <div className="h-24 rounded-[1.5rem] bg-surface-2" />
-          </div>
-          <div className="h-11 rounded-full bg-surface-2" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+const inviteRoleOptions = [
+  {
+    id: "coordinator",
+    value: "coordinator",
+    label: "Coordinator",
+    description:
+      "Keeps follow-ups, scheduling, and shared workflow details moving.",
+  },
+  {
+    id: "recruiter",
+    value: "recruiter",
+    label: "Recruiter",
+    description:
+      "Owns candidate flow, client updates, and day-to-day recruiting work.",
+  },
+  {
+    id: "owner",
+    value: "owner",
+    label: "Owner",
+    description: "Can manage billing, roles, and workspace-wide settings.",
+  },
+];
 
-const InviteTeamMember = () => {
-  const { data: user } = useSuspenseQuery(currentUserQueryOptions());
-  const isOwner = user?.role === "owner";
+const InviteTeamMemberForm = ({ isOwner }: { isOwner: boolean }) => {
   const [inviteState, inviteAction, isInvitePending] = useActionState<
     ActionState,
     FormData
   >(inviteTeamMember, {});
 
-  const options = [
-    {
-      id: "coordinator",
-      value: "coordinator",
-      label: "Coordinator",
-      description: "Keeps follow-ups, scheduling, and shared workflow details moving.",
-    },
-    {
-      id: "recruiter",
-      value: "recruiter",
-      label: "Recruiter",
-      description: "Owns candidate flow, client updates, and day-to-day recruiting work.",
-    },
-    {
-      id: "owner",
-      value: "owner",
-      label: "Owner",
-      description: "Can manage billing, roles, and workspace-wide settings.",
-    },
-  ];
-
   return (
-      <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Invite member</CardTitle>
-        <CardDescription>
-          Add another member when the workspace is ready for more hands.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form action={inviteAction} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="name@company.com"
-              required
-              disabled={!isOwner}
-            />
-          </div>
+    <>
+      <form action={inviteAction} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="name@company.com"
+            required
+            disabled={!isOwner}
+          />
+        </div>
 
-          <div className="space-y-3">
-            <Label>Role</Label>
-            <RadioGroup
-              defaultValue="coordinator"
-              name="role"
-              className="grid gap-3 lg:grid-cols-3"
-              disabled={!isOwner}
-            >
-              {options.map((option) => (
-                <div
-                  key={option.id}
-                  className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <RadioGroupItem
-                      value={option.value}
-                      id={option.id}
-                      className="mt-1"
-                    />
-                    <div>
-                      <Label
-                        htmlFor={option.id}
-                        className="normal-case tracking-normal text-sm font-medium text-foreground"
-                      >
-                        {option.label}
-                      </Label>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {option.description}
-                      </p>
-                    </div>
+        <div className="space-y-3">
+          <Label>Role</Label>
+          <RadioGroup
+            defaultValue="coordinator"
+            name="role"
+            className="grid gap-3 md:grid-cols-3"
+            disabled={!isOwner}
+          >
+            {inviteRoleOptions.map((option) => (
+              <div
+                key={option.id}
+                className="rounded-[1.5rem] border border-border/70 bg-surface-1/75 p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <RadioGroupItem
+                    value={option.value}
+                    id={option.id}
+                    className="mt-1 cursor-pointer"
+                  />
+                  <div>
+                    <Label
+                      htmlFor={option.id}
+                      className="normal-case tracking-normal text-sm font-medium text-foreground"
+                    >
+                      {option.label}
+                    </Label>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {option.description}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </RadioGroup>
-          </div>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
 
-          {inviteState?.error ? (
-            <p className="status-message status-error">{inviteState.error}</p>
-          ) : null}
-          {inviteState?.success ? (
-            <p className="status-message status-success">
-              {inviteState.success}
-            </p>
-          ) : null}
+        {inviteState?.error ? (
+          <p className="status-message status-error">{inviteState.error}</p>
+        ) : null}
+        {inviteState?.success ? (
+          <p className="status-message status-success">{inviteState.success}</p>
+        ) : null}
 
-          <Button
-            type="submit"
-            className="rounded-full"
-            disabled={isInvitePending || !isOwner}
-          >
-            {isInvitePending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Inviting...
-              </>
-            ) : (
-              <>
-                <PlusCircle className="size-4" />
-                Invite member
-              </>
-            )}
-          </Button>
-        </form>
-      </CardContent>
+        <Button
+          type="submit"
+          className="rounded-full"
+          disabled={isInvitePending || !isOwner}
+        >
+          {isInvitePending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Inviting...
+            </>
+          ) : (
+            <>
+              <PlusCircle className="size-4" />
+              Invite member
+            </>
+          )}
+        </Button>
+      </form>
 
       {!isOwner ? (
-        <CardFooter>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Only workspace owners can invite new teammates.
-          </p>
-        </CardFooter>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Only workspace owners can invite new teammates.
+        </p>
       ) : null}
-    </Card>
+    </>
+  );
+};
+
+const compactActionTextVariants = {
+  rest: {
+    opacity: 0,
+    width: 0,
+  },
+  reveal: {
+    opacity: 1,
+    width: "auto",
+  },
+};
+
+const compactActionTransition = {
+  duration: 0.42,
+  ease: [0.22, 1, 0.36, 1],
+} as const;
+
+type CompactWorkspaceActionProps = HTMLMotionProps<"button"> & {
+  icon: LucideIcon;
+  title: string;
+};
+
+const CompactWorkspaceAction = forwardRef<
+  HTMLButtonElement,
+  CompactWorkspaceActionProps
+>(
+  (
+    { className, disabled, icon: Icon, title, type = "button", ...props },
+    ref,
+  ) => {
+    return (
+      <motion.button
+        ref={ref}
+        type={type}
+        aria-label={title}
+        disabled={disabled}
+        initial="rest"
+        whileHover={disabled ? "rest" : "reveal"}
+        whileFocus={disabled ? "rest" : "reveal"}
+        whileTap={disabled ? undefined : { scale: 0.98 }}
+        layout
+        transition={compactActionTransition}
+        className={cn(
+          "group/action inline-flex h-12 min-w-12 max-w-full cursor-pointer items-center overflow-hidden rounded-[1.05rem] border border-border/70 bg-background/72 px-2.5 text-left text-foreground shadow-[0_16px_42px_-34px_var(--shadow-color)] backdrop-blur-sm transition-colors hover:border-foreground/15 hover:bg-surface-1 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-45",
+          className,
+        )}
+        {...props}
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-[0.75rem] bg-surface-2/70 text-foreground transition-colors group-hover/action:bg-foreground group-hover/action:text-background">
+          <Icon className="size-4" />
+        </span>
+        <motion.span
+          variants={compactActionTextVariants}
+          transition={compactActionTransition}
+          className="min-w-0 overflow-hidden whitespace-nowrap"
+        >
+          <span className="ml-3 block text-sm font-semibold leading-none">
+            {title}
+          </span>
+        </motion.span>
+      </motion.button>
+    );
+  },
+);
+
+CompactWorkspaceAction.displayName = "CompactWorkspaceAction";
+
+const CompactWorkspaceActionMarker = ({
+  icon: Icon,
+  title,
+}: {
+  icon: LucideIcon;
+  title: string;
+}) => {
+  return (
+    <motion.div
+      aria-disabled="true"
+      role="img"
+      aria-label={title}
+      initial="rest"
+      whileHover="reveal"
+      whileFocus="reveal"
+      layout
+      transition={compactActionTransition}
+      tabIndex={0}
+      className="group/action inline-flex h-12 min-w-12 max-w-full cursor-pointer items-center overflow-hidden rounded-[1.05rem] border border-dashed border-border/70 bg-surface-1/48 px-2.5 text-left text-muted-foreground transition-colors hover:border-border hover:bg-surface-1/75 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20"
+    >
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-[0.75rem] bg-background/70 text-muted-foreground">
+        <Icon className="size-4" />
+      </span>
+      <motion.span
+        variants={compactActionTextVariants}
+        transition={compactActionTransition}
+        className="min-w-0 overflow-hidden whitespace-nowrap"
+      >
+        <span className="ml-3 block text-sm font-semibold leading-none text-foreground">
+          {title}
+        </span>
+      </motion.span>
+    </motion.div>
+  );
+};
+
+const WorkspaceActionsDock = ({ isOwner }: { isOwner: boolean }) => {
+  return (
+    <div className="flex flex-col items-start gap-2 xl:items-end">
+      <div className="flex min-h-12 flex-wrap items-center gap-2 xl:justify-end">
+        <Dialog>
+          <DialogTrigger asChild>
+            <CompactWorkspaceAction
+              disabled={!isOwner}
+              icon={UsersRound}
+              title="Invite member"
+            />
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Invite member</DialogTitle>
+              <DialogDescription>
+                Add another member when the workspace is ready for more hands.
+              </DialogDescription>
+            </DialogHeader>
+            <InviteTeamMemberForm isOwner={isOwner} />
+          </DialogContent>
+        </Dialog>
+
+        <CompactWorkspaceActionMarker icon={ShieldCheck} title="Role audit" />
+        <CompactWorkspaceActionMarker
+          icon={CreditCard}
+          title="Billing handoff"
+        />
+      </div>
+
+      {!isOwner ? (
+        <p className="max-w-56 text-xs leading-5 text-muted-foreground xl:text-right">
+          Only owners can use invitation actions.
+        </p>
+      ) : null}
+    </div>
   );
 };
 
 const SettingsGateSkeleton = () => {
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <div className="space-y-6">
+    <div className="flex h-full min-h-0 flex-col gap-5">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+        <div className="space-y-4">
+          <div className="h-8 w-52 animate-pulse rounded-full bg-surface-2" />
+          <div className="h-12 w-80 max-w-full animate-pulse rounded-full bg-surface-2" />
+          <div className="h-16 w-[36rem] max-w-full animate-pulse rounded-[1.5rem] bg-surface-2" />
+        </div>
+        <div className="flex gap-2 xl:justify-end">
+          <div className="size-12 animate-pulse rounded-[1.05rem] bg-surface-2" />
+          <div className="size-12 animate-pulse rounded-[1.05rem] bg-surface-2" />
+          <div className="size-12 animate-pulse rounded-[1.05rem] bg-surface-2" />
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-2">
         <SubscriptionSkeleton />
         <TeamMembersSkeleton />
       </div>
-      <InviteTeamMemberSkeleton />
     </div>
   );
 };
@@ -486,37 +604,37 @@ const SettingsRestrictedState = () => {
 
 const SettingsPageContent = () => {
   const { data: user } = useSuspenseQuery(currentUserQueryOptions());
-
-  if (user?.role !== "owner") {
-    return <SettingsRestrictedState />;
-  }
+  const isOwner = user?.role === "owner";
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <div className="space-y-6">
-        <Suspense fallback={<SubscriptionSkeleton />}>
-          <ManageSubscription />
-        </Suspense>
-        <Suspense fallback={<TeamMembersSkeleton />}>
-          <TeamMembers />
-        </Suspense>
-      </div>
+    <div className="flex h-full min-h-0 flex-col gap-5">
+      <WorkspacePageHeader
+        kicker="Workspace settings"
+        title="Workspace settings"
+        description="Shape who has access to the workspace, how billing behaves, and how collaborators move through the same recruiting surface."
+        rightSlot={<WorkspaceActionsDock isOwner={isOwner} />}
+        rightSlotClassName="xl:pt-1"
+      />
 
-      <Suspense fallback={<InviteTeamMemberSkeleton />}>
-        <InviteTeamMember />
-      </Suspense>
+      {!isOwner ? (
+        <SettingsRestrictedState />
+      ) : (
+        <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-2">
+          <Suspense fallback={<SubscriptionSkeleton />}>
+            <ManageSubscription />
+          </Suspense>
+          <Suspense fallback={<TeamMembersSkeleton />}>
+            <TeamMembers />
+          </Suspense>
+        </div>
+      )}
     </div>
   );
 };
 
 const SettingsPage = () => {
   return (
-    <section className="px-0 py-1 lg:py-2">
-      <SectionHeader
-        title="Workspace settings"
-        description="Shape who has access to the workspace, how billing behaves, and how collaborators move through the same recruiting surface."
-      />
-
+    <section className="h-full min-h-0 px-0 py-1 lg:py-0">
       <Suspense fallback={<SettingsGateSkeleton />}>
         <SettingsPageContent />
       </Suspense>

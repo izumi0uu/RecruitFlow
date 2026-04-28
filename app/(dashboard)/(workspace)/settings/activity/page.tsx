@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { getActivityLogs } from "@/lib/db/queries";
 import { ActivityType } from "@/lib/db/schema";
 
@@ -84,26 +85,21 @@ const ActivityPage = async () => {
   const logs = await getActivityLogs();
 
   return (
-    <section className="space-y-6 px-0 py-1 lg:py-2">
-      <div className="space-y-3">
-        <span className="inline-kicker">Workspace history</span>
-        <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-          Activity log
-        </h1>
-        <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Review recent account and workspace actions in the same subdued
-          surface as the rest of the product.
-        </p>
-      </div>
+    <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
+      <WorkspacePageHeader
+        kicker="Workspace history"
+        title="Activity log"
+        description="Review recent account and workspace actions in the same subdued surface as the rest of the product."
+      />
 
-      <Card className="w-full">
+      <Card className="min-h-0 w-full flex-1">
         <CardHeader>
           <CardTitle>Recent activity</CardTitle>
           <CardDescription>
             The last few actions recorded for this account.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-0 flex-1 overflow-y-auto">
           {logs.length > 0 ? (
             <ul className="space-y-3">
               {logs.map((log) => {

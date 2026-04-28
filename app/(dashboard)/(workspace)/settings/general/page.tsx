@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { currentUserQueryOptions, userQueryKey } from "@/lib/query/options";
 
 type ActionState = {
@@ -27,21 +28,6 @@ type AccountFormProps = {
   state: ActionState;
   nameValue?: string;
   emailValue?: string;
-};
-
-const SectionHeader = () => {
-  return (
-    <div className="mb-8 space-y-3">
-      <span className="inline-kicker">Account details</span>
-      <h1 className="text-balance text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-        General settings
-      </h1>
-      <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-        Keep your workspace identity current so collaborators always know who
-        owns the next decision.
-      </p>
-    </div>
-  );
 };
 
 const AccountForm = ({
@@ -102,10 +88,14 @@ const GeneralPage = () => {
   }, [queryClient, state]);
 
   return (
-    <section className="px-0 py-1 lg:py-2">
-      <SectionHeader />
+    <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
+      <WorkspacePageHeader
+        kicker="Account details"
+        title="General settings"
+        description="Keep your workspace identity current so collaborators always know who owns the next decision."
+      />
 
-      <Card className="w-full">
+      <Card className="w-full max-w-3xl">
         <CardHeader>
           <CardTitle>Account information</CardTitle>
           <CardDescription>
