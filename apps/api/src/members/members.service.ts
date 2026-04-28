@@ -1,9 +1,10 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
 import type {
   MemberInvitationRequest,
@@ -107,7 +108,7 @@ export class MembersService {
         action: AuditAction.MEMBER_INVITED,
         entityType: "workspace",
         entityId: workspaceId,
-        source: "server_action",
+        source: "api",
         metadata: {
           invitationId: createdInvitation.id,
           invitedEmail: email,
@@ -137,6 +138,8 @@ export class MembersService {
     const [existingMembership] = await db
       .select({
         id: teamMembers.id,
+        role: teamMembers.role,
+        userId: teamMembers.userId,
       })
       .from(teamMembers)
       .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)))
@@ -144,6 +147,32 @@ export class MembersService {
 
     if (!existingMembership) {
       throw new NotFoundException("Workspace member not found");
+    }
+
+    if (existingMembership.userId === actorUserId) {
+      throw new ForbiddenException(
+        "Workspace owners cannot remove themselves from the member list",
+      );
+    }
+
+    if (existingMembership.role === "owner") {
+      const [remainingOwner] = await db
+        .select({ id: teamMembers.id })
+        .from(teamMembers)
+        .where(
+          and(
+            eq(teamMembers.teamId, workspaceId),
+            eq(teamMembers.role, "owner"),
+            ne(teamMembers.id, memberId),
+          ),
+        )
+        .limit(1);
+
+      if (!remainingOwner) {
+        throw new ForbiddenException(
+          "A workspace must keep at least one owner",
+        );
+      }
     }
 
     await db
@@ -159,7 +188,7 @@ export class MembersService {
         action: AuditAction.MEMBER_REMOVED,
         entityType: "membership",
         entityId: memberId,
-        source: "server_action",
+        source: "api",
       }),
     ]);
 

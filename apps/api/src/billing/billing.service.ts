@@ -192,7 +192,7 @@ export class BillingService {
       action: AuditAction.BILLING_CHECKOUT_STARTED,
       entityType: "workspace",
       entityId: context.workspace.id,
-      source: "server_action",
+      source: "api",
       metadata: {
         priceId: input.priceId,
         stripeCustomerId: context.workspace.stripeCustomerId,
