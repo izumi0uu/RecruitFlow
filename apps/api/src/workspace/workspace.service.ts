@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 
 import { db } from "../db/database";
 
@@ -14,13 +14,13 @@ export type ApiWorkspaceMember = {
   id: string;
   joinedAt: Date | null;
   role: WorkspaceRole;
-  teamId: string;
   user: {
     email: string;
     id: string;
     name: string | null;
   };
   userId: string;
+  workspaceId: string;
 };
 
 export type ApiWorkspace = {
@@ -40,9 +40,9 @@ export type ApiCurrentMembership = {
   id: string;
   joinedAt: Date | null;
   role: WorkspaceRole;
-  teamId: string;
   userId: string;
   workspace: Omit<ApiWorkspace, "memberships">;
+  workspaceId: string;
 };
 
 export type ApiWorkspaceContext = {
@@ -54,13 +54,14 @@ const workspaceNotFound = () => new NotFoundException("Workspace not found");
 
 @Injectable()
 export class WorkspaceService {
+  // Phase 1 has no workspace-switching state yet, so "current" is deterministic:
+  // use the earliest active membership for the authenticated user.
   private async getCurrentMembershipRecord(userId: string) {
     const [membership] = await db
       .select({
         joinedAt: teamMembers.joinedAt,
         membershipId: teamMembers.id,
         role: teamMembers.role,
-        teamId: teamMembers.teamId,
         userId: teamMembers.userId,
         workspaceCreatedAt: teams.createdAt,
         workspaceId: teams.id,
@@ -74,29 +75,34 @@ export class WorkspaceService {
       })
       .from(teamMembers)
       .innerJoin(teams, eq(teamMembers.teamId, teams.id))
-      .where(eq(teamMembers.userId, userId))
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .where(and(eq(teamMembers.userId, userId), isNull(users.deletedAt)))
+      .orderBy(asc(teamMembers.joinedAt), asc(teamMembers.id))
       .limit(1);
 
     return membership ?? null;
   }
 
-  private async getWorkspaceMembers(teamId: string): Promise<ApiWorkspaceMember[]> {
+  private async getWorkspaceMembers(
+    workspaceId: string,
+  ): Promise<ApiWorkspaceMember[]> {
     return db
       .select({
         id: teamMembers.id,
         joinedAt: teamMembers.joinedAt,
         role: teamMembers.role,
-        teamId: teamMembers.teamId,
         user: {
           email: users.email,
           id: users.id,
           name: users.name,
         },
         userId: teamMembers.userId,
+        workspaceId: teamMembers.teamId,
       })
       .from(teamMembers)
       .innerJoin(users, eq(teamMembers.userId, users.id))
-      .where(eq(teamMembers.teamId, teamId));
+      .where(and(eq(teamMembers.teamId, workspaceId), isNull(users.deletedAt)))
+      .orderBy(asc(teamMembers.joinedAt), asc(teamMembers.id));
   }
 
   private async getCurrentWorkspaceBundle(userId: string) {
@@ -106,7 +112,7 @@ export class WorkspaceService {
       return null;
     }
 
-    const memberships = await this.getWorkspaceMembers(membership.teamId);
+    const memberships = await this.getWorkspaceMembers(membership.workspaceId);
 
     const workspace = {
       createdAt: membership.workspaceCreatedAt,
@@ -125,7 +131,6 @@ export class WorkspaceService {
       id: membership.membershipId,
       joinedAt: membership.joinedAt,
       role: membership.role,
-      teamId: membership.teamId,
       userId: membership.userId,
       workspace: {
         createdAt: workspace.createdAt,
@@ -138,6 +143,7 @@ export class WorkspaceService {
         subscriptionStatus: workspace.subscriptionStatus,
         updatedAt: workspace.updatedAt,
       },
+      workspaceId: membership.workspaceId,
     } satisfies ApiCurrentMembership;
 
     return {

@@ -218,6 +218,45 @@ export type CandidatesModulePlaceholderResponse =
 export type SubmissionsModulePlaceholderResponse =
   ApiCrmModulePlaceholderResponse<SubmissionsListQuery>;
 
+export interface CurrentWorkspaceMemberResponse {
+  id: string;
+  joinedAt: string | null;
+  role: ApiWorkspaceRole;
+  user: {
+    email: string;
+    id: string;
+    name: string | null;
+  };
+  userId: string;
+  workspaceId: string;
+}
+
+export interface CurrentWorkspaceSummaryResponse {
+  createdAt: string;
+  id: string;
+  name: string;
+  planName: string | null;
+  stripeCustomerId: string | null;
+  stripeProductId: string | null;
+  stripeSubscriptionId: string | null;
+  subscriptionStatus: string | null;
+  updatedAt: string;
+}
+
+export interface CurrentWorkspaceResponse
+  extends CurrentWorkspaceSummaryResponse {
+  memberships: CurrentWorkspaceMemberResponse[];
+}
+
+export interface CurrentMembershipResponse {
+  id: string;
+  joinedAt: string | null;
+  role: ApiWorkspaceRole;
+  userId: string;
+  workspace: CurrentWorkspaceSummaryResponse;
+  workspaceId: string;
+}
+
 export const authSignUpRequestSchema = z.object({
   email: z.string().email().min(3).max(255),
   password: z.string().min(8).max(100),
@@ -305,7 +344,7 @@ export interface MemberInvitationResponse {
     id: string;
     role: ApiWorkspaceRole;
     status: "pending";
-    teamId: string;
+    workspaceId: string;
   };
   message: string;
 }

@@ -123,7 +123,7 @@ export class MembersService {
         id: createdInvitation.id,
         role: createdInvitation.role,
         status: "pending",
-        teamId: createdInvitation.teamId,
+        workspaceId: createdInvitation.teamId,
       },
       message: "Invitation sent successfully",
     };
