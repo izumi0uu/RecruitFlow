@@ -47,6 +47,177 @@ export const apiWorkspaceRoleValues = [
 
 export type ApiWorkspaceRole = (typeof apiWorkspaceRoleValues)[number];
 
+export const apiClientStatusValues = [
+  "active",
+  "prospect",
+  "paused",
+  "archived",
+] as const;
+
+export type ApiClientStatus = (typeof apiClientStatusValues)[number];
+
+export const apiClientPriorityValues = ["low", "medium", "high"] as const;
+
+export type ApiClientPriority = (typeof apiClientPriorityValues)[number];
+
+export const apiJobStatusValues = [
+  "intake",
+  "open",
+  "on_hold",
+  "closed",
+  "filled",
+] as const;
+
+export type ApiJobStatus = (typeof apiJobStatusValues)[number];
+
+export const apiJobPriorityValues = [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+] as const;
+
+export type ApiJobPriority = (typeof apiJobPriorityValues)[number];
+
+export const apiSubmissionStageValues = [
+  "sourced",
+  "screening",
+  "submitted",
+  "client_interview",
+  "offer",
+  "placed",
+  "lost",
+] as const;
+
+export type ApiSubmissionStage = (typeof apiSubmissionStageValues)[number];
+
+export const apiRiskFlagValues = [
+  "none",
+  "timing_risk",
+  "feedback_risk",
+  "compensation_risk",
+  "fit_risk",
+] as const;
+
+export type ApiRiskFlag = (typeof apiRiskFlagValues)[number];
+
+export const apiCrmDomainValues = [
+  "clients",
+  "jobs",
+  "candidates",
+  "submissions",
+] as const;
+
+export type ApiCrmDomain = (typeof apiCrmDomainValues)[number];
+
+const listPageSchema = z.coerce.number().int().min(1);
+const listPageSizeSchema = z.coerce.number().int().min(1).max(100);
+const optionalUuidSchema = z.string().uuid().optional();
+
+export const apiCollectionQuerySchema = z.object({
+  includeArchived: z.coerce.boolean().default(false),
+  page: listPageSchema.default(1),
+  pageSize: listPageSizeSchema.default(25),
+  search: z.string().trim().max(200).optional(),
+});
+
+export type ApiCollectionQuery = z.infer<typeof apiCollectionQuerySchema>;
+
+export const clientsListQuerySchema = apiCollectionQuerySchema.extend({
+  ownerUserId: optionalUuidSchema,
+  priority: z.enum(apiClientPriorityValues).optional(),
+  status: z.enum(apiClientStatusValues).optional(),
+});
+
+export type ClientsListQuery = z.infer<typeof clientsListQuerySchema>;
+
+export const jobsListQuerySchema = apiCollectionQuerySchema.extend({
+  clientId: optionalUuidSchema,
+  ownerUserId: optionalUuidSchema,
+  priority: z.enum(apiJobPriorityValues).optional(),
+  status: z.enum(apiJobStatusValues).optional(),
+});
+
+export type JobsListQuery = z.infer<typeof jobsListQuerySchema>;
+
+export const candidatesListQuerySchema = apiCollectionQuerySchema.extend({
+  ownerUserId: optionalUuidSchema,
+  source: z.string().trim().max(100).optional(),
+});
+
+export type CandidatesListQuery = z.infer<typeof candidatesListQuerySchema>;
+
+export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
+  candidateId: optionalUuidSchema,
+  jobId: optionalUuidSchema,
+  ownerUserId: optionalUuidSchema,
+  riskFlag: z.enum(apiRiskFlagValues).optional(),
+  stage: z.enum(apiSubmissionStageValues).optional(),
+});
+
+export type SubmissionsListQuery = z.infer<
+  typeof submissionsListQuerySchema
+>;
+
+export interface ApiCrmReservedRoute {
+  method: "DELETE" | "GET" | "PATCH" | "POST";
+  path: string;
+  purpose: string;
+}
+
+export interface ApiCrmPlaceholderContext {
+  role: ApiWorkspaceRole;
+  workspaceId: string;
+}
+
+export interface ApiCrmModulePlaceholderResponse<TQuery> {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1.5";
+  domain: ApiCrmDomain;
+  implementationStory: string;
+  message: string;
+  ownerBranch: string;
+  query: TQuery;
+  reservedRoutes: ApiCrmReservedRoute[];
+  status: "placeholder";
+  workspaceScoped: true;
+}
+
+export function createCrmModulePlaceholderResponse<TQuery>(overrides: {
+  context: ApiCrmPlaceholderContext;
+  domain: ApiCrmDomain;
+  implementationStory: string;
+  message: string;
+  ownerBranch: string;
+  query: TQuery;
+  reservedRoutes: ApiCrmReservedRoute[];
+}): ApiCrmModulePlaceholderResponse<TQuery> {
+  return {
+    context: overrides.context,
+    contractVersion: "phase-1.5",
+    domain: overrides.domain,
+    implementationStory: overrides.implementationStory,
+    message: overrides.message,
+    ownerBranch: overrides.ownerBranch,
+    query: overrides.query,
+    reservedRoutes: overrides.reservedRoutes,
+    status: "placeholder",
+    workspaceScoped: true,
+  };
+}
+
+export type ClientsModulePlaceholderResponse =
+  ApiCrmModulePlaceholderResponse<ClientsListQuery>;
+
+export type JobsModulePlaceholderResponse =
+  ApiCrmModulePlaceholderResponse<JobsListQuery>;
+
+export type CandidatesModulePlaceholderResponse =
+  ApiCrmModulePlaceholderResponse<CandidatesListQuery>;
+
+export type SubmissionsModulePlaceholderResponse =
+  ApiCrmModulePlaceholderResponse<SubmissionsListQuery>;
+
 export const authSignUpRequestSchema = z.object({
   email: z.string().email().min(3).max(255),
   password: z.string().min(8).max(100),

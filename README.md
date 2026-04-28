@@ -37,6 +37,21 @@ Current web adapter note:
 - `app/api/stripe/webhook/route.ts` is a raw-payload proxy that forwards Stripe webhooks into the API-owned handler.
 - `app/api/stripe/checkout/route.ts` is now a post-checkout return shell only; it no longer writes billing state directly.
 
+## Core CRM API Skeletons
+
+- `GET /clients`, `GET /jobs`, `GET /candidates`, and `GET /submissions` now return guarded placeholder payloads from Nest-owned modules.
+- These placeholder responses expose:
+  - the current workspace-scoped auth context
+  - the downstream owner branch and implementation story
+  - the reserved route surface for list, detail, and create flows
+  - the validated query contract coming from `packages/contracts`
+- Shared placeholder query schemas now live in `@recruitflow/contracts` for:
+  - `clientsListQuerySchema`
+  - `jobsListQuerySchema`
+  - `candidatesListQuerySchema`
+  - `submissionsListQuerySchema`
+- This keeps Wave 2 and Wave 3 branches from inventing transport shapes independently when they start real CRM implementation.
+
 This project started from a Next.js SaaS starter and now carries RecruitFlow domain, workspace, billing, and dashboard behavior.
 
 **Demo: [https://next-saas-start.vercel.app/](https://next-saas-start.vercel.app/)**
