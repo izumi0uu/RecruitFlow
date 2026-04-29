@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
@@ -51,6 +52,16 @@ const clientPriorityOptions: Array<{
   { label: "High", value: "high" },
   { label: "Medium", value: "medium" },
   { label: "Low", value: "low" },
+];
+
+const clientStatusFilterOptions = [
+  { label: "All statuses", value: "" },
+  ...clientStatusOptions,
+];
+
+const clientPriorityFilterOptions = [
+  { label: "All priorities", value: "" },
+  ...clientPriorityOptions,
 ];
 
 const statusToneMap: Record<ApiClientStatus, string> = {
@@ -212,54 +223,42 @@ const ClientsPage = async ({ searchParams }: PageProps) => {
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Status
               </span>
-              <select
-                className="input"
+              <FilterSelect
                 name="status"
                 defaultValue={clientsList.filters.status ?? ""}
-              >
-                <option value="">All statuses</option>
-                {clientStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                options={clientStatusFilterOptions}
+                placeholder="All statuses"
+              />
             </label>
 
             <label className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Owner
               </span>
-              <select
-                className="input"
+              <FilterSelect
                 name="owner"
                 defaultValue={clientsList.filters.owner ?? ""}
-              >
-                <option value="">All owners</option>
-                {clientsList.ownerOptions.map((owner) => (
-                  <option key={owner.id} value={owner.id}>
-                    {owner.name ?? owner.email}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { label: "All owners", value: "" },
+                  ...clientsList.ownerOptions.map((owner) => ({
+                    label: owner.name ?? owner.email,
+                    value: owner.id,
+                  })),
+                ]}
+                placeholder="All owners"
+              />
             </label>
 
             <label className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Priority
               </span>
-              <select
-                className="input"
+              <FilterSelect
                 name="priority"
                 defaultValue={clientsList.filters.priority ?? ""}
-              >
-                <option value="">All priorities</option>
-                {clientPriorityOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                options={clientPriorityFilterOptions}
+                placeholder="All priorities"
+              />
             </label>
 
             <div className="flex items-end gap-2">
