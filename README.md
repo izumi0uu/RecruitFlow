@@ -36,8 +36,17 @@ Current web adapter note:
 
 - `app/api/billing/checkout/route.ts` is a redirect shell that calls the API and forwards the user to Stripe.
 - `lib/payments/actions.ts` keeps the settings-page portal form UX, but the actual portal session is now created through the API.
-- `app/api/stripe/webhook/route.ts` is a raw-payload proxy that forwards Stripe webhooks into the API-owned handler.
+- `app/api/stripe/webhook/route.ts` is a raw-payload proxy that forwards Stripe webhooks into the API-owned handler and propagates `x-request-id` into the API logs.
 - `app/api/stripe/checkout/route.ts` is now a post-checkout return shell only; it no longer writes billing state directly.
+- `lib/payments/stripe.ts` still owns Stripe product and price reads for `/pricing`; those are treated as presentation-only reads, not billing truth mutations.
+
+RF-108 cutover note:
+
+- Customer portal session creation, checkout creation, webhook verification, subscription state sync, and billing audit writes are API-owned.
+- Stripe webhook raw-body forwarding was smoke-tested with a signed synthetic event through the Next proxy into the Nest API.
+- Stripe webhook audit metadata now records the Stripe event id for traceability.
+- Stripe webhook event-id idempotency is not implemented yet; duplicate delivery hardening is recorded as follow-up technical debt rather than hidden as complete.
+- Some presentation reads and legacy query helpers still use root `lib/*` compatibility paths while Wave 2 moves feature modules onto the API contract.
 
 ## Core CRM API Skeletons
 
@@ -161,6 +170,8 @@ You can listen for Stripe webhooks locally through their CLI to handle subscript
 ```bash
 stripe listen --forward-to localhost:3001/api/stripe/webhook
 ```
+
+The local Next webhook route forwards the exact request text to `POST /billing/webhooks/stripe` in the API runtime, preserving the Stripe signature verification path. Include `x-request-id` when debugging webhook delivery; the proxy forwards it to the API and echoes it in the response.
 
 ## Testing Payments
 
