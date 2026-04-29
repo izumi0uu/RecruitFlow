@@ -29,11 +29,13 @@ Current boundary note:
 - `POST /auth/sign-up` now creates the user, workspace or invite-backed membership, audit entries, and session token through the Nest API.
 - `POST /members/invitations` and `DELETE /members/:memberId` now own invite and membership mutations inside `apps/api`.
 - `POST /billing/checkout` now owns Stripe checkout-session creation and workspace metadata binding.
+- `POST /billing/portal` now owns Stripe customer-portal session creation and billing-portal audit logging.
 - `POST /billing/webhooks/stripe` now owns Stripe webhook verification and subscription state sync.
 
 Current web adapter note:
 
 - `app/api/billing/checkout/route.ts` is a redirect shell that calls the API and forwards the user to Stripe.
+- `lib/payments/actions.ts` keeps the settings-page portal form UX, but the actual portal session is now created through the API.
 - `app/api/stripe/webhook/route.ts` is a raw-payload proxy that forwards Stripe webhooks into the API-owned handler.
 - `app/api/stripe/checkout/route.ts` is now a post-checkout return shell only; it no longer writes billing state directly.
 
@@ -143,7 +145,16 @@ pnpm dev:stack
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web shell.
-The API health endpoint is available at [http://localhost:4001/health](http://localhost:4001/health).
+The API health endpoint is available at [http://localhost:4001/health](http://localhost:4001/health), and the JSON API contract catalogue is available at [http://localhost:4001/docs](http://localhost:4001/docs).
+
+You can smoke-check both API observability surfaces from the terminal:
+
+```bash
+curl http://localhost:4001/health
+curl -H "x-request-id: rf-local-smoke" http://localhost:4001/docs
+```
+
+The API echoes `x-request-id` on every response and logs `request_id`, method, path, status, and duration for each request.
 
 You can listen for Stripe webhooks locally through their CLI to handle subscription change events:
 

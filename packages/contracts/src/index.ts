@@ -9,6 +9,35 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+export interface ApiDocsEndpoint {
+  auth: "owner" | "public" | "session";
+  description: string;
+  method: "DELETE" | "GET" | "PATCH" | "POST";
+  owner: "api";
+  path: string;
+}
+
+export interface ApiDocsResponse {
+  contractVersion: "phase-1.5";
+  endpoints: ApiDocsEndpoint[];
+  generatedAt: string;
+  localDev: {
+    api: string;
+    docsUrl: string;
+    healthUrl: string;
+    stack: string;
+    stripeWebhookForward: string;
+    web: string;
+  };
+  observability: {
+    logging: string;
+    requestIdHeader: "x-request-id";
+    responseHeader: "x-request-id";
+  };
+  runtime: "nest";
+  service: string;
+}
+
 export interface AuthSessionResponse {
   expires: string;
   user: {
@@ -370,6 +399,10 @@ export type BillingCheckoutRequest = z.infer<
 >;
 
 export interface BillingCheckoutResponse {
+  url: string;
+}
+
+export interface BillingPortalResponse {
   url: string;
 }
 
