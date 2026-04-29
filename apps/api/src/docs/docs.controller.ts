@@ -121,7 +121,7 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
-    description: "Workspace-scoped placeholder for Wave 2 clients implementation.",
+    description: "Workspace-scoped clients list with filters, owners, and active job counts.",
     method: "GET",
     owner: "api",
     path: "/clients",

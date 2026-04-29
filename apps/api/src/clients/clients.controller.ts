@@ -8,7 +8,7 @@ import {
 
 import {
   clientsListQuerySchema,
-  type ClientsModulePlaceholderResponse,
+  type ClientsListResponse,
 } from "@recruitflow/contracts";
 
 import { AuthGuard } from "../auth/auth.guard";
@@ -30,7 +30,7 @@ export class ClientsController {
   getClientsModulePlaceholder(
     @CurrentWorkspaceContext() context: ApiWorkspaceContext,
     @Query() query: unknown,
-  ): ClientsModulePlaceholderResponse {
+  ): Promise<ClientsListResponse> {
     const parsedQuery = clientsListQuerySchema.safeParse(query);
 
     if (!parsedQuery.success) {
@@ -39,6 +39,6 @@ export class ClientsController {
       );
     }
 
-    return this.clientsService.getModulePlaceholder(context, parsedQuery.data);
+    return this.clientsService.listClients(context, parsedQuery.data);
   }
 }
