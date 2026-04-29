@@ -1,6 +1,7 @@
-import { getTeamForUser } from '@/lib/db/queries';
+import { getCurrentWorkspace } from '@/lib/db/queries';
 import { toQueryDto } from '@/lib/query/types';
+
 export const GET = async () => {
-    const team = await getTeamForUser();
-    return Response.json(toQueryDto(team));
+    const workspace = await getCurrentWorkspace();
+    return Response.json(toQueryDto(workspace));
 };

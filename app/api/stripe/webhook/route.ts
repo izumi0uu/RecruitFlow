@@ -1,26 +1,25 @@
-import Stripe from 'stripe';
-import { handleSubscriptionChange, stripe } from '@/lib/payments/stripe';
+import { getInternalApiOrigin, loadRootEnv } from "@recruitflow/config";
 import { NextRequest, NextResponse } from 'next/server';
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
 export const POST = async (request: NextRequest) => {
+    loadRootEnv();
+
     const payload = await request.text();
-    const signature = request.headers.get('stripe-signature') as string;
-    let event: Stripe.Event;
-    try {
-        event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    const response = await fetch(new URL('/billing/webhooks/stripe', getInternalApiOrigin()), {
+        method: 'POST',
+        headers: {
+            'content-type': request.headers.get('content-type') ?? 'application/json',
+            'stripe-signature': request.headers.get('stripe-signature') ?? '',
+        },
+        body: payload,
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        const errorMessage = await response.text();
+        return NextResponse.json({ error: errorMessage || 'Stripe webhook proxy failed.' }, { status: response.status });
     }
-    catch (err) {
-        console.error('Webhook signature verification failed.', err);
-        return NextResponse.json({ error: 'Webhook signature verification failed.' }, { status: 400 });
-    }
-    switch (event.type) {
-        case 'customer.subscription.updated':
-        case 'customer.subscription.deleted':
-            const subscription = event.data.object as Stripe.Subscription;
-            await handleSubscriptionChange(subscription);
-            break;
-        default:
-            console.log(`Unhandled event type ${event.type}`);
-    }
-    return NextResponse.json({ received: true });
+
+    const body = await response.json();
+    return NextResponse.json(body, { status: response.status });
 };

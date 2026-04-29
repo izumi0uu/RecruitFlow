@@ -5,6 +5,13 @@ import readline from "node:readline";
 import crypto from "node:crypto";
 import path from "node:path";
 import os from "node:os";
+
+import {
+  DEFAULT_API_HOST,
+  DEFAULT_API_PORT,
+  DEFAULT_WEB_PORT,
+} from "@recruitflow/config";
+
 const execAsync = promisify(exec);
 const question = (query: string): Promise<string> => {
   const rl = readline.createInterface({
@@ -180,14 +187,18 @@ const main = async () => {
   const POSTGRES_URL = await getPostgresURL();
   const STRIPE_SECRET_KEY = await getStripeSecretKey();
   const STRIPE_WEBHOOK_SECRET = await createStripeWebhook();
-  const BASE_URL = "http://localhost:3001";
+  const BASE_URL = `http://localhost:${DEFAULT_WEB_PORT}`;
   const AUTH_SECRET = generateAuthSecret();
+  const API_HOST = DEFAULT_API_HOST;
+  const API_PORT = String(DEFAULT_API_PORT);
   await writeEnvFile({
     POSTGRES_URL,
     STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET,
     BASE_URL,
     AUTH_SECRET,
+    API_HOST,
+    API_PORT,
   });
   console.log("🎉 Setup completed successfully!");
 };

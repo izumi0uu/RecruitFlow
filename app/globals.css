@@ -43,6 +43,15 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-workspace-rail: var(--workspace-rail);
+  --color-workspace-rail-foreground: var(--workspace-rail-foreground);
+  --color-workspace-muted-surface: var(--workspace-muted-surface);
+  --color-workspace-divider: var(--workspace-divider);
+  --color-chart-primary: var(--chart-primary);
+  --color-chart-secondary: var(--chart-secondary);
+  --color-chart-accent: var(--chart-accent);
+  --color-chart-muted: var(--chart-muted);
+  --color-chart-strong: var(--chart-strong);
 }
 
 :root {
@@ -81,8 +90,42 @@
   --sidebar-accent-foreground: oklch(0.248 0.005 258);
   --sidebar-border: oklch(0.884 0.004 258);
   --sidebar-ring: oklch(0.663 0.006 258);
+  --workspace-rail: oklch(0.992 0.001 258);
+  --workspace-rail-foreground: oklch(0.214 0.005 258);
+  --workspace-muted-surface: oklch(0.965 0.003 258);
+  --workspace-divider: oklch(0.89 0.004 258);
+  --chart-primary: oklch(0.58 0.13 229);
+  --chart-secondary: oklch(0.72 0.11 168);
+  --chart-accent: oklch(0.76 0.12 88);
+  --chart-muted: oklch(0.73 0.016 258);
+  --chart-strong: oklch(0.63 0.17 15);
   --hero-glow: 245, 247, 255;
   --shadow-color: rgba(15, 23, 42, 0.18);
+  --chart-1: oklch(0.32 0 none);
+  --chart-2: oklch(0.41 0 none);
+  --chart-3: oklch(0.54 0 none);
+  --chart-4: oklch(0.71 0 none);
+  --chart-5: oklch(0.89 0 none);
+  --chart-background: oklch(1 0 0);
+  --chart-foreground: oklch(0.145 0.004 285);
+  --chart-foreground-muted: oklch(0.55 0.014 260);
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: oklch(0.4 0.1828 274.34);
+  --chart-grid: oklch(0.9 0 0);
+  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.8);
+  --chart-tooltip-foreground: oklch(0.985 0 0);
+  --chart-tooltip-muted: oklch(0.65 0.01 260);
+  --chart-marker-background: oklch(0.97 0.005 260);
+  --chart-marker-border: oklch(0.85 0.01 260);
+  --chart-marker-foreground: oklch(0.3 0.01 260);
+  --chart-ring-background: oklch(0.9 0.005 260 / 0.25);
+  --chart-label: oklch(0.45 0.01 260);
+  --legend: oklch(1 0 0);
+  --legend-foreground: oklch(0.141 0.005 285.823);
+  --legend-muted: oklch(0.967 0.001 286.375);
+  --legend-muted-foreground: oklch(0.552 0.016 285.938);
+  --legend-track: oklch(0.92 0.004 286.32);
 }
 
 .dark {
@@ -120,9 +163,38 @@
   --sidebar-accent-foreground: oklch(0.945 0.002 258);
   --sidebar-border: oklch(0.31 0.004 258);
   --sidebar-ring: oklch(0.58 0.004 258);
+  --workspace-rail: oklch(0.195 0.004 258);
+  --workspace-rail-foreground: oklch(0.945 0.002 258);
+  --workspace-muted-surface: oklch(0.238 0.004 258);
+  --workspace-divider: oklch(0.315 0.004 258);
+  --chart-primary: oklch(0.72 0.12 229);
+  --chart-secondary: oklch(0.78 0.1 168);
+  --chart-accent: oklch(0.82 0.1 88);
+  --chart-muted: oklch(0.58 0.008 258);
+  --chart-strong: oklch(0.75 0.15 18);
   --hero-glow: 255, 255, 255;
   --shadow-color: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
+  --chart-1: oklch(1 0 none);
+  --chart-2: oklch(0.73 0 none);
+  --chart-3: oklch(0.51 0 none);
+  --chart-4: oklch(0.39 0 none);
+  --chart-5: oklch(0.32 0 none);
+  --chart-background: oklch(0.145 0 0);
+  --chart-foreground: oklch(0.45 0 0);
+  --chart-foreground-muted: oklch(0.65 0.01 260);
+  --chart-crosshair: oklch(0.45 0 0);
+  --chart-grid: oklch(0.25 0 0);
+  --chart-marker-background: oklch(0.25 0.01 260);
+  --chart-marker-border: oklch(0.4 0.01 260);
+  --chart-marker-foreground: oklch(0.9 0 0);
+  --chart-ring-background: oklch(0.35 0.01 260 / 0.25);
+  --chart-label: oklch(0.75 0.01 260);
+  --legend: oklch(0.21 0.006 285.885);
+  --legend-foreground: oklch(0.985 0 0);
+  --legend-muted: oklch(0.274 0.006 286.033);
+  --legend-muted-foreground: oklch(0.705 0.015 286.067);
+  --legend-track: oklch(0.274 0.006 286.033);
 }
 
 @keyframes route-loading-bar {
@@ -200,6 +272,7 @@
 
 @layer components {
   .panel-shell,
+  .workspace-rail,
   .card {
     position: relative;
     overflow: hidden;
@@ -214,6 +287,7 @@
   }
 
   .dark .panel-shell,
+  .dark .workspace-rail,
   .dark .card {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 26%),
@@ -224,6 +298,7 @@
   }
 
   .panel-shell::before,
+  .workspace-rail::before,
   .card::before {
     content: "";
     position: absolute;
@@ -234,6 +309,62 @@
 
   .card {
     @apply flex flex-col gap-6 rounded-[1.75rem] py-6 text-card-foreground;
+  }
+
+  .workspace-rail {
+    color: var(--workspace-rail-foreground);
+    border-color: color-mix(in srgb, var(--workspace-divider) 78%, transparent);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 24%),
+      var(--workspace-rail);
+  }
+
+  .workspace-icon-rail {
+    position: relative;
+    overflow: hidden;
+    color: oklch(0.985 0 0);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 18%),
+      linear-gradient(180deg, oklch(0.11 0.003 258), oklch(0.075 0.003 258));
+    box-shadow:
+      22px 0 54px -42px rgba(15, 23, 42, 0.74),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .workspace-icon-rail::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 5%, rgba(255, 255, 255, 0.09), transparent 34%),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 42%);
+  }
+
+  .workspace-icon-rail > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .workspace-topbar {
+    border: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.48), transparent 70%),
+      color-mix(in srgb, var(--background) 88%, var(--surface-1));
+    box-shadow:
+      0 24px 64px -50px var(--shadow-color),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(18px);
+  }
+
+  .dark .workspace-topbar {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 70%),
+      color-mix(in srgb, var(--background) 84%, var(--surface-1));
+    box-shadow:
+      0 24px 64px -50px var(--shadow-color),
+      inset 0 1px 0 rgba(255, 255, 255, 0.045);
   }
 
   .card > header {
@@ -402,4 +533,32 @@
   .label {
     @apply text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
   }
+}
+
+@theme inline {
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-background: var(--chart-background);
+  --color-chart-foreground: var(--chart-foreground);
+  --color-chart-foreground-muted: var(--chart-foreground-muted);
+  --chart-line-primary: var(--chart-line-primary);
+  --chart-line-secondary: var(--chart-line-secondary);
+  --color-chart-crosshair: var(--chart-crosshair);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-marker-background: var(--chart-marker-background);
+  --color-chart-marker-border: var(--chart-marker-border);
+  --color-chart-marker-foreground: var(--chart-marker-foreground);
+  --color-chart-ring-background: var(--chart-ring-background);
+  --color-chart-label: var(--chart-label);
+  --color-legend-track: var(--legend-track);
+  --color-legend-muted-foreground: var(--legend-muted-foreground);
+  --color-legend-muted: var(--legend-muted);
+  --color-legend-foreground: var(--legend-foreground);
+  --color-legend: var(--legend);
 }

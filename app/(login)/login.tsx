@@ -16,9 +16,16 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import { ActionState } from "@/lib/auth/middleware";
 
 import { signIn, signUp } from "./actions";
+
+type AuthActionState = {
+  error?: string;
+  email?: string;
+  password?: string;
+  success?: string;
+  [key: string]: string | undefined;
+};
 
 const leftColumnPoints = [
   {
@@ -33,7 +40,7 @@ const leftColumnPoints = [
   },
   {
     icon: ShieldCheck,
-    title: "Ready for team ops",
+    title: "Ready for workspace ops",
     copy: "Permissions, billing, and member controls are already built into the foundation.",
   },
 ];
@@ -43,7 +50,7 @@ export const Login = ({ mode = "signin" }: { mode?: "signin" | "signup" }) => {
   const redirect = searchParams.get("redirect");
   const priceId = searchParams.get("priceId");
   const inviteId = searchParams.get("inviteId");
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+  const [state, formAction, pending] = useActionState<AuthActionState, FormData>(
     mode === "signin" ? signIn : signUp,
     { error: "" },
   );
@@ -78,7 +85,7 @@ export const Login = ({ mode = "signin" }: { mode?: "signin" | "signup" }) => {
                   Monochrome recruiting workspace
                 </span>
                 <h1 className="text-balance text-5xl font-semibold tracking-[-0.06em] text-foreground">
-                  Build a calmer hiring surface for your team.
+                  Build a calmer hiring surface for your workspace.
                 </h1>
                 <p className="text-base leading-7 text-muted-foreground">
                   RecruitFlow gives workspaces, candidate reviews, and admin

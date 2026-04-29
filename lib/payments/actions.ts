@@ -1,15 +1,42 @@
 'use server';
 
+import type { BillingPortalResponse } from "@recruitflow/contracts";
 import { redirect } from 'next/navigation';
-import { createCheckoutSession, createCustomerPortalSession } from './stripe';
-import { withTeam } from '@/lib/auth/middleware';
 
-export const checkoutAction = withTeam(async (formData, team) => {
+import { withRole } from '@/lib/auth/middleware';
+import { isApiRequestError, requestApiJson } from "@/lib/api/client";
+
+export const checkoutAction = withRole({ allowedRoles: ['owner'] }, async (formData) => {
   const priceId = formData.get('priceId') as string;
-  await createCheckoutSession({ team: team, priceId });
+
+  if (!priceId) {
+    redirect('/pricing');
+  }
+
+  redirect(`/api/billing/checkout?priceId=${encodeURIComponent(priceId)}`);
 });
 
-export const customerPortalAction = withTeam(async (_, team) => {
-  const portalSession = await createCustomerPortalSession(team);
-  redirect(portalSession.url);
+export const customerPortalAction = withRole({ allowedRoles: ['owner'] }, async () => {
+  try {
+    const portalSession = await requestApiJson<BillingPortalResponse>(
+      "/billing/portal",
+      {
+        method: "POST",
+      },
+    );
+
+    redirect(portalSession.url);
+  } catch (error) {
+    if (isApiRequestError(error)) {
+      if (error.status === 401) {
+        redirect("/sign-in");
+      }
+
+      if (error.status === 400 || error.status === 404) {
+        redirect("/pricing");
+      }
+    }
+
+    throw error;
+  }
 });
