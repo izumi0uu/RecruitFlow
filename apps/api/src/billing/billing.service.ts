@@ -39,6 +39,11 @@ type StripeMetadata = {
   workspaceId?: string;
 };
 
+type StripeWebhookEventContext = {
+  id: string;
+  type: string;
+};
+
 @Injectable()
 export class BillingService {
   private async getBillingPortalConfiguration(productId: string) {
@@ -159,7 +164,7 @@ export class BillingService {
 
   private async syncSubscription(
     subscription: Stripe.Subscription,
-    eventType: string,
+    event: StripeWebhookEventContext,
     metadataOverride?: StripeMetadata,
   ) {
     const customerId =
@@ -197,11 +202,12 @@ export class BillingService {
       action: AuditAction.BILLING_SUBSCRIPTION_SYNCED,
       entityType: "workspace",
       entityId: workspaceId,
-      source: "worker",
+      source: "api",
       metadata: {
-        eventType,
+        eventType: event.type,
         planName,
         productId,
+        stripeEventId: event.id,
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
         subscriptionStatus: subscription.status,
@@ -345,7 +351,7 @@ export class BillingService {
 
           await this.syncSubscription(
             subscription,
-            event.type,
+            event,
             checkoutSession.metadata as StripeMetadata,
           );
         }
@@ -357,7 +363,7 @@ export class BillingService {
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
 
-        await this.syncSubscription(subscription, event.type);
+        await this.syncSubscription(subscription, event);
         break;
       }
       default:
