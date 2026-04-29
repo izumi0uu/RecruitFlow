@@ -1,6 +1,7 @@
 'use server';
 
 import { SESSION_COOKIE_NAME } from "@recruitflow/config";
+import { apiWorkspaceRoleValues } from "@recruitflow/contracts";
 import type {
   AuthAccountDeleteResponse,
   AuthAccountUpdateResponse,
@@ -15,9 +16,6 @@ import { z } from 'zod';
 import { requestApiJson, isApiRequestError } from '@/lib/api/client';
 import { setSessionToken } from '@/lib/auth/session';
 import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware';
-import {
-  workspaceRoleValues,
-} from '@/lib/db/schema';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 
@@ -206,7 +204,7 @@ export const removeTeamMember = validatedActionWithUser(removeTeamMemberSchema, 
 });
 const inviteTeamMemberSchema = z.object({
     email: z.string().email('Invalid email address'),
-    role: z.enum(workspaceRoleValues)
+    role: z.enum(apiWorkspaceRoleValues)
 });
 export const inviteTeamMember = validatedActionWithUser(inviteTeamMemberSchema, async (data) => {
     const { email, role } = data;

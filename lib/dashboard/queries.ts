@@ -181,6 +181,8 @@ const mapAuditAction = (action: string) => {
       return "invited a teammate";
     case "MEMBER_JOINED":
       return "joined the workspace";
+    case "BILLING_PORTAL_OPENED":
+      return "opened the billing portal";
     case "SIGN_IN":
       return "signed in";
     case "SIGN_OUT":

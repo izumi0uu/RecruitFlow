@@ -10,6 +10,7 @@ import {
 import {
   billingCheckoutRequestSchema,
   type BillingCheckoutResponse,
+  type BillingPortalResponse,
   type BillingStripeWebhookResponse,
 } from "@recruitflow/contracts";
 
@@ -49,6 +50,15 @@ export class BillingController {
     }
 
     return this.billingService.createCheckoutSession(context, parsedBody.data);
+  }
+
+  @Post("portal")
+  @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
+  @RequireWorkspaceRole({ allowedRoles: ["owner"] })
+  async createPortalSession(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+  ): Promise<BillingPortalResponse> {
+    return this.billingService.createPortalSession(context);
   }
 
   @Post("webhooks/stripe")

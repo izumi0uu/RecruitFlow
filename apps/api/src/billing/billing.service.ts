@@ -13,6 +13,7 @@ import {
 import type {
   BillingCheckoutRequest,
   BillingCheckoutResponse,
+  BillingPortalResponse,
   BillingStripeWebhookResponse,
 } from "@recruitflow/contracts";
 
@@ -40,6 +41,67 @@ type StripeMetadata = {
 
 @Injectable()
 export class BillingService {
+  private async getBillingPortalConfiguration(productId: string) {
+    const configurations = await stripe.billingPortal.configurations.list();
+
+    if (configurations.data.length > 0) {
+      return configurations.data[0];
+    }
+
+    const product = await stripe.products.retrieve(productId);
+
+    if (product.deleted || !product.active) {
+      throw new BadRequestException("Workspace product is not active in Stripe");
+    }
+
+    const prices = await stripe.prices.list({
+      active: true,
+      product: product.id,
+    });
+
+    if (prices.data.length === 0) {
+      throw new BadRequestException(
+        "No active prices found for the workspace product",
+      );
+    }
+
+    return stripe.billingPortal.configurations.create({
+      business_profile: {
+        headline: "Manage your subscription",
+      },
+      features: {
+        payment_method_update: {
+          enabled: true,
+        },
+        subscription_cancel: {
+          cancellation_reason: {
+            enabled: true,
+            options: [
+              "too_expensive",
+              "missing_features",
+              "switched_service",
+              "unused",
+              "other",
+            ],
+          },
+          enabled: true,
+          mode: "at_period_end",
+        },
+        subscription_update: {
+          default_allowed_updates: ["price", "quantity", "promotion_code"],
+          enabled: true,
+          products: [
+            {
+              prices: prices.data.map((price) => price.id),
+              product: product.id,
+            },
+          ],
+          proration_behavior: "create_prorations",
+        },
+      },
+    });
+  }
+
   private parseMetadataUuid(input: string | undefined) {
     if (!input) {
       return null;
@@ -196,6 +258,46 @@ export class BillingService {
       metadata: {
         priceId: input.priceId,
         stripeCustomerId: context.workspace.stripeCustomerId,
+      },
+    });
+
+    return {
+      url: session.url,
+    };
+  }
+
+  async createPortalSession(
+    context: ApiWorkspaceContext,
+  ): Promise<BillingPortalResponse> {
+    loadRootEnv();
+
+    if (!context.workspace.stripeCustomerId || !context.workspace.stripeProductId) {
+      throw new BadRequestException(
+        "Workspace does not have an active Stripe subscription",
+      );
+    }
+
+    const stripeConfig = getStripeConfig();
+    const configuration = await this.getBillingPortalConfiguration(
+      context.workspace.stripeProductId,
+    );
+    const session = await stripe.billingPortal.sessions.create({
+      configuration: configuration.id,
+      customer: context.workspace.stripeCustomerId,
+      return_url: `${stripeConfig.baseUrl}/dashboard`,
+    });
+
+    await writeAuditLog({
+      workspaceId: context.workspace.id,
+      actorUserId: context.membership.userId,
+      actorRole: context.membership.role,
+      action: AuditAction.BILLING_PORTAL_OPENED,
+      entityType: "workspace",
+      entityId: context.workspace.id,
+      source: "api",
+      metadata: {
+        stripeCustomerId: context.workspace.stripeCustomerId,
+        stripeProductId: context.workspace.stripeProductId,
       },
     });
 
