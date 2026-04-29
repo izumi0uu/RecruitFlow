@@ -153,12 +153,58 @@ export const apiCollectionQuerySchema = z.object({
 export type ApiCollectionQuery = z.infer<typeof apiCollectionQuerySchema>;
 
 export const clientsListQuerySchema = apiCollectionQuerySchema.extend({
+  owner: optionalUuidSchema,
   ownerUserId: optionalUuidSchema,
   priority: z.enum(apiClientPriorityValues).optional(),
+  q: z.string().trim().max(200).optional(),
   status: z.enum(apiClientStatusValues).optional(),
 });
 
 export type ClientsListQuery = z.infer<typeof clientsListQuerySchema>;
+
+export interface ClientsListOwnerOption {
+  email: string;
+  id: string;
+  name: string | null;
+}
+
+export interface ClientsListItem {
+  createdAt: string;
+  hqLocation: string | null;
+  id: string;
+  industry: string | null;
+  lastContactedAt: string | null;
+  name: string;
+  notesPreview: string | null;
+  openJobsCount: number;
+  owner: ClientsListOwnerOption | null;
+  ownerUserId: string | null;
+  priority: ApiClientPriority;
+  status: ApiClientStatus;
+  updatedAt: string;
+  website: string | null;
+}
+
+export interface ClientsListResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    includeArchived: boolean;
+    owner: string | null;
+    priority: ApiClientPriority | null;
+    q: string | null;
+    status: ApiClientStatus | null;
+  };
+  items: ClientsListItem[];
+  ownerOptions: ClientsListOwnerOption[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  workspaceScoped: true;
+}
 
 export const jobsListQuerySchema = apiCollectionQuerySchema.extend({
   clientId: optionalUuidSchema,

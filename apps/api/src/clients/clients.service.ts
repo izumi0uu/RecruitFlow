@@ -1,49 +1,160 @@
 import { Injectable } from "@nestjs/common";
+import {
+  and,
+  asc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import {
-  createCrmModulePlaceholderResponse,
   type ClientsListQuery,
-  type ClientsModulePlaceholderResponse,
+  type ClientsListResponse,
 } from "@recruitflow/contracts";
 
+import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
-const reservedRoutes = [
-  {
-    method: "GET",
-    path: "/clients",
-    purpose: "Workspace-scoped client list query surface",
-  },
-  {
-    method: "POST",
-    path: "/clients",
-    purpose: "Future client creation entry point",
-  },
-  {
-    method: "GET",
-    path: "/clients/:clientId",
-    purpose: "Future client detail query surface",
-  },
-] as const;
+import {
+  clients,
+  jobs,
+  users,
+} from "@/lib/db/schema";
+
+const ACTIVE_JOB_STATUSES = ["intake", "open", "on_hold"] as const;
+const countValue = sql<number>`cast(count(*) as int)`;
+const openJobsCountValue = sql<number>`cast(count(${jobs.id}) as int)`;
+
+const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
+
+const normalizeTextFilter = (value: string | undefined) => {
+  const normalizedValue = value?.trim();
+
+  return normalizedValue ? normalizedValue : null;
+};
 
 @Injectable()
 export class ClientsService {
-  getModulePlaceholder(
+  async listClients(
     context: ApiWorkspaceContext,
     query: ClientsListQuery,
-  ): ClientsModulePlaceholderResponse {
-    return createCrmModulePlaceholderResponse({
+  ): Promise<ClientsListResponse> {
+    const q = normalizeTextFilter(query.q ?? query.search);
+    const owner = query.owner ?? query.ownerUserId ?? null;
+    const page = query.page;
+    const pageSize = query.pageSize;
+    const offset = (page - 1) * pageSize;
+    const whereClauses: SQL[] = [eq(clients.workspaceId, context.workspace.id)];
+
+    if (!query.includeArchived) {
+      whereClauses.push(ne(clients.status, "archived"), isNull(clients.archivedAt));
+    }
+
+    if (q) {
+      const searchPattern = `%${q}%`;
+
+      whereClauses.push(
+        or(
+          ilike(clients.name, searchPattern),
+          ilike(clients.industry, searchPattern),
+          ilike(clients.hqLocation, searchPattern),
+        )!,
+      );
+    }
+
+    if (query.status) {
+      whereClauses.push(eq(clients.status, query.status));
+    }
+
+    if (query.priority) {
+      whereClauses.push(eq(clients.priority, query.priority));
+    }
+
+    if (owner) {
+      whereClauses.push(eq(clients.ownerUserId, owner));
+    }
+
+    const whereClause = and(...whereClauses);
+    const [totalRow] = await db
+      .select({ count: countValue })
+      .from(clients)
+      .where(whereClause);
+    const totalItems = totalRow?.count ?? 0;
+    const rows = await db
+      .select({
+        createdAt: clients.createdAt,
+        hqLocation: clients.hqLocation,
+        id: clients.id,
+        industry: clients.industry,
+        lastContactedAt: clients.lastContactedAt,
+        name: clients.name,
+        notesPreview: clients.notesPreview,
+        openJobsCount: openJobsCountValue,
+        owner: {
+          email: users.email,
+          id: users.id,
+          name: users.name,
+        },
+        ownerUserId: clients.ownerUserId,
+        priority: clients.priority,
+        status: clients.status,
+        updatedAt: clients.updatedAt,
+        website: clients.website,
+      })
+      .from(clients)
+      .leftJoin(users, eq(clients.ownerUserId, users.id))
+      .leftJoin(
+        jobs,
+        and(
+          eq(jobs.clientId, clients.id),
+          eq(jobs.workspaceId, context.workspace.id),
+          inArray(jobs.status, ACTIVE_JOB_STATUSES),
+        ),
+      )
+      .where(whereClause)
+      .groupBy(clients.id, users.id)
+      .orderBy(asc(clients.name), asc(clients.id))
+      .limit(pageSize)
+      .offset(offset);
+
+    return {
       context: {
         role: context.membership.role,
         workspaceId: context.workspace.id,
       },
-      domain: "clients",
-      implementationStory: "RF-13 | RF-020 Create Clients Query Layer and List Route",
-      message:
-        "Clients transport now has a reserved Nest module and shared query contract so the CRM branch can implement the real list and detail workflow without redesigning the API boundary.",
-      ownerBranch: "feature-clients-crm",
-      query,
-      reservedRoutes: [...reservedRoutes],
-    });
+      contractVersion: "phase-1",
+      filters: {
+        includeArchived: query.includeArchived,
+        owner,
+        priority: query.priority ?? null,
+        q,
+        status: query.status ?? null,
+      },
+      items: rows.map((row) => ({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        lastContactedAt: toIsoString(row.lastContactedAt),
+        openJobsCount: Number(row.openJobsCount ?? 0),
+        owner: row.owner?.id ? row.owner : null,
+        updatedAt: row.updatedAt.toISOString(),
+      })),
+      ownerOptions: context.workspace.memberships.map((membership) => ({
+        email: membership.user.email,
+        id: membership.user.id,
+        name: membership.user.name,
+      })),
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
+      },
+      workspaceScoped: true,
+    };
   }
 }
