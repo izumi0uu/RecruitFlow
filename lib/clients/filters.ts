@@ -1,7 +1,9 @@
 import {
   apiClientPriorityValues,
+  apiClientSortValues,
   apiClientStatusValues,
   type ApiClientPriority,
+  type ApiClientSort,
   type ApiClientStatus,
 } from "@recruitflow/contracts";
 
@@ -16,6 +18,7 @@ export type ClientListFilters = {
   page: string;
   priority: "" | ApiClientPriority;
   q: string;
+  sort: ApiClientSort;
   status: "" | ApiClientStatus;
 };
 
@@ -28,6 +31,7 @@ const EMPTY_CLIENT_FILTERS: ClientListFilters = {
   page: "",
   priority: "",
   q: "",
+  sort: "name_asc",
   status: "",
 };
 
@@ -78,6 +82,14 @@ const normalizePriorityValue = (value: string | null | undefined) => {
     : "";
 };
 
+const normalizeSortValue = (value: string | null | undefined) => {
+  const normalizedValue = normalizeTextValue(value);
+
+  return apiClientSortValues.includes(normalizedValue as ApiClientSort)
+    ? (normalizedValue as ApiClientSort)
+    : "name_asc";
+};
+
 export const normalizeClientListFilters = (
   filters: ClientListFilterInput,
 ): ClientListFilters => ({
@@ -85,6 +97,7 @@ export const normalizeClientListFilters = (
   page: normalizePageValue(filters.page),
   priority: normalizePriorityValue(filters.priority),
   q: normalizeTextValue(filters.q),
+  sort: normalizeSortValue(filters.sort),
   status: normalizeStatusValue(filters.status),
 });
 
@@ -96,6 +109,7 @@ export const parseClientListFiltersFromRecord = (
     page: getSingleRecordValue(params.page),
     priority: getSingleRecordValue(params.priority),
     q: getSingleRecordValue(params.q),
+    sort: getSingleRecordValue(params.sort),
     status: getSingleRecordValue(params.status),
   });
 
@@ -107,6 +121,7 @@ export const parseClientListFiltersFromSearchParams = (
     page: params.get("page"),
     priority: params.get("priority"),
     q: params.get("q"),
+    sort: params.get("sort"),
     status: params.get("status"),
   });
 
@@ -123,6 +138,9 @@ export const clientListFiltersToSearchParams = (
   if (normalizedFilters.priority) {
     params.set("priority", normalizedFilters.priority);
   }
+  if (normalizedFilters.sort !== "name_asc") {
+    params.set("sort", normalizedFilters.sort);
+  }
   if (normalizedFilters.page) params.set("page", normalizedFilters.page);
   if (options.includePageSize) params.set("pageSize", "20");
 
@@ -137,6 +155,7 @@ export const areClientListFiltersEqual = (
   first.page === second.page &&
   first.priority === second.priority &&
   first.q === second.q &&
+  first.sort === second.sort &&
   first.status === second.status;
 
 export { EMPTY_CLIENT_FILTERS };

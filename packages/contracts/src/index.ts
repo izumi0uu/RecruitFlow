@@ -85,9 +85,28 @@ export const apiClientStatusValues = [
 
 export type ApiClientStatus = (typeof apiClientStatusValues)[number];
 
+export const apiClientEditableStatusValues = [
+  "active",
+  "prospect",
+  "paused",
+] as const;
+
+export type ApiClientEditableStatus =
+  (typeof apiClientEditableStatusValues)[number];
+
 export const apiClientPriorityValues = ["low", "medium", "high"] as const;
 
 export type ApiClientPriority = (typeof apiClientPriorityValues)[number];
+
+export const apiClientSortValues = [
+  "name_asc",
+  "name_desc",
+  "updated_desc",
+  "priority_desc",
+  "last_contacted_desc",
+] as const;
+
+export type ApiClientSort = (typeof apiClientSortValues)[number];
 
 export const apiJobStatusValues = [
   "intake",
@@ -143,6 +162,63 @@ const listPageSchema = z.coerce.number().int().min(1);
 const listPageSizeSchema = z.coerce.number().int().min(1).max(100);
 const optionalUuidSchema = z.string().uuid().optional();
 
+const optionalTrimmedTextSchema = (maxLength: number) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return value;
+      }
+
+      const trimmedValue = value.trim();
+
+      return trimmedValue.length > 0 ? trimmedValue : null;
+    },
+    z.string().max(maxLength).nullable().optional(),
+  );
+
+const optionalWebsiteSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+      return null;
+    }
+
+    if (/^https?:\/\//i.test(trimmedValue)) {
+      return trimmedValue;
+    }
+
+    return `https://${trimmedValue}`;
+  },
+  z.string().url("Website must be a valid URL").max(2048).nullable().optional(),
+);
+
+const optionalUrlSchema = (message: string) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") {
+        return value;
+      }
+
+      const trimmedValue = value.trim();
+
+      if (!trimmedValue) {
+        return null;
+      }
+
+      if (/^https?:\/\//i.test(trimmedValue)) {
+        return trimmedValue;
+      }
+
+      return `https://${trimmedValue}`;
+    },
+    z.string().url(message).max(2048).nullable().optional(),
+  );
+
 export const apiCollectionQuerySchema = z.object({
   includeArchived: z.coerce.boolean().default(false),
   page: listPageSchema.default(1),
@@ -157,6 +233,7 @@ export const clientsListQuerySchema = apiCollectionQuerySchema.extend({
   ownerUserId: optionalUuidSchema,
   priority: z.enum(apiClientPriorityValues).optional(),
   q: z.string().trim().max(200).optional(),
+  sort: z.enum(apiClientSortValues).default("name_asc"),
   status: z.enum(apiClientStatusValues).optional(),
 });
 
@@ -168,7 +245,8 @@ export interface ClientsListOwnerOption {
   name: string | null;
 }
 
-export interface ClientsListItem {
+export interface ClientRecord {
+  archivedAt: string | null;
   createdAt: string;
   hqLocation: string | null;
   id: string;
@@ -185,6 +263,8 @@ export interface ClientsListItem {
   website: string | null;
 }
 
+export type ClientsListItem = ClientRecord;
+
 export interface ClientsListResponse {
   context: ApiCrmPlaceholderContext;
   contractVersion: "phase-1";
@@ -193,6 +273,7 @@ export interface ClientsListResponse {
     owner: string | null;
     priority: ApiClientPriority | null;
     q: string | null;
+    sort: ApiClientSort;
     status: ApiClientStatus | null;
   };
   items: ClientsListItem[];
@@ -203,6 +284,93 @@ export interface ClientsListResponse {
     totalItems: number;
     totalPages: number;
   };
+  workspaceScoped: true;
+}
+
+export interface ClientContactRecord {
+  clientId: string;
+  createdAt: string;
+  email: string | null;
+  fullName: string;
+  id: string;
+  isPrimary: boolean;
+  lastContactedAt: string | null;
+  linkedinUrl: string | null;
+  phone: string | null;
+  relationshipType: string | null;
+  title: string | null;
+  updatedAt: string;
+}
+
+export const clientParamsSchema = z.object({
+  clientId: z.string().uuid(),
+});
+
+export type ClientParams = z.infer<typeof clientParamsSchema>;
+
+export const clientContactParamsSchema = clientParamsSchema.extend({
+  contactId: z.string().uuid(),
+});
+
+export type ClientContactParams = z.infer<
+  typeof clientContactParamsSchema
+>;
+
+export const clientMutationRequestSchema = z.object({
+  hqLocation: optionalTrimmedTextSchema(160),
+  industry: optionalTrimmedTextSchema(120),
+  name: z.string().trim().min(1, "Client name is required").max(160),
+  notesPreview: optionalTrimmedTextSchema(2000),
+  ownerUserId: optionalUuidSchema,
+  priority: z.enum(apiClientPriorityValues).default("medium"),
+  status: z.enum(apiClientEditableStatusValues).default("active"),
+  website: optionalWebsiteSchema,
+});
+
+export type ClientMutationRequest = z.infer<
+  typeof clientMutationRequestSchema
+>;
+
+export interface ClientDetailResponse {
+  client: ClientRecord;
+  contacts: ClientContactRecord[];
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  ownerOptions: ClientsListOwnerOption[];
+  workspaceScoped: true;
+}
+
+export interface ClientMutationResponse extends ClientDetailResponse {
+  message: string;
+}
+
+export interface ClientArchiveResponse extends ClientDetailResponse {
+  archived: true;
+  message: string;
+}
+
+export const clientContactMutationRequestSchema = z.object({
+  email: optionalTrimmedTextSchema(255).pipe(
+    z.string().email("Contact email must be valid").nullable().optional(),
+  ),
+  fullName: z.string().trim().min(1, "Contact name is required").max(160),
+  isPrimary: z.boolean().default(false),
+  linkedinUrl: optionalUrlSchema("LinkedIn URL must be valid"),
+  phone: optionalTrimmedTextSchema(50),
+  relationshipType: optionalTrimmedTextSchema(80),
+  title: optionalTrimmedTextSchema(160),
+});
+
+export type ClientContactMutationRequest = z.infer<
+  typeof clientContactMutationRequestSchema
+>;
+
+export interface ClientContactMutationResponse {
+  contact: ClientContactRecord;
+  contacts: ClientContactRecord[];
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  message: string;
   workspaceScoped: true;
 }
 

@@ -9,6 +9,7 @@ import {
   Building2,
   Filter,
   Loader2,
+  Pencil,
   Plus,
   RotateCcw,
   Search,
@@ -18,6 +19,7 @@ import {
 
 import type {
   ApiClientPriority,
+  ApiClientSort,
   ApiClientStatus,
   ClientsListItem,
   ClientsListResponse,
@@ -27,6 +29,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import {
   areClientListFiltersEqual,
@@ -72,6 +75,17 @@ const clientPriorityFilterOptions = [
   ...clientPriorityOptions,
 ];
 
+const clientSortOptions: Array<{
+  label: string;
+  value: ApiClientSort;
+}> = [
+  { label: "Name A-Z", value: "name_asc" },
+  { label: "Name Z-A", value: "name_desc" },
+  { label: "Recently updated", value: "updated_desc" },
+  { label: "Highest priority", value: "priority_desc" },
+  { label: "Last touched", value: "last_contacted_desc" },
+];
+
 const statusToneMap: Record<ApiClientStatus, string> = {
   active:
     "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
@@ -110,8 +124,13 @@ const getClientInitial = (client: ClientsListItem) => {
 };
 
 const getFilterCount = (filters: ClientListFilters) =>
-  [filters.q, filters.status, filters.owner, filters.priority].filter(Boolean)
-    .length;
+  [
+    filters.q,
+    filters.status,
+    filters.owner,
+    filters.priority,
+    filters.sort !== "name_asc" ? filters.sort : "",
+  ].filter(Boolean).length;
 
 const buildUrlFromFilters = (filters: ClientListFilters) => {
   const queryString = clientListFiltersToSearchParams(filters).toString();
@@ -155,9 +174,11 @@ const ClientsHeaderSummary = ({
           Syncing
         </span>
       ) : null}
-      <Button disabled className="rounded-full opacity-70">
-        <Plus className="size-4" />
-        Create Client in RF-021
+      <Button asChild className="rounded-full">
+        <TrackedLink href="/clients/new">
+          <Plus className="size-4" />
+          Create Client
+        </TrackedLink>
       </Button>
     </div>
 
@@ -246,14 +267,20 @@ const ClientRow = ({ client }: { client: ClientsListItem }) => (
       <BriefcaseBusiness className="size-5 text-muted-foreground lg:mt-3" />
     </div>
 
-    <Button
-      disabled
-      size="sm"
-      variant="outline"
-      className="rounded-[1rem] opacity-70 lg:justify-self-end"
-    >
-      Detail in RF-023
-    </Button>
+    <div className="flex flex-wrap gap-2 lg:justify-self-end">
+      <Button asChild size="sm" variant="outline" className="rounded-[1rem]">
+        <TrackedLink href={`/clients/${client.id}`}>
+          Detail
+          <ArrowRight className="size-3.5" />
+        </TrackedLink>
+      </Button>
+      <Button asChild size="sm" variant="outline" className="rounded-[1rem]">
+        <TrackedLink href={`/clients/${client.id}/edit`}>
+          <Pencil className="size-3.5" />
+          Edit
+        </TrackedLink>
+      </Button>
+    </div>
   </article>
 );
 
@@ -274,7 +301,7 @@ const ClientsEmptyState = ({
     <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
       {hasFilters
         ? "Try loosening the search or filters. The API is still preserving workspace scope while returning an empty filtered result."
-        : "Once RF-021 adds creation, new agency accounts will appear here with owners, priority, and next-step context."}
+        : "Create the first agency client account so future jobs, contacts, and submissions have a stable company record to attach to."}
     </p>
     {hasFilters ? (
       <Button
@@ -286,7 +313,14 @@ const ClientsEmptyState = ({
         <RotateCcw className="size-4" />
         Reset filters
       </Button>
-    ) : null}
+    ) : (
+      <Button asChild className="mt-6 rounded-full">
+        <TrackedLink href="/clients/new">
+          Create Client
+          <ArrowRight className="size-4" />
+        </TrackedLink>
+      </Button>
+    )}
   </div>
 );
 
@@ -411,6 +445,7 @@ const ClientsListSurface = ({
       page: "",
       priority: "",
       q: "",
+      sort: "name_asc",
       status: "",
     });
   }, [applyFilters]);
@@ -446,7 +481,7 @@ const ClientsListSurface = ({
               </span>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.18fr)_repeat(3,minmax(0,0.72fr))_auto] lg:items-end">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.18fr)_repeat(4,minmax(0,0.72fr))_auto] lg:items-end">
               <label className="space-y-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Search
@@ -507,6 +542,23 @@ const ClientsListSurface = ({
                     applyFilters({
                       page: "",
                       priority: priority as ClientListFilters["priority"],
+                    });
+                  }}
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Sort
+                </span>
+                <FilterSelect
+                  value={filters.sort}
+                  options={clientSortOptions}
+                  placeholder="Name A-Z"
+                  onValueChange={(sort) => {
+                    applyFilters({
+                      page: "",
+                      sort: sort as ClientListFilters["sort"],
                     });
                   }}
                 />
@@ -612,9 +664,8 @@ const ClientsListSurface = ({
             </span>
             <p className="text-sm leading-6 text-muted-foreground">
               This surface owns RF-020/RF-022 list browsing and filter
-              reproducibility. Detail, creation, and contact actions stay
-              staged behind their owning client CRM stories instead of being
-              faked from the list.
+              reproducibility while handing off to the client creation, detail,
+              edit, and contact flows through contract-backed routes.
             </p>
           </div>
         </CardContent>
