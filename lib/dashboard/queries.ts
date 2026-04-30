@@ -14,6 +14,8 @@ import {
   sql,
 } from "drizzle-orm";
 
+// TODO(api-boundary): Dashboard reads remain here only as compatibility code.
+// New dashboard/domain reads should move behind Nest API query endpoints.
 import { db } from "@/lib/db/drizzle";
 import {
   activityLogs,

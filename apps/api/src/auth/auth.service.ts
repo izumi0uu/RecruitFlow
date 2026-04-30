@@ -23,6 +23,8 @@ import type {
 
 import { db } from "../db/database";
 
+// TODO(api-boundary): Move shared auth/audit helpers behind API-owned providers
+// before adding new auth flows that depend on Nest lifecycle or test overrides.
 import { comparePasswords, hashPassword } from "@/lib/auth/session";
 import { verifySessionToken } from "@/lib/auth/session-token";
 import { signSessionToken } from "@/lib/auth/session-token";

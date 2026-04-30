@@ -15,7 +15,7 @@ export type RequestWithAuthContext = {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  private readonly authService = new AuthService();
+  constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<RequestWithAuthContext>();

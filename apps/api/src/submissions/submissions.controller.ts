@@ -24,7 +24,7 @@ import { SubmissionsService } from "./submissions.service";
 @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
 @RequireWorkspaceRole({ minRole: "coordinator" })
 export class SubmissionsController {
-  private readonly submissionsService = new SubmissionsService();
+  constructor(private readonly submissionsService: SubmissionsService) {}
 
   @Get()
   getSubmissionsModulePlaceholder(

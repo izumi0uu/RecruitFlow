@@ -2,6 +2,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { getDatabaseConfig, loadRootEnv } from "@recruitflow/config";
+
+// TODO(api-boundary): Move schema exports into an API-owned data package once
+// root `lib/*` compatibility imports are retired.
 import * as schema from "@/lib/db/schema";
 
 loadRootEnv();

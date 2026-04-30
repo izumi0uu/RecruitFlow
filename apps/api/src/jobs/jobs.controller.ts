@@ -24,7 +24,7 @@ import { JobsService } from "./jobs.service";
 @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
 @RequireWorkspaceRole({ minRole: "coordinator" })
 export class JobsController {
-  private readonly jobsService = new JobsService();
+  constructor(private readonly jobsService: JobsService) {}
 
   @Get()
   getJobsModulePlaceholder(

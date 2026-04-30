@@ -2,6 +2,8 @@ import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { SESSION_COOKIE_NAME } from "@recruitflow/config";
 import { cookies } from "next/headers";
 
+// TODO(api-boundary): This file is a legacy web-side read compatibility layer.
+// Do not add new CRM business queries here; add Nest API services/adapters first.
 import { db } from "./drizzle";
 import {
   activityLogs,
