@@ -27,6 +27,7 @@ import {
   type ClientMutationRequest,
   type ClientMutationResponse,
   type ClientRecord,
+  type ClientRestoreResponse,
   type ClientsListQuery,
   type ClientsListOwnerOption,
   type ClientsListResponse,
@@ -342,7 +343,10 @@ export class ClientsService {
     const orderBy = getClientsOrderBy(query.sort);
     const whereClauses: SQL[] = [eq(clients.workspaceId, context.workspace.id)];
 
-    if (!query.includeArchived) {
+    const shouldExcludeArchived =
+      !query.includeArchived && query.status !== "archived";
+
+    if (shouldExcludeArchived) {
       whereClauses.push(
         ne(clients.status, "archived"),
         isNull(clients.archivedAt),
@@ -622,6 +626,53 @@ export class ClientsService {
       ...this.buildDetailResponse(context, client, contacts),
       archived: true,
       message: "Client archived successfully",
+    };
+  }
+
+  async restoreClient(
+    context: ApiWorkspaceContext,
+    clientId: string,
+  ): Promise<ClientRestoreResponse> {
+    const existingClient = await this.selectClientRecord(context, clientId);
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+
+    if (existingClient.status !== "archived" && !existingClient.archivedAt) {
+      throw new BadRequestException("Client is not archived");
+    }
+
+    await db
+      .update(clients)
+      .set({
+        archivedAt: null,
+        status: "active",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(clients.id, clientId), eq(clients.workspaceId, workspaceId)));
+
+    await writeAuditLog({
+      action: AuditAction.CLIENT_RESTORED,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: clientId,
+      entityType: "client",
+      metadata: {
+        archivedAt: existingClient.archivedAt,
+        clientName: existingClient.name,
+        nextStatus: "active",
+        previousStatus: existingClient.status,
+      },
+      source: "api",
+      workspaceId,
+    });
+
+    const client = await this.selectClientRecord(context, clientId);
+    const contacts = await this.selectClientContacts(context, clientId);
+
+    return {
+      ...this.buildDetailResponse(context, client, contacts),
+      message: "Client restored successfully",
+      restored: true,
     };
   }
 

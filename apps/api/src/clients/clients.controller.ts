@@ -20,6 +20,7 @@ import {
   type ClientContactMutationResponse,
   type ClientDetailResponse,
   type ClientMutationResponse,
+  type ClientRestoreResponse,
   type ClientsListResponse,
 } from "@recruitflow/contracts";
 
@@ -129,6 +130,26 @@ export class ClientsController {
     }
 
     return this.clientsService.archiveClient(
+      context,
+      parsedParams.data.clientId,
+    );
+  }
+
+  @Patch(":clientId/restore")
+  @RequireWorkspaceRole({ allowedRoles: ["owner", "recruiter"] })
+  restoreClient(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+  ): Promise<ClientRestoreResponse> {
+    const parsedParams = clientParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid client id",
+      );
+    }
+
+    return this.clientsService.restoreClient(
       context,
       parsedParams.data.clientId,
     );

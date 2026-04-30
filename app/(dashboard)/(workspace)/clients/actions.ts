@@ -6,32 +6,12 @@ import { redirect } from "next/navigation";
 import {
   clientContactMutationRequestSchema,
   clientContactParamsSchema,
-  clientMutationRequestSchema,
   clientParamsSchema,
-  type ApiClientEditableStatus,
-  type ApiClientPriority,
   type ClientArchiveResponse,
   type ClientContactMutationResponse,
-  type ClientMutationResponse,
 } from "@recruitflow/contracts";
 
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
-
-export type ClientFormValues = {
-  hqLocation: string;
-  industry: string;
-  name: string;
-  notesPreview: string;
-  ownerUserId: string;
-  priority: ApiClientPriority | "";
-  status: ApiClientEditableStatus | "";
-  website: string;
-};
-
-export type ClientFormState = {
-  error?: string;
-  values?: ClientFormValues;
-};
 
 export type ContactFormValues = {
   email: string;
@@ -54,137 +34,6 @@ export type ArchiveClientState = {
 
 const getString = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value : "";
-
-const emptyToUndefined = (value: string) => {
-  const trimmedValue = value.trim();
-
-  return trimmedValue.length > 0 ? trimmedValue : undefined;
-};
-
-const getClientFormValues = (formData: FormData): ClientFormValues => ({
-  hqLocation: getString(formData.get("hqLocation")),
-  industry: getString(formData.get("industry")),
-  name: getString(formData.get("name")),
-  notesPreview: getString(formData.get("notesPreview")),
-  ownerUserId: getString(formData.get("ownerUserId")),
-  priority: getString(formData.get("priority")) as ApiClientPriority | "",
-  status: getString(formData.get("status")) as ApiClientEditableStatus | "",
-  website: getString(formData.get("website")),
-});
-
-const getClientPayload = (values: ClientFormValues) => ({
-  hqLocation: values.hqLocation,
-  industry: values.industry,
-  name: values.name,
-  notesPreview: values.notesPreview,
-  ownerUserId: emptyToUndefined(values.ownerUserId),
-  priority: emptyToUndefined(values.priority),
-  status: emptyToUndefined(values.status),
-  website: values.website,
-});
-
-const parseClientForm = (formData: FormData) => {
-  const values = getClientFormValues(formData);
-  const parsedPayload = clientMutationRequestSchema.safeParse(
-    getClientPayload(values),
-  );
-
-  if (!parsedPayload.success) {
-    return {
-      error: parsedPayload.error.issues[0]?.message ?? "Invalid client form",
-      values,
-    };
-  }
-
-  return {
-    data: parsedPayload.data,
-    values,
-  };
-};
-
-const toActionError = (error: unknown, values: ClientFormValues) => {
-  if (isApiRequestError(error)) {
-    if (error.status === 401) {
-      redirect("/sign-in");
-    }
-
-    if (error.status === 403) {
-      return {
-        error: "You do not have permission to save clients in this workspace.",
-        values,
-      };
-    }
-
-    return {
-      error: error.message,
-      values,
-    };
-  }
-
-  throw error;
-};
-
-export const createClientAction = async (
-  _previousState: ClientFormState,
-  formData: FormData,
-): Promise<ClientFormState> => {
-  const parsedForm = parseClientForm(formData);
-
-  if ("error" in parsedForm) {
-    return parsedForm;
-  }
-
-  try {
-    await requestApiJson<ClientMutationResponse>("/clients", {
-      method: "POST",
-      json: parsedForm.data,
-    });
-  } catch (error) {
-    return toActionError(error, parsedForm.values);
-  }
-
-  revalidatePath("/clients");
-  redirect("/clients");
-};
-
-export const updateClientAction = async (
-  _previousState: ClientFormState,
-  formData: FormData,
-): Promise<ClientFormState> => {
-  const values = getClientFormValues(formData);
-  const parsedParams = clientParamsSchema.safeParse({
-    clientId: getString(formData.get("clientId")),
-  });
-
-  if (!parsedParams.success) {
-    return {
-      error: "Client id is missing or invalid.",
-      values,
-    };
-  }
-
-  const parsedForm = parseClientForm(formData);
-
-  if ("error" in parsedForm) {
-    return parsedForm;
-  }
-
-  try {
-    await requestApiJson<ClientMutationResponse>(
-      `/clients/${parsedParams.data.clientId}`,
-      {
-        method: "PATCH",
-        json: parsedForm.data,
-      },
-    );
-  } catch (error) {
-    return toActionError(error, parsedForm.values);
-  }
-
-  revalidatePath("/clients");
-  revalidatePath(`/clients/${parsedParams.data.clientId}/edit`);
-  redirect("/clients");
-};
 
 export const archiveClientAction = async (
   _previousState: ArchiveClientState,
@@ -283,44 +132,6 @@ const toContactActionError = (
   }
 
   throw error;
-};
-
-export const createContactAction = async (
-  _previousState: ContactFormState,
-  formData: FormData,
-): Promise<ContactFormState> => {
-  const values = getContactFormValues(formData);
-  const parsedParams = clientParamsSchema.safeParse({
-    clientId: getString(formData.get("clientId")),
-  });
-
-  if (!parsedParams.success) {
-    return {
-      error: "Client id is missing or invalid.",
-      values,
-    };
-  }
-
-  const parsedForm = parseContactForm(formData);
-
-  if ("error" in parsedForm) {
-    return parsedForm;
-  }
-
-  try {
-    await requestApiJson<ClientContactMutationResponse>(
-      `/clients/${parsedParams.data.clientId}/contacts`,
-      {
-        method: "POST",
-        json: parsedForm.data,
-      },
-    );
-  } catch (error) {
-    return toContactActionError(error, parsedForm.values);
-  }
-
-  revalidatePath(`/clients/${parsedParams.data.clientId}`);
-  redirect(`/clients/${parsedParams.data.clientId}`);
 };
 
 export const updateContactAction = async (

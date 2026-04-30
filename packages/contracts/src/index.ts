@@ -463,6 +463,11 @@ export interface ClientArchiveResponse extends ClientDetailResponse {
   message: string;
 }
 
+export interface ClientRestoreResponse extends ClientDetailResponse {
+  message: string;
+  restored: true;
+}
+
 export const clientContactMutationRequestSchema = z.object({
   email: optionalTrimmedTextSchema(255).pipe(
     z.string().email("Contact email must be valid").nullable().optional(),

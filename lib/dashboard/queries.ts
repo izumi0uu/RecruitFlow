@@ -185,6 +185,8 @@ const mapAuditAction = (action: string) => {
       return "joined the workspace";
     case "BILLING_PORTAL_OPENED":
       return "opened the billing portal";
+    case "CLIENT_RESTORED":
+      return "restored a client";
     case "SIGN_IN":
       return "signed in";
     case "SIGN_OUT":

@@ -6,8 +6,6 @@ import {
   Clock3,
   ContactRound,
   Mail,
-  Pencil,
-  Plus,
   RadioTower,
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
@@ -32,7 +30,9 @@ import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 import { ArchiveClientControl } from "../ArchiveClientControl";
-
+import { ClientContactCreateAction } from "../ClientContactCreateAction";
+import { ClientDetailEditAction } from "../ClientDetailEditAction";
+import { RestoreClientControl } from "../RestoreClientControl";
 
 type PageProps = {
   params: Promise<{
@@ -91,13 +91,14 @@ const getClientDetail = async (clientId: string) => {
 
 const ClientDetailPage = async ({ params }: PageProps) => {
   const { clientId } = await params;
-  const { client, contacts, context } = await getClientDetail(clientId);
+  const { client, contacts, context, ownerOptions } =
+    await getClientDetail(clientId);
   const ownerLabel = client.owner?.name ?? client.owner?.email ?? "Unassigned";
   const primaryContact = contacts.find((contact) => contact.isPrimary);
-  const canArchive =
-    client.status !== "archived" && context.role !== "coordinator";
-  const canCreateJob =
-    client.status !== "archived" && context.role !== "coordinator";
+  const isArchived = client.status === "archived" || Boolean(client.archivedAt);
+  const canManageLifecycle = context.role !== "coordinator";
+  const canArchive = !isArchived && canManageLifecycle;
+  const canCreateJob = !isArchived && canManageLifecycle;
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -115,12 +116,11 @@ const ClientDetailPage = async ({ params }: PageProps) => {
         title={client.name}
         description="The stable account handoff page for future contacts, jobs, activity, and task entry points."
         rightSlot={
-          <Button asChild className="rounded-full">
-            <TrackedLink href={`/clients/${client.id}/edit`}>
-              <Pencil className="size-4" />
-              Edit Client
-            </TrackedLink>
-          </Button>
+          <ClientDetailEditAction
+            canManageClientControls={context.role !== "coordinator"}
+            client={client}
+            ownerOptions={ownerOptions}
+          />
         }
       />
 
@@ -132,10 +132,12 @@ const ClientDetailPage = async ({ params }: PageProps) => {
                 <span
                   className={cn(
                     "rounded-full border px-3 py-1 text-xs font-semibold",
-                    statusToneMap[client.status],
+                    isArchived
+                      ? statusToneMap.archived
+                      : statusToneMap[client.status],
                   )}
                 >
-                  {toTitleCase(client.status)}
+                  {isArchived ? "Archived" : toTitleCase(client.status)}
                 </span>
                 <span
                   className={cn(
@@ -228,12 +230,11 @@ const ClientDetailPage = async ({ params }: PageProps) => {
                       Hiring managers and relationship entry points.
                     </CardDescription>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="rounded-full">
-                    <TrackedLink href={`/clients/${client.id}/contacts/new`}>
-                      <Plus className="size-3.5" />
-                      Add
-                    </TrackedLink>
-                  </Button>
+                  <ClientContactCreateAction
+                    clientId={client.id}
+                    clientName={client.name}
+                    defaultIsPrimary={contacts.length === 0}
+                  />
                 </div>
               </CardHeader>
               <CardContent>
@@ -389,20 +390,43 @@ const ClientDetailPage = async ({ params }: PageProps) => {
             </CardContent>
           </Card>
 
-          {canArchive ? (
-            <Card className="border-destructive/30">
+          {isArchived || canArchive ? (
+            <Card className={cn(isArchived ? "border-border/70" : "border-destructive/30")}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Archive className="size-4" />
-                  Archive controls
+                  Client lifecycle
                 </CardTitle>
                 <CardDescription>
-                  Hide this client from the default list without deleting its
-                  history.
+                  {isArchived
+                    ? "This client is hidden from the default list, but its relationship history is still preserved."
+                    : "Hide this client from the default list without deleting its history."}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <ArchiveClientControl clientId={client.id} />
+              <CardContent className="space-y-4">
+                {isArchived ? (
+                  <>
+                    <div className="rounded-[1.25rem] border border-border/70 bg-surface-1/70 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Archived
+                      </p>
+                      <p className="mt-3 text-sm font-medium text-foreground">
+                        {client.archivedAt
+                          ? `Archived on ${formatDate(client.archivedAt)}`
+                          : "Archived date not recorded"}
+                      </p>
+                    </div>
+                    {canManageLifecycle ? (
+                      <RestoreClientControl clientId={client.id} />
+                    ) : (
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        Only owners and recruiters can restore archived clients.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <ArchiveClientControl clientId={client.id} />
+                )}
               </CardContent>
             </Card>
           ) : null}

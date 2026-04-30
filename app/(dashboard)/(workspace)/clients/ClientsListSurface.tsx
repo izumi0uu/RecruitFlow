@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   keepPreviousData,
+  useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -27,6 +28,7 @@ import type {
   ApiClientStatus,
   ClientsListItem,
   ClientsListResponse,
+  ClientRestoreResponse,
 } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
@@ -46,6 +48,7 @@ import { clientsListQueryOptions } from "@/lib/query/options";
 import { cn } from "@/lib/utils";
 
 import { ClientCreateDialog } from "./ClientCreateDialog";
+import { ClientEditDialog } from "./ClientEditDialog";
 
 type ClientsListSurfaceProps = {
   initialData: ClientsListResponse;
@@ -108,6 +111,9 @@ const priorityToneMap: Record<ApiClientPriority, string> = {
     "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 
+const archivedTagTone =
+  "border-border/80 bg-background/72 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]";
+
 const toTitleCase = (value: string) =>
   value
     .split("_")
@@ -142,6 +148,32 @@ const buildUrlFromFilters = (filters: ClientListFilters) => {
   const queryString = clientListFiltersToSearchParams(filters).toString();
 
   return `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
+};
+
+const getClientRestoreErrorMessage = async (response: Response) => {
+  try {
+    const body = (await response.json()) as { error?: string };
+
+    if (body.error) {
+      return body.error;
+    }
+  } catch {
+    // Use the fallback if the BFF does not return JSON.
+  }
+
+  return `Restore failed with status ${response.status}`;
+};
+
+const restoreClient = async (clientId: string) => {
+  const response = await fetch(`/api/clients/${clientId}/restore`, {
+    method: "PATCH",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getClientRestoreErrorMessage(response));
+  }
+
+  return (await response.json()) as ClientRestoreResponse;
 };
 
 const ClientsHeaderMetric = ({
@@ -213,82 +245,128 @@ const ClientBadge = ({
   </span>
 );
 
-const ClientRow = ({ client }: { client: ClientsListItem }) => (
-  <article className="group grid gap-4 border-t border-border/60 px-4 py-4 transition-colors duration-200 first:border-t-0 hover:bg-workspace-muted-surface/42 md:px-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(11rem,0.46fr)_minmax(9rem,0.32fr)_auto] lg:items-center">
-    <div className="flex min-w-0 items-start gap-4">
-      <div className="flex size-12 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-background/70 text-sm font-semibold text-foreground shadow-[0_18px_46px_-34px_var(--shadow-color)]">
-        {getClientInitial(client)}
-      </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <ClientBadge className={statusToneMap[client.status]}>
-            {toTitleCase(client.status)}
-          </ClientBadge>
-          <ClientBadge className={priorityToneMap[client.priority]}>
-            {toTitleCase(client.priority)} priority
-          </ClientBadge>
-        </div>
-        <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
-          {client.name}
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          {[client.industry, client.hqLocation].filter(Boolean).join(" · ") ||
-            "No industry or location yet"}
-        </p>
-        <p className="mt-3 line-clamp-2 max-w-2xl text-sm leading-6 text-foreground/86">
-          {client.notesPreview ??
-            "No client note preview yet. RF-021/RF-023 will deepen the client record from here."}
-        </p>
-      </div>
-    </div>
+const ClientRow = ({
+  canRestoreClientControls,
+  client,
+  isRestorePending,
+  onEditClient,
+  onRestoreClient,
+}: {
+  canRestoreClientControls: boolean;
+  client: ClientsListItem;
+  isRestorePending: boolean;
+  onEditClient: (client: ClientsListItem) => void;
+  onRestoreClient: (clientId: string) => void;
+}) => {
+  const isArchived = client.status === "archived" || Boolean(client.archivedAt);
 
-    <div className="rounded-[1.2rem] border border-border/65 bg-background/46 px-3 py-3">
-      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Owner
-      </p>
-      <div className="mt-3 flex items-center gap-3">
-        <span className="flex size-9 items-center justify-center rounded-full border border-border/70 bg-surface-1">
-          <UserRound className="size-4 text-muted-foreground" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">
+  return (
+    <article className="group grid gap-4 border-t border-border/60 bg-background/18 px-4 py-4 transition-colors duration-200 first:border-t-0 hover:bg-workspace-muted-surface/38 md:px-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.34fr)_minmax(8.5rem,0.18fr)_minmax(10rem,auto)] lg:items-stretch">
+      <div className="flex min-w-0 items-start gap-4 py-1">
+        <div className="flex size-[3.25rem] shrink-0 items-center justify-center rounded-[1.25rem] border border-border/70 bg-background/78 text-sm font-semibold text-foreground shadow-[0_18px_46px_-34px_var(--shadow-color)]">
+          {getClientInitial(client)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {isArchived ? (
+              <ClientBadge className={archivedTagTone}>Archived</ClientBadge>
+            ) : (
+              <ClientBadge className={statusToneMap[client.status]}>
+                {toTitleCase(client.status)}
+              </ClientBadge>
+            )}
+            <ClientBadge className={priorityToneMap[client.priority]}>
+              {toTitleCase(client.priority)} priority
+            </ClientBadge>
+          </div>
+          <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
+            {client.name}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {[client.industry, client.hqLocation].filter(Boolean).join(" · ") ||
+              "No industry or location yet"}
+          </p>
+          <p className="mt-4 line-clamp-2 max-w-3xl text-sm leading-6 text-foreground/86">
+            {client.notesPreview ??
+              "No client note preview yet. RF-021/RF-023 will deepen the client record from here."}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex min-h-28 items-end justify-between gap-3 rounded-[1.35rem] border border-border/65 bg-background/52 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] lg:block">
+        <div>
+          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Owner
+          </p>
+          <p className="mt-4 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
             {client.owner?.name ?? client.owner?.email ?? "Unassigned"}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Last touch {formatDate(client.lastContactedAt)}
           </p>
         </div>
+        <UserRound className="size-5 text-muted-foreground lg:mt-5" />
       </div>
-    </div>
 
-    <div className="flex items-center justify-between gap-3 rounded-[1.2rem] border border-border/65 bg-background/46 px-3 py-3 lg:block">
-      <div>
-        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Jobs
-        </p>
-        <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
-          {client.openJobsCount}
-        </p>
+      <div className="flex min-h-28 items-end justify-between gap-3 rounded-[1.35rem] border border-border/65 bg-background/52 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] lg:block">
+        <div>
+          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Jobs
+          </p>
+          <p className="mt-4 text-3xl font-semibold tracking-[-0.07em] text-foreground">
+            {client.openJobsCount}
+          </p>
+        </div>
+        <BriefcaseBusiness className="size-5 text-muted-foreground lg:mt-6" />
       </div>
-      <BriefcaseBusiness className="size-5 text-muted-foreground lg:mt-3" />
-    </div>
 
-    <div className="flex flex-wrap gap-2 lg:justify-self-end">
-      <Button asChild size="sm" variant="outline" className="rounded-[1rem]">
-        <TrackedLink href={`/clients/${client.id}`}>
-          Detail
-          <ArrowRight className="size-3.5" />
-        </TrackedLink>
-      </Button>
-      <Button asChild size="sm" variant="outline" className="rounded-[1rem]">
-        <TrackedLink href={`/clients/${client.id}/edit`}>
-          <Pencil className="size-3.5" />
-          Edit
-        </TrackedLink>
-      </Button>
-    </div>
-  </article>
-);
+      <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-self-end lg:self-center">
+        <Button asChild size="sm" variant="outline" className="rounded-full px-4">
+          <TrackedLink href={`/clients/${client.id}`}>Detail</TrackedLink>
+        </Button>
+        {isArchived ? (
+          canRestoreClientControls ? (
+            <Button
+              size="sm"
+              type="button"
+              variant="outline"
+              className="rounded-full px-4"
+              disabled={isRestorePending}
+              onClick={() => {
+                onRestoreClient(client.id);
+              }}
+            >
+              {isRestorePending ? (
+                <>
+                  <Loader2 className="size-3 animate-spin" />
+                  Restoring
+                </>
+              ) : (
+                <>
+                  Restore
+                  <RotateCcw className="size-3" />
+                </>
+              )}
+            </Button>
+          ) : null
+        ) : (
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            className="rounded-full px-4"
+            onClick={() => {
+              onEditClient(client);
+            }}
+          >
+            Edit
+            <Pencil className="size-3" />
+          </Button>
+        )}
+      </div>
+    </article>
+  );
+};
 
 const ClientsEmptyState = ({
   hasFilters,
@@ -328,7 +406,6 @@ const ClientsEmptyState = ({
         onClick={onCreateClient}
       >
         Create Client
-        <ArrowRight className="size-4" />
       </Button>
     )}
   </div>
@@ -345,6 +422,8 @@ const ClientsListSurface = ({
   );
   const [filters, setFilters] = React.useState(normalizedInitialFilters);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [editingClient, setEditingClient] =
+    React.useState<ClientsListItem | null>(null);
   const [searchDraft, setSearchDraft] = React.useState(
     normalizedInitialFilters.q,
   );
@@ -433,6 +512,27 @@ const ClientsListSurface = ({
     initialData: isInitialQuery ? initialData : undefined,
     placeholderData: keepPreviousData,
   });
+  const [restoreErrorMessage, setRestoreErrorMessage] = React.useState<
+    string | null
+  >(null);
+  const restoreClientMutation = useMutation({
+    mutationFn: restoreClient,
+    onMutate: () => {
+      setRestoreErrorMessage(null);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["clients", "list"],
+      });
+    },
+    onError: (mutationError) => {
+      setRestoreErrorMessage(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Unable to restore client.",
+      );
+    },
+  });
 
   const filterCount = getFilterCount(filters);
   const hasFilters = filterCount > 0;
@@ -449,6 +549,7 @@ const ClientsListSurface = ({
   );
   const currentPage = clientsList.pagination.page;
   const totalPages = clientsList.pagination.totalPages;
+  const canRestoreClientControls = clientsList.context.role !== "coordinator";
 
   const resetFilters = React.useCallback(() => {
     setSearchDraft("");
@@ -463,6 +564,12 @@ const ClientsListSurface = ({
   }, [applyFilters]);
 
   const handleClientCreated = React.useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ["clients", "list"],
+    });
+  }, [queryClient]);
+
+  const handleClientUpdated = React.useCallback(() => {
     void queryClient.invalidateQueries({
       queryKey: ["clients", "list"],
     });
@@ -620,8 +727,14 @@ const ClientsListSurface = ({
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded-[1.65rem] border border-border/70 bg-background/42">
-            <div className="hidden grid-cols-[minmax(0,1.35fr)_minmax(11rem,0.46fr)_minmax(9rem,0.32fr)_auto] gap-4 bg-workspace-muted-surface/62 px-5 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+          {restoreErrorMessage ? (
+            <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {restoreErrorMessage}
+            </div>
+          ) : null}
+
+          <div className="overflow-hidden rounded-[1.85rem] border border-border/70 bg-background/42 shadow-[0_24px_70px_-54px_var(--shadow-color)]">
+            <div className="hidden grid-cols-[minmax(0,1fr)_minmax(15rem,0.34fr)_minmax(8.5rem,0.18fr)_minmax(10rem,auto)] gap-4 bg-workspace-muted-surface/62 px-5 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
               <span>Client</span>
               <span>Owner</span>
               <span>Jobs</span>
@@ -630,7 +743,21 @@ const ClientsListSurface = ({
 
             {clientsList.items.length > 0 ? (
               clientsList.items.map((client) => (
-                <ClientRow key={client.id} client={client} />
+                <ClientRow
+                  canRestoreClientControls={canRestoreClientControls}
+                  key={client.id}
+                  client={client}
+                  isRestorePending={
+                    restoreClientMutation.isPending &&
+                    restoreClientMutation.variables === client.id
+                  }
+                  onEditClient={(selectedClient) => {
+                    setEditingClient(selectedClient);
+                  }}
+                  onRestoreClient={(selectedClientId) => {
+                    restoreClientMutation.mutate(selectedClientId);
+                  }}
+                />
               ))
             ) : (
               <ClientsEmptyState
@@ -703,6 +830,19 @@ const ClientsListSurface = ({
         onClientCreated={handleClientCreated}
         onOpenChange={setIsCreateDialogOpen}
         open={isCreateDialogOpen}
+        ownerOptions={clientsList.ownerOptions}
+      />
+
+      <ClientEditDialog
+        canManageClientControls={clientsList.context.role !== "coordinator"}
+        client={editingClient}
+        onClientUpdated={handleClientUpdated}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingClient(null);
+          }
+        }}
+        open={editingClient !== null}
         ownerOptions={clientsList.ownerOptions}
       />
     </section>

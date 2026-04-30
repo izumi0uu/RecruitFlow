@@ -85,13 +85,13 @@ const WorkspaceShell = ({
   return (
     <div
       className={cn(
-        "flex min-h-dvh w-full max-w-none flex-col gap-4 bg-surface-2/65 px-3 pb-8 pt-4 sm:px-4 xl:grid xl:items-start xl:gap-6 xl:px-6 xl:py-0 2xl:px-8",
+        "flex min-h-dvh w-full max-w-none flex-col gap-4 bg-surface-2/65 px-3 pb-8 pt-4 sm:px-4 md:grid md:items-start md:gap-5 md:px-4 md:py-0 xl:gap-6 xl:px-6 2xl:px-8",
         contextPanel
-          ? "xl:grid-cols-[88px_minmax(0,1fr)_340px]"
-          : "xl:grid-cols-[88px_minmax(0,1fr)]",
+          ? "md:grid-cols-[88px_minmax(0,1fr)] xl:grid-cols-[88px_minmax(0,1fr)_340px]"
+          : "md:grid-cols-[88px_minmax(0,1fr)]",
       )}
     >
-      <div className="workspace-rail flex items-center justify-between rounded-[1.45rem] px-4 py-3 xl:hidden">
+      <div className="workspace-rail flex items-center justify-between rounded-[1.45rem] px-4 py-3 md:hidden">
         <div className="min-w-0">
           <p className="truncate text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             {workspaceName}
@@ -116,7 +116,7 @@ const WorkspaceShell = ({
         type="button"
         variant="ghost"
         className={cn(
-          "fixed inset-0 z-40 block h-auto w-auto rounded-none border-0 bg-black/30 p-0 shadow-none backdrop-blur-sm transition-opacity hover:bg-black/30 xl:hidden",
+          "fixed inset-0 z-40 block h-auto w-auto rounded-none border-0 bg-black/30 p-0 shadow-none backdrop-blur-sm transition-opacity hover:bg-black/30 md:hidden",
           isSidebarOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0",
@@ -127,7 +127,7 @@ const WorkspaceShell = ({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-3 transition-transform duration-300 xl:hidden",
+          "fixed inset-y-0 left-0 z-50 w-[min(88vw,20rem)] p-3 transition-transform duration-300 md:hidden",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -209,8 +209,8 @@ const WorkspaceShell = ({
         </div>
       </aside>
 
-      <aside className="sticky top-2 z-30 hidden h-[calc(100dvh-1rem)] self-start xl:block xl:top-0 xl:h-screen">
-        <div className="workspace-icon-rail flex h-full min-h-0 flex-col items-center rounded-[1.65rem] px-3 py-5 xl:rounded-[1.75rem] xl:px-3 xl:py-6">
+      <aside className="sticky top-0 z-30 hidden h-screen self-start md:block">
+        <div className="workspace-icon-rail flex h-full min-h-0 flex-col items-center rounded-[1.65rem] px-3 py-5 xl:rounded-[1.75rem] xl:py-6">
           <div className="flex w-full items-center justify-center">
             <TrackedLink
               href="/dashboard"
@@ -293,7 +293,7 @@ const WorkspaceShell = ({
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 py-0 xl:py-6">
+      <main className="min-w-0 flex-1 py-0 md:py-5 xl:py-6">
         <WorkspaceTopBar />
         {children}
       </main>

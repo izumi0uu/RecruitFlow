@@ -156,6 +156,13 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
+    description: "Restore an archived workspace-scoped client to active status and audit the CRM mutation.",
+    method: "PATCH",
+    owner: "api",
+    path: "/clients/:clientId/restore",
+  },
+  {
+    auth: "session",
     description: "Create a workspace-scoped contact under a client and audit the CRM mutation.",
     method: "POST",
     owner: "api",

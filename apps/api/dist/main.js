@@ -5696,6 +5696,7 @@ var AuditAction;
     AuditAction["CLIENT_CREATED"] = "CLIENT_CREATED";
     AuditAction["CLIENT_UPDATED"] = "CLIENT_UPDATED";
     AuditAction["CLIENT_ARCHIVED"] = "CLIENT_ARCHIVED";
+    AuditAction["CLIENT_RESTORED"] = "CLIENT_RESTORED";
     AuditAction["CLIENT_CONTACT_CREATED"] = "CLIENT_CONTACT_CREATED";
     AuditAction["CLIENT_CONTACT_UPDATED"] = "CLIENT_CONTACT_UPDATED";
     AuditAction["ACCOUNT_UPDATED"] = "ACCOUNT_UPDATED";
@@ -7188,7 +7189,7 @@ var __metadata = (undefined && undefined.__metadata) || function (k, v) {
 var __param = (undefined && undefined.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 
 
 
@@ -7240,6 +7241,13 @@ let ClientsController = class ClientsController {
             throw new _nestjs_common__WEBPACK_IMPORTED_MODULE_0__.BadRequestException(parsedParams.error.issues[0]?.message ?? "Invalid client id");
         }
         return this.clientsService.archiveClient(context, parsedParams.data.clientId);
+    }
+    restoreClient(context, params) {
+        const parsedParams = _recruitflow_contracts__WEBPACK_IMPORTED_MODULE_1__.clientParamsSchema.safeParse(params);
+        if (!parsedParams.success) {
+            throw new _nestjs_common__WEBPACK_IMPORTED_MODULE_0__.BadRequestException(parsedParams.error.issues[0]?.message ?? "Invalid client id");
+        }
+        return this.clientsService.restoreClient(context, parsedParams.data.clientId);
     }
     createClientContact(context, params, body) {
         const parsedParams = _recruitflow_contracts__WEBPACK_IMPORTED_MODULE_1__.clientParamsSchema.safeParse(params);
@@ -7307,13 +7315,22 @@ __decorate([
     __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
 ], ClientsController.prototype, "archiveClient", null);
 __decorate([
+    (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Patch)(":clientId/restore"),
+    (0,_workspace_require_workspace_role_decorator__WEBPACK_IMPORTED_MODULE_4__.RequireWorkspaceRole)({ allowedRoles: ["owner", "recruiter"] }),
+    __param(0, (0,_workspace_current_workspace_context_decorator__WEBPACK_IMPORTED_MODULE_3__.CurrentWorkspaceContext)()),
+    __param(1, (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Param)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], ClientsController.prototype, "restoreClient", null);
+__decorate([
     (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Post)(":clientId/contacts"),
     __param(0, (0,_workspace_current_workspace_context_decorator__WEBPACK_IMPORTED_MODULE_3__.CurrentWorkspaceContext)()),
     __param(1, (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Param)()),
     __param(2, (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object, Object]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], ClientsController.prototype, "createClientContact", null);
 __decorate([
     (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Patch)(":clientId/contacts/:contactId"),
@@ -7322,7 +7339,7 @@ __decorate([
     __param(2, (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object, Object]),
-    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], ClientsController.prototype, "updateClientContact", null);
 ClientsController = __decorate([
     (0,_nestjs_common__WEBPACK_IMPORTED_MODULE_0__.Controller)("clients"),
@@ -7578,7 +7595,8 @@ let ClientsService = class ClientsService {
         const offset = (page - 1) * pageSize;
         const orderBy = getClientsOrderBy(query.sort);
         const whereClauses = [(0,drizzle_orm__WEBPACK_IMPORTED_MODULE_1__.eq)(_lib_db_schema__WEBPACK_IMPORTED_MODULE_6__.clients.workspaceId, context.workspace.id)];
-        if (!query.includeArchived) {
+        const shouldExcludeArchived = !query.includeArchived && query.status !== "archived";
+        if (shouldExcludeArchived) {
             whereClauses.push((0,drizzle_orm__WEBPACK_IMPORTED_MODULE_1__.ne)(_lib_db_schema__WEBPACK_IMPORTED_MODULE_6__.clients.status, "archived"), (0,drizzle_orm__WEBPACK_IMPORTED_MODULE_1__.isNull)(_lib_db_schema__WEBPACK_IMPORTED_MODULE_6__.clients.archivedAt));
         }
         if (q) {
@@ -7791,6 +7809,44 @@ let ClientsService = class ClientsService {
             ...this.buildDetailResponse(context, client, contacts),
             archived: true,
             message: "Client archived successfully",
+        };
+    }
+    async restoreClient(context, clientId) {
+        const existingClient = await this.selectClientRecord(context, clientId);
+        const workspaceId = context.workspace.id;
+        const actorUserId = context.membership.userId;
+        if (existingClient.status !== "archived" && !existingClient.archivedAt) {
+            throw new _nestjs_common__WEBPACK_IMPORTED_MODULE_0__.BadRequestException("Client is not archived");
+        }
+        await _db_database__WEBPACK_IMPORTED_MODULE_4__.db
+            .update(_lib_db_schema__WEBPACK_IMPORTED_MODULE_6__.clients)
+            .set({
+            archivedAt: null,
+            status: "active",
+            updatedAt: new Date(),
+        })
+            .where((0,drizzle_orm__WEBPACK_IMPORTED_MODULE_1__.and)((0,drizzle_orm__WEBPACK_IMPORTED_MODULE_1__.eq)(_lib_db_schema__WEBPACK_IMPORTED_MODULE_6__.clients.id, clientId), (0,drizzle_orm__WEBPACK_IMPORTED_MODULE_1__.eq)(_lib_db_schema__WEBPACK_IMPORTED_MODULE_6__.clients.workspaceId, workspaceId)));
+        await (0,_lib_db_audit__WEBPACK_IMPORTED_MODULE_5__.writeAuditLog)({
+            action: _lib_db_schema__WEBPACK_IMPORTED_MODULE_6__.AuditAction.CLIENT_RESTORED,
+            actorRole: context.membership.role,
+            actorUserId,
+            entityId: clientId,
+            entityType: "client",
+            metadata: {
+                archivedAt: existingClient.archivedAt,
+                clientName: existingClient.name,
+                nextStatus: "active",
+                previousStatus: existingClient.status,
+            },
+            source: "api",
+            workspaceId,
+        });
+        const client = await this.selectClientRecord(context, clientId);
+        const contacts = await this.selectClientContacts(context, clientId);
+        return {
+            ...this.buildDetailResponse(context, client, contacts),
+            message: "Client restored successfully",
+            restored: true,
         };
     }
     async createClientContact(context, clientId, input) {
@@ -8141,6 +8197,13 @@ const API_DOC_ENDPOINTS = [
         method: "PATCH",
         owner: "api",
         path: "/clients/:clientId/archive",
+    },
+    {
+        auth: "session",
+        description: "Restore an archived workspace-scoped client to active status and audit the CRM mutation.",
+        method: "PATCH",
+        owner: "api",
+        path: "/clients/:clientId/restore",
     },
     {
         auth: "session",
