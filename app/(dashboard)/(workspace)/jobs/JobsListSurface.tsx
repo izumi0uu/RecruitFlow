@@ -1,0 +1,663 @@
+"use client";
+
+import * as React from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+  BriefcaseBusiness,
+  Building2,
+  Filter,
+  Loader2,
+  RotateCcw,
+  Search,
+  UserRound,
+} from "lucide-react";
+
+import type {
+  ApiJobPriority,
+  ApiJobSort,
+  ApiJobStatus,
+  JobsListItem,
+  JobsListResponse,
+} from "@recruitflow/contracts";
+
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent } from "@/components/ui/Card";
+import { FilterSelect } from "@/components/ui/FilterSelect";
+import { Input } from "@/components/ui/Input";
+import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
+import {
+  areJobListFiltersEqual,
+  jobListFiltersToSearchParams,
+  normalizeJobListFilters,
+  parseJobListFiltersFromSearchParams,
+  type JobListFilters,
+} from "@/lib/jobs/filters";
+import { jobsListQueryOptions } from "@/lib/query/options";
+import { cn } from "@/lib/utils";
+
+type JobsListSurfaceProps = {
+  initialData: JobsListResponse;
+  initialFilters: JobListFilters;
+};
+
+const jobStatusOptions: Array<{
+  label: string;
+  value: ApiJobStatus;
+}> = [
+  { label: "Intake", value: "intake" },
+  { label: "Open", value: "open" },
+  { label: "On hold", value: "on_hold" },
+  { label: "Closed", value: "closed" },
+  { label: "Filled", value: "filled" },
+];
+
+const jobPriorityOptions: Array<{
+  label: string;
+  value: ApiJobPriority;
+}> = [
+  { label: "Urgent", value: "urgent" },
+  { label: "High", value: "high" },
+  { label: "Medium", value: "medium" },
+  { label: "Low", value: "low" },
+];
+
+const jobSortOptions: Array<{
+  label: string;
+  value: ApiJobSort;
+}> = [
+  { label: "Recently opened", value: "opened_desc" },
+  { label: "Recently updated", value: "updated_desc" },
+  { label: "Title A-Z", value: "title_asc" },
+  { label: "Highest priority", value: "priority_desc" },
+  { label: "Target fill date", value: "target_fill_asc" },
+];
+
+const statusToneMap: Record<ApiJobStatus, string> = {
+  closed: "border-border/70 bg-surface-1 text-muted-foreground",
+  filled: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  intake: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  on_hold: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  open: "border-lime-500/25 bg-lime-500/10 text-lime-700 dark:text-lime-300",
+};
+
+const priorityToneMap: Record<ApiJobPriority, string> = {
+  high: "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  low: "border-border/70 bg-surface-1 text-muted-foreground",
+  medium: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  urgent: "border-foreground bg-foreground text-background",
+};
+
+const toTitleCase = (value: string) =>
+  value
+    .split("_")
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(" ");
+
+const formatDate = (value: string | null) => {
+  if (!value) {
+    return "Not set";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(value));
+};
+
+const formatSalary = (job: JobsListItem) => {
+  if (job.salaryMin == null && job.salaryMax == null) {
+    return "Compensation not set";
+  }
+
+  const formatter = new Intl.NumberFormat("en", {
+    maximumFractionDigits: 0,
+    notation: "compact",
+    style: "currency",
+    currency: "USD",
+  });
+
+  if (job.salaryMin != null && job.salaryMax != null) {
+    return `${formatter.format(job.salaryMin)}-${formatter.format(job.salaryMax)}`;
+  }
+
+  return formatter.format(job.salaryMin ?? job.salaryMax ?? 0);
+};
+
+const getFilterCount = (filters: JobListFilters) =>
+  [
+    filters.q,
+    filters.clientId,
+    filters.status,
+    filters.owner,
+    filters.priority,
+    filters.sort !== "opened_desc" ? filters.sort : "",
+  ].filter(Boolean).length;
+
+const buildUrlFromFilters = (filters: JobListFilters) => {
+  const queryString = jobListFiltersToSearchParams(filters).toString();
+
+  return `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
+};
+
+const JobBadge = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <span
+    className={cn(
+      "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+      className,
+    )}
+  >
+    {children}
+  </span>
+);
+
+const JobsHeaderMetric = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <div className="min-w-0 rounded-[1rem] border border-border/70 bg-workspace-muted-surface/68 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:min-w-[6.8rem]">
+    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      {label}
+    </p>
+    <p className="mt-1.5 text-xl font-semibold tracking-[-0.05em] text-foreground">
+      {value}
+    </p>
+  </div>
+);
+
+const JobRow = ({ job }: { job: JobsListItem }) => (
+  <article className="grid gap-4 border-t border-border/60 px-4 py-4 first:border-t-0 md:px-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(10rem,0.46fr)_minmax(10rem,0.42fr)_minmax(8rem,0.32fr)] lg:items-center">
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <JobBadge className={statusToneMap[job.status]}>
+          {toTitleCase(job.status)}
+        </JobBadge>
+        <JobBadge className={priorityToneMap[job.priority]}>
+          {toTitleCase(job.priority)}
+        </JobBadge>
+      </div>
+      <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
+        {job.title}
+      </h2>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+        {[job.department, job.location, job.employmentType]
+          .filter(Boolean)
+          .join(" / ") || "No role metadata yet"}
+      </p>
+      <p className="mt-3 line-clamp-2 text-sm leading-6 text-foreground/86">
+        {job.intakeSummary ??
+          "No intake summary yet. RF-031/RF-034 will deepen this role record from here."}
+      </p>
+    </div>
+
+    <div className="rounded-[1.2rem] border border-border/65 bg-background/46 px-3 py-3">
+      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        Client
+      </p>
+      <div className="mt-3 flex items-center gap-3">
+        <span className="flex size-9 items-center justify-center rounded-full border border-border/70 bg-surface-1">
+          <Building2 className="size-4 text-muted-foreground" />
+        </span>
+        <p className="min-w-0 truncate text-sm font-medium text-foreground">
+          {job.client?.name ?? "Missing client"}
+        </p>
+      </div>
+    </div>
+
+    <div className="rounded-[1.2rem] border border-border/65 bg-background/46 px-3 py-3">
+      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        Owner
+      </p>
+      <div className="mt-3 flex items-center gap-3">
+        <span className="flex size-9 items-center justify-center rounded-full border border-border/70 bg-surface-1">
+          <UserRound className="size-4 text-muted-foreground" />
+        </span>
+        <p className="min-w-0 truncate text-sm font-medium text-foreground">
+          {job.owner?.name ?? job.owner?.email ?? "Unassigned"}
+        </p>
+      </div>
+    </div>
+
+    <div className="rounded-[1.2rem] border border-border/65 bg-background/46 px-3 py-3">
+      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        Target
+      </p>
+      <p className="mt-3 text-sm font-medium text-foreground">
+        {formatDate(job.targetFillDate)}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {formatSalary(job)}
+      </p>
+    </div>
+  </article>
+);
+
+const JobsEmptyState = ({
+  hasFilters,
+  onReset,
+}: {
+  hasFilters: boolean;
+  onReset: () => void;
+}) => (
+  <div className="rounded-[1.55rem] border border-dashed border-border/75 bg-background/38 px-6 py-14 text-center">
+    <span className="mx-auto flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-surface-1">
+      <BriefcaseBusiness className="size-5 text-foreground" />
+    </span>
+    <h2 className="mt-5 text-xl font-semibold tracking-[-0.04em] text-foreground">
+      {hasFilters ? "No matching jobs" : "No jobs yet"}
+    </h2>
+    <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
+      {hasFilters
+        ? "Try loosening the search or filters. The API is still preserving workspace scope while returning an empty filtered result."
+        : "This list is ready for job intake records. RF-031 will add the create flow on top of this stable query surface."}
+    </p>
+    {hasFilters ? (
+      <Button
+        className="mt-6 rounded-full"
+        type="button"
+        variant="outline"
+        onClick={onReset}
+      >
+        <RotateCcw className="size-4" />
+        Reset filters
+      </Button>
+    ) : null}
+  </div>
+);
+
+const JobsListSurface = ({
+  initialData,
+  initialFilters,
+}: JobsListSurfaceProps) => {
+  const normalizedInitialFilters = React.useMemo(
+    () => normalizeJobListFilters(initialFilters),
+    [initialFilters],
+  );
+  const [filters, setFilters] = React.useState(normalizedInitialFilters);
+  const [searchDraft, setSearchDraft] = React.useState(
+    normalizedInitialFilters.q,
+  );
+  const filtersRef = React.useRef(filters);
+
+  React.useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  React.useEffect(() => {
+    setSearchDraft(filters.q);
+  }, [filters.q]);
+
+  const writeUrl = React.useCallback((nextFilters: JobListFilters) => {
+    const nextUrl = buildUrlFromFilters(nextFilters);
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, []);
+
+  const applyFilters = React.useCallback(
+    (updates: Partial<JobListFilters>) => {
+      const nextFilters = normalizeJobListFilters({
+        ...filtersRef.current,
+        ...updates,
+      });
+
+      if (areJobListFiltersEqual(filtersRef.current, nextFilters)) {
+        return;
+      }
+
+      filtersRef.current = nextFilters;
+      setFilters(nextFilters);
+      writeUrl(nextFilters);
+    },
+    [writeUrl],
+  );
+
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const nextFilters = parseJobListFiltersFromSearchParams(
+        new URLSearchParams(window.location.search),
+      );
+
+      filtersRef.current = nextFilters;
+      setFilters(nextFilters);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const nextSearchValue = searchDraft.trim();
+
+    if (nextSearchValue === filters.q) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      applyFilters({ page: "", q: nextSearchValue });
+    }, 320);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [applyFilters, filters.q, searchDraft]);
+
+  const isInitialQuery = areJobListFiltersEqual(
+    filters,
+    normalizedInitialFilters,
+  );
+  const {
+    data: jobsList = initialData,
+    error,
+    isError,
+    isFetching,
+    refetch,
+  } = useQuery({
+    ...jobsListQueryOptions(filters),
+    initialData: isInitialQuery ? initialData : undefined,
+    placeholderData: keepPreviousData,
+  });
+
+  const filterCount = getFilterCount(filters);
+  const hasFilters = filterCount > 0;
+  const currentPage = jobsList.pagination.page;
+  const totalPages = jobsList.pagination.totalPages;
+  const activeJobsCount = jobsList.items.filter((job) =>
+    ["intake", "open", "on_hold"].includes(job.status),
+  ).length;
+  const urgentJobsCount = jobsList.items.filter(
+    (job) => job.priority === "urgent",
+  ).length;
+  const clientOptions = [
+    { label: "All clients", value: "" },
+    ...jobsList.clientOptions.map((client) => ({
+      label: client.name,
+      value: client.id,
+    })),
+  ];
+  const ownerOptions = [
+    { label: "All owners", value: "" },
+    ...jobsList.ownerOptions.map((owner) => ({
+      label: owner.name ?? owner.email,
+      value: owner.id,
+    })),
+  ];
+
+  const resetFilters = React.useCallback(() => {
+    setSearchDraft("");
+    applyFilters({
+      clientId: "",
+      owner: "",
+      page: "",
+      priority: "",
+      q: "",
+      sort: "opened_desc",
+      status: "",
+    });
+  }, [applyFilters]);
+
+  return (
+    <section className="space-y-6 px-0 py-1 lg:py-2">
+      <WorkspacePageHeader
+        kicker="Role intake"
+        title="Jobs"
+        description="Browse workspace-scoped role demand by client, owner, status, and priority before the create/edit flow lands."
+        rightSlotClassName="w-full xl:w-auto"
+        rightSlot={
+          <div className="flex w-full flex-col gap-3 xl:w-auto xl:items-end">
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              {isFetching ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-workspace-muted-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Syncing
+                </span>
+              ) : null}
+              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
+                Create flow lands in RF-031
+              </span>
+            </div>
+
+            <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
+              <JobsHeaderMetric
+                label="Visible"
+                value={String(jobsList.pagination.totalItems)}
+              />
+              <JobsHeaderMetric label="Active" value={String(activeJobsCount)} />
+              <JobsHeaderMetric label="Urgent" value={String(urgentJobsCount)} />
+            </div>
+          </div>
+        }
+      />
+
+      <Card className="rounded-[2.15rem]">
+        <CardContent className="space-y-5 pt-1">
+          <div className="rounded-[1.65rem] border border-border/70 bg-workspace-muted-surface/48 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+            <div className="mb-3 flex flex-wrap items-center gap-2 px-1">
+              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
+                {filterCount ? `${filterCount} active filters` : "No filters"}
+              </span>
+              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
+                {jobsList.workspaceScoped ? "Workspace scoped" : "Scope pending"}
+              </span>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.16fr)_repeat(5,minmax(0,0.72fr))] lg:items-end">
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Search
+                </span>
+                <span className="relative block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Role, client, department, or location"
+                    value={searchDraft}
+                    onChange={(event) => {
+                      setSearchDraft(event.target.value);
+                    }}
+                  />
+                </span>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Client
+                </span>
+                <FilterSelect
+                  value={filters.clientId}
+                  options={clientOptions}
+                  placeholder="All clients"
+                  onValueChange={(clientId) => {
+                    applyFilters({ clientId, page: "" });
+                  }}
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Status
+                </span>
+                <FilterSelect
+                  value={filters.status}
+                  options={[
+                    { label: "All statuses", value: "" },
+                    ...jobStatusOptions,
+                  ]}
+                  placeholder="All statuses"
+                  onValueChange={(status) => {
+                    applyFilters({
+                      page: "",
+                      status: status as JobListFilters["status"],
+                    });
+                  }}
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Owner
+                </span>
+                <FilterSelect
+                  value={filters.owner}
+                  options={ownerOptions}
+                  placeholder="All owners"
+                  onValueChange={(owner) => {
+                    applyFilters({ owner, page: "" });
+                  }}
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Priority
+                </span>
+                <FilterSelect
+                  value={filters.priority}
+                  options={[
+                    { label: "All priorities", value: "" },
+                    ...jobPriorityOptions,
+                  ]}
+                  placeholder="All priorities"
+                  onValueChange={(priority) => {
+                    applyFilters({
+                      page: "",
+                      priority: priority as JobListFilters["priority"],
+                    });
+                  }}
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Sort
+                </span>
+                <FilterSelect
+                  value={filters.sort}
+                  options={jobSortOptions}
+                  placeholder="Recently opened"
+                  onValueChange={(sort) => {
+                    applyFilters({
+                      page: "",
+                      sort: sort as JobListFilters["sort"],
+                    });
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          {isError ? (
+            <div className="rounded-[1.35rem] border border-destructive/30 bg-destructive/10 p-4">
+              <p className="text-sm font-medium text-foreground">
+                Unable to refresh jobs.
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {error instanceof Error
+                  ? error.message
+                  : "The jobs API returned an unexpected error."}
+              </p>
+              <Button
+                className="mt-4 rounded-full"
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void refetch();
+                }}
+              >
+                <RotateCcw className="size-4" />
+                Retry
+              </Button>
+            </div>
+          ) : null}
+
+          <div className="overflow-hidden rounded-[1.65rem] border border-border/70 bg-background/58">
+            <div className="grid gap-3 border-b border-border/70 bg-surface-1/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:px-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(10rem,0.46fr)_minmax(10rem,0.42fr)_minmax(8rem,0.32fr)]">
+              <span>Role</span>
+              <span>Client</span>
+              <span>Owner</span>
+              <span>Target</span>
+            </div>
+
+            {jobsList.items.length > 0 ? (
+              jobsList.items.map((job) => <JobRow key={job.id} job={job} />)
+            ) : (
+              <JobsEmptyState hasFilters={hasFilters} onReset={resetFilters} />
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.3rem] border border-border/70 bg-surface-1/70 px-4 py-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3">
+              <span>{jobsList.pagination.pageSize} per page</span>
+              <span>{jobsList.pagination.totalItems} total</span>
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                disabled={currentPage <= 1}
+                onClick={() => {
+                  applyFilters({
+                    page: currentPage - 1 > 1 ? String(currentPage - 1) : "",
+                  });
+                }}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                disabled={currentPage >= totalPages}
+                onClick={() => {
+                  applyFilters({ page: String(currentPage + 1) });
+                }}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-[1.35rem] border border-border/70 bg-surface-1/70 p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-9 items-center justify-center rounded-full border border-border/70 bg-background">
+                <Filter className="size-4 text-muted-foreground" />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  RF-22 scope boundary
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  This page owns the workspace-scoped jobs list and filter
+                  surface. Job creation, detail editing, and stage-template
+                  initialization remain in later jobs-intake stories.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+};
+
+export { JobsListSurface };

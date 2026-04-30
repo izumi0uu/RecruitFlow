@@ -127,6 +127,16 @@ export const apiJobPriorityValues = [
 
 export type ApiJobPriority = (typeof apiJobPriorityValues)[number];
 
+export const apiJobSortValues = [
+  "opened_desc",
+  "updated_desc",
+  "title_asc",
+  "priority_desc",
+  "target_fill_asc",
+] as const;
+
+export type ApiJobSort = (typeof apiJobSortValues)[number];
+
 export const apiSubmissionStageValues = [
   "sourced",
   "screening",
@@ -376,12 +386,75 @@ export interface ClientContactMutationResponse {
 
 export const jobsListQuerySchema = apiCollectionQuerySchema.extend({
   clientId: optionalUuidSchema,
+  owner: optionalUuidSchema,
   ownerUserId: optionalUuidSchema,
   priority: z.enum(apiJobPriorityValues).optional(),
+  q: z.string().trim().max(200).optional(),
+  sort: z.enum(apiJobSortValues).default("opened_desc"),
   status: z.enum(apiJobStatusValues).optional(),
 });
 
 export type JobsListQuery = z.infer<typeof jobsListQuerySchema>;
+
+export interface JobsListClientOption {
+  id: string;
+  name: string;
+}
+
+export interface JobsListOwnerOption {
+  email: string;
+  id: string;
+  name: string | null;
+}
+
+export interface JobRecord {
+  archivedAt: string | null;
+  client: JobsListClientOption | null;
+  clientId: string;
+  createdAt: string;
+  department: string | null;
+  employmentType: string | null;
+  headcount: number | null;
+  id: string;
+  intakeSummary: string | null;
+  location: string | null;
+  openedAt: string | null;
+  owner: JobsListOwnerOption | null;
+  ownerUserId: string | null;
+  priority: ApiJobPriority;
+  salaryMax: number | null;
+  salaryMin: number | null;
+  status: ApiJobStatus;
+  targetFillDate: string | null;
+  title: string;
+  updatedAt: string;
+}
+
+export type JobsListItem = JobRecord;
+
+export interface JobsListResponse {
+  clientOptions: JobsListClientOption[];
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    clientId: string | null;
+    includeArchived: boolean;
+    owner: string | null;
+    priority: ApiJobPriority | null;
+    q: string | null;
+    sort: ApiJobSort;
+    status: ApiJobStatus | null;
+  };
+  items: JobsListItem[];
+  ownerOptions: JobsListOwnerOption[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  workspaceScoped: true;
+}
 
 export const candidatesListQuerySchema = apiCollectionQuerySchema.extend({
   ownerUserId: optionalUuidSchema,

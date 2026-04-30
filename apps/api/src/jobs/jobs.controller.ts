@@ -8,7 +8,7 @@ import {
 
 import {
   jobsListQuerySchema,
-  type JobsModulePlaceholderResponse,
+  type JobsListResponse,
 } from "@recruitflow/contracts";
 
 import { AuthGuard } from "../auth/auth.guard";
@@ -27,10 +27,10 @@ export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Get()
-  getJobsModulePlaceholder(
+  getJobs(
     @CurrentWorkspaceContext() context: ApiWorkspaceContext,
     @Query() query: unknown,
-  ): JobsModulePlaceholderResponse {
+  ): Promise<JobsListResponse> {
     const parsedQuery = jobsListQuerySchema.safeParse(query);
 
     if (!parsedQuery.success) {
@@ -39,6 +39,6 @@ export class JobsController {
       );
     }
 
-    return this.jobsService.getModulePlaceholder(context, parsedQuery.data);
+    return this.jobsService.listJobs(context, parsedQuery.data);
   }
 }

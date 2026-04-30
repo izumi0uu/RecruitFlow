@@ -1,11 +1,18 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import type { ClientsListResponse } from "@recruitflow/contracts";
+import type {
+  ClientsListResponse,
+  JobsListResponse,
+} from "@recruitflow/contracts";
 
 import {
   clientListFiltersToSearchParams,
   type ClientListFilters,
 } from "@/lib/clients/filters";
+import {
+  jobListFiltersToSearchParams,
+  type JobListFilters,
+} from "@/lib/jobs/filters";
 import { fetchJson } from "@/lib/query/fetcher";
 import type { CurrentUserDto, CurrentWorkspaceDto } from "@/lib/query/types";
 
@@ -41,6 +48,24 @@ export const clientsListQueryOptions = (filters: ClientListFilters) =>
 
       return fetchJson<ClientsListResponse>(
         `/api/clients${queryString ? `?${queryString}` : ""}`,
+      );
+    },
+  });
+
+export const jobsListQueryKey = (filters: JobListFilters) =>
+  ["jobs", "list", filters] as const;
+
+export const jobsListQueryOptions = (filters: JobListFilters) =>
+  queryOptions({
+    queryKey: jobsListQueryKey(filters),
+    queryFn: () => {
+      const params = jobListFiltersToSearchParams(filters, {
+        includePageSize: true,
+      });
+      const queryString = params.toString();
+
+      return fetchJson<JobsListResponse>(
+        `/api/jobs${queryString ? `?${queryString}` : ""}`,
       );
     },
   });
