@@ -689,13 +689,12 @@ const JobsListSurface = ({
               </span>
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  RF-22 scope boundary
+                  Jobs intake boundary
                 </p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  This page owns the workspace-scoped jobs list and filter
-                  surface. RF-031 adds create/edit intake forms here, while
-                  stage-template initialization and the full detail overview
-                  remain in later jobs-intake stories.
+                  This page owns the workspace-scoped jobs list, filter surface,
+                  create/edit entry points, and API-backed default stage
+                  initialization. Full job detail remains downstream.
                 </p>
               </div>
             </div>

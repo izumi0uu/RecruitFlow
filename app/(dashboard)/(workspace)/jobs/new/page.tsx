@@ -68,15 +68,15 @@ const NewJobPage = async ({ searchParams }: PageProps) => {
       <WorkspacePageHeader
         kicker="New requisition"
         title="Create job"
-        description="Capture the structured role intake fields that submissions, tasks, and dashboard metrics will later depend on."
+        description="Capture the structured role intake fields and automatically prepare the default submission-stage container."
       />
 
       <Card className="max-w-5xl">
         <CardHeader>
           <CardTitle>Job intake baseline</CardTitle>
           <CardDescription>
-            RF-23 owns the create/edit form. Default submission stages are
-            initialized in RF-24, so this save keeps the job record focused.
+            The API validates client and owner scope, then creates the default
+            stage sequence in the same job creation flow.
           </CardDescription>
         </CardHeader>
         <CardContent>

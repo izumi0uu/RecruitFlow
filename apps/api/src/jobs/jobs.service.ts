@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -16,10 +17,15 @@ import {
 } from "drizzle-orm";
 
 import {
+  apiDefaultJobStageTemplate,
+  type ApiSubmissionStage,
   type JobRecord,
   type JobDetailResponse,
   type JobMutationRequest,
   type JobMutationResponse,
+  type JobStageRecord,
+  type JobStageRepairResponse,
+  type JobStageTemplateSummary,
   type JobsListClientOption,
   type JobsListOwnerOption,
   type JobsListQuery,
@@ -34,6 +40,7 @@ import {
   AuditAction,
   clients,
   jobs,
+  jobStages,
   users,
 } from "@/lib/db/schema";
 
@@ -71,6 +78,19 @@ type JobRecordRow = {
   updatedAt: Date;
 };
 
+type JobStageRow = {
+  createdAt: Date;
+  id: string;
+  isClosedStage: boolean;
+  key: string;
+  label: string;
+  sortOrder: number;
+  updatedAt: Date;
+};
+
+const restrictedStageTemplateMessage =
+  "Coordinators can read job stage templates but cannot repair or initialize them";
+
 const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
 
 const toOptionalDate = (value: string | null | undefined) =>
@@ -98,6 +118,53 @@ const serializeJobRecord = (row: JobRecordRow): JobRecord => ({
   targetFillDate: toIsoString(row.targetFillDate),
   updatedAt: row.updatedAt.toISOString(),
 });
+
+const serializeJobStageRecord = (row: JobStageRow): JobStageRecord => ({
+  ...row,
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
+});
+
+const getMissingStageKeys = (stages: Pick<JobStageRecord, "key">[]) => {
+  const existingKeys = new Set(stages.map((stage) => stage.key));
+
+  return apiDefaultJobStageTemplate
+    .filter((stage) => !existingKeys.has(stage.key))
+    .map((stage) => stage.key);
+};
+
+const buildStageTemplateSummary = (
+  stages: JobStageRecord[],
+): JobStageTemplateSummary => {
+  const missingStageKeys = getMissingStageKeys(stages);
+
+  return {
+    expectedStages: apiDefaultJobStageTemplate.map((stage) => ({ ...stage })),
+    missingStageKeys,
+    repairable: missingStageKeys.length > 0,
+    stages,
+    status: missingStageKeys.length === 0 ? "complete" : "missing",
+  };
+};
+
+const getDefaultStageRows = (input: {
+  jobId: string;
+  keys?: ApiSubmissionStage[];
+  workspaceId: string;
+}) => {
+  const allowedKeys = input.keys ? new Set(input.keys) : null;
+
+  return apiDefaultJobStageTemplate
+    .filter((stage) => allowedKeys == null || allowedKeys.has(stage.key))
+    .map((stage) => ({
+      isClosedStage: stage.isClosedStage,
+      jobId: input.jobId,
+      key: stage.key,
+      label: stage.label,
+      sortOrder: stage.sortOrder,
+      workspaceId: input.workspaceId,
+    }));
+};
 
 const getJobChangedFields = (
   existingJob: JobRecord,
@@ -224,6 +291,12 @@ export class JobsService {
     }
   }
 
+  private assertCanRepairStageTemplate(context: ApiWorkspaceContext) {
+    if (context.membership.role === "coordinator") {
+      throw new ForbiddenException(restrictedStageTemplateMessage);
+    }
+  }
+
   private async selectJobRecord(
     context: ApiWorkspaceContext,
     jobId: string,
@@ -280,10 +353,40 @@ export class JobsService {
     return serializeJobRecord(row);
   }
 
+  private async selectJobStages(
+    context: ApiWorkspaceContext,
+    jobId: string,
+  ): Promise<JobStageRecord[]> {
+    const rows = await db
+      .select({
+        createdAt: jobStages.createdAt,
+        id: jobStages.id,
+        isClosedStage: jobStages.isClosedStage,
+        key: jobStages.key,
+        label: jobStages.label,
+        sortOrder: jobStages.sortOrder,
+        updatedAt: jobStages.updatedAt,
+      })
+      .from(jobStages)
+      .where(
+        and(
+          eq(jobStages.jobId, jobId),
+          eq(jobStages.workspaceId, context.workspace.id),
+        ),
+      )
+      .orderBy(asc(jobStages.sortOrder), asc(jobStages.id));
+
+    return rows.map(serializeJobStageRecord);
+  }
+
   private async buildDetailResponse(
     context: ApiWorkspaceContext,
     job: JobRecord,
   ): Promise<JobDetailResponse> {
+    const stageTemplate = buildStageTemplateSummary(
+      await this.selectJobStages(context, job.id),
+    );
+
     return {
       clientOptions: await this.getClientOptions(context),
       context: {
@@ -293,6 +396,7 @@ export class JobsService {
       contractVersion: "phase-1",
       job,
       ownerOptions: this.getOwnerOptions(context),
+      stageTemplate,
       workspaceScoped: true,
     };
   }
@@ -438,34 +542,45 @@ export class JobsService {
 
     await this.assertClientInWorkspace(context, input.clientId);
 
-    const [createdJob] = await db
-      .insert(jobs)
-      .values({
-        clientId: input.clientId,
-        createdByUserId: actorUserId,
-        currency: normalizeCurrency(input.currency),
-        department: input.department ?? null,
-        description: input.description ?? null,
-        employmentType: input.employmentType ?? null,
-        headcount: input.headcount ?? null,
-        intakeSummary: input.intakeSummary ?? null,
-        location: input.location ?? null,
-        openedAt,
-        ownerUserId,
-        placementFeePercent: input.placementFeePercent ?? null,
-        priority: input.priority,
-        salaryMax: input.salaryMax ?? null,
-        salaryMin: input.salaryMin ?? null,
-        status: input.status,
-        targetFillDate: toOptionalDate(input.targetFillDate),
-        title: input.title,
-        workspaceId,
-      })
-      .returning({ id: jobs.id });
+    const createdJob = await db.transaction(async (tx) => {
+      const [insertedJob] = await tx
+        .insert(jobs)
+        .values({
+          clientId: input.clientId,
+          createdByUserId: actorUserId,
+          currency: normalizeCurrency(input.currency),
+          department: input.department ?? null,
+          description: input.description ?? null,
+          employmentType: input.employmentType ?? null,
+          headcount: input.headcount ?? null,
+          intakeSummary: input.intakeSummary ?? null,
+          location: input.location ?? null,
+          openedAt,
+          ownerUserId,
+          placementFeePercent: input.placementFeePercent ?? null,
+          priority: input.priority,
+          salaryMax: input.salaryMax ?? null,
+          salaryMin: input.salaryMin ?? null,
+          status: input.status,
+          targetFillDate: toOptionalDate(input.targetFillDate),
+          title: input.title,
+          workspaceId,
+        })
+        .returning({ id: jobs.id });
 
-    if (!createdJob) {
-      throw new NotFoundException("Failed to create job");
-    }
+      if (!insertedJob) {
+        throw new NotFoundException("Failed to create job");
+      }
+
+      await tx.insert(jobStages).values(
+        getDefaultStageRows({
+          jobId: insertedJob.id,
+          workspaceId,
+        }),
+      );
+
+      return insertedJob;
+    });
 
     await writeAuditLog({
       action: AuditAction.JOB_CREATED,
@@ -484,11 +599,73 @@ export class JobsService {
       workspaceId,
     });
 
+    await writeAuditLog({
+      action: AuditAction.JOB_STAGE_TEMPLATE_INITIALIZED,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: createdJob.id,
+      entityType: "job",
+      metadata: {
+        mode: "create",
+        stageKeys: apiDefaultJobStageTemplate.map((stage) => stage.key),
+      },
+      source: "api",
+      workspaceId,
+    });
+
     const job = await this.selectJobRecord(context, createdJob.id);
 
     return {
       ...(await this.buildDetailResponse(context, job)),
       message: "Job created successfully",
+    };
+  }
+
+  async repairJobStageTemplate(
+    context: ApiWorkspaceContext,
+    jobId: string,
+  ): Promise<JobStageRepairResponse> {
+    this.assertCanRepairStageTemplate(context);
+
+    const job = await this.selectJobRecord(context, jobId);
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const existingStages = await this.selectJobStages(context, jobId);
+    const missingStageKeys = getMissingStageKeys(existingStages);
+
+    if (missingStageKeys.length > 0) {
+      // TODO(RF-029): Add a DB-level uniqueness guard for jobId + key before
+      // editable stages or concurrent repair actions are exposed broadly.
+      await db.insert(jobStages).values(
+        getDefaultStageRows({
+          jobId,
+          keys: missingStageKeys,
+          workspaceId,
+        }),
+      );
+
+      await writeAuditLog({
+        action: AuditAction.JOB_STAGE_TEMPLATE_INITIALIZED,
+        actorRole: context.membership.role,
+        actorUserId,
+        entityId: jobId,
+        entityType: "job",
+        metadata: {
+          mode: "repair",
+          repairedStageKeys: missingStageKeys,
+        },
+        source: "api",
+        workspaceId,
+      });
+    }
+
+    return {
+      ...(await this.buildDetailResponse(context, job)),
+      message:
+        missingStageKeys.length > 0
+          ? "Job stage template repaired successfully"
+          : "Job stage template is already complete",
+      repairedStageKeys: missingStageKeys,
     };
   }
 
