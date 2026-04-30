@@ -1,7 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,6 +44,8 @@ import {
 } from "@/lib/clients/filters";
 import { clientsListQueryOptions } from "@/lib/query/options";
 import { cn } from "@/lib/utils";
+
+import { ClientCreateDialog } from "./ClientCreateDialog";
 
 type ClientsListSurfaceProps = {
   initialData: ClientsListResponse;
@@ -157,11 +163,13 @@ const ClientsHeaderMetric = ({
 
 const ClientsHeaderSummary = ({
   isFetching,
+  onCreateClient,
   openJobsCount,
   ownerCount,
   totalItems,
 }: {
   isFetching: boolean;
+  onCreateClient: () => void;
   openJobsCount: number;
   ownerCount: number;
   totalItems: number;
@@ -174,11 +182,9 @@ const ClientsHeaderSummary = ({
           Syncing
         </span>
       ) : null}
-      <Button asChild className="rounded-full">
-        <TrackedLink href="/clients/new">
-          <Plus className="size-4" />
-          Create Client
-        </TrackedLink>
+      <Button className="rounded-full" type="button" onClick={onCreateClient}>
+        <Plus className="size-4" />
+        Create Client
       </Button>
     </div>
 
@@ -286,9 +292,11 @@ const ClientRow = ({ client }: { client: ClientsListItem }) => (
 
 const ClientsEmptyState = ({
   hasFilters,
+  onCreateClient,
   onReset,
 }: {
   hasFilters: boolean;
+  onCreateClient: () => void;
   onReset: () => void;
 }) => (
   <div className="rounded-[1.55rem] border border-dashed border-border/75 bg-background/38 px-6 py-14 text-center">
@@ -314,11 +322,13 @@ const ClientsEmptyState = ({
         Reset filters
       </Button>
     ) : (
-      <Button asChild className="mt-6 rounded-full">
-        <TrackedLink href="/clients/new">
-          Create Client
-          <ArrowRight className="size-4" />
-        </TrackedLink>
+      <Button
+        className="mt-6 rounded-full"
+        type="button"
+        onClick={onCreateClient}
+      >
+        Create Client
+        <ArrowRight className="size-4" />
       </Button>
     )}
   </div>
@@ -328,11 +338,13 @@ const ClientsListSurface = ({
   initialData,
   initialFilters,
 }: ClientsListSurfaceProps) => {
+  const queryClient = useQueryClient();
   const normalizedInitialFilters = React.useMemo(
     () => normalizeClientListFilters(initialFilters),
     [initialFilters],
   );
   const [filters, setFilters] = React.useState(normalizedInitialFilters);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
   const [searchDraft, setSearchDraft] = React.useState(
     normalizedInitialFilters.q,
   );
@@ -450,6 +462,12 @@ const ClientsListSurface = ({
     });
   }, [applyFilters]);
 
+  const handleClientCreated = React.useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ["clients", "list"],
+    });
+  }, [queryClient]);
+
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
@@ -460,6 +478,9 @@ const ClientsListSurface = ({
         rightSlot={
           <ClientsHeaderSummary
             isFetching={isFetching}
+            onCreateClient={() => {
+              setIsCreateDialogOpen(true);
+            }}
             openJobsCount={openJobsCount}
             ownerCount={clientsList.ownerOptions.length}
             totalItems={clientsList.pagination.totalItems}
@@ -612,7 +633,13 @@ const ClientsListSurface = ({
                 <ClientRow key={client.id} client={client} />
               ))
             ) : (
-              <ClientsEmptyState hasFilters={hasFilters} onReset={resetFilters} />
+              <ClientsEmptyState
+                hasFilters={hasFilters}
+                onCreateClient={() => {
+                  setIsCreateDialogOpen(true);
+                }}
+                onReset={resetFilters}
+              />
             )}
           </div>
 
@@ -670,6 +697,14 @@ const ClientsListSurface = ({
           </div>
         </CardContent>
       </Card>
+
+      <ClientCreateDialog
+        canManageClientControls={clientsList.context.role !== "coordinator"}
+        onClientCreated={handleClientCreated}
+        onOpenChange={setIsCreateDialogOpen}
+        open={isCreateDialogOpen}
+        ownerOptions={clientsList.ownerOptions}
+      />
     </section>
   );
 };
