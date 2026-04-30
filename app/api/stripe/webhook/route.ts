@@ -2,6 +2,8 @@ import { getInternalApiOrigin, loadRootEnv } from "@recruitflow/config";
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
+// TODO(api-boundary): This route is only a raw-payload proxy while local Stripe
+// webhook tooling still targets Next. Keep all billing state changes in Nest.
 export const POST = async (request: NextRequest) => {
   loadRootEnv();
 

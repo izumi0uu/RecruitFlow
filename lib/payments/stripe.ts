@@ -2,6 +2,8 @@ import Stripe from "stripe";
 
 import { getStripeConfig, loadRootEnv } from "@recruitflow/config";
 
+// TODO(billing-boundary): Keep this root Stripe helper presentation-read only.
+// Billing truth mutations belong in the Nest API billing module.
 loadRootEnv();
 const stripeConfig = getStripeConfig();
 

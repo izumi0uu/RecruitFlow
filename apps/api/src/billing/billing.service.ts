@@ -20,6 +20,8 @@ import type {
 import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
+// TODO(api-boundary): Replace root billing/audit helpers with API-owned
+// providers when the remaining starter compatibility layer is removed.
 import { writeAuditLog } from "@/lib/db/audit";
 import {
   AuditAction,
@@ -336,6 +338,8 @@ export class BillingService {
       stripeConfig.webhookSecret,
     );
 
+    // TODO(billing-hardening): Persist processed Stripe event ids so duplicate
+    // webhook deliveries become idempotent instead of producing repeat audits.
     switch (event.type) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
