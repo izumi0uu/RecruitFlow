@@ -149,6 +149,58 @@ export const apiSubmissionStageValues = [
 
 export type ApiSubmissionStage = (typeof apiSubmissionStageValues)[number];
 
+export interface ApiJobStageTemplateItem {
+  isClosedStage: boolean;
+  key: ApiSubmissionStage;
+  label: string;
+  sortOrder: number;
+}
+
+export const apiDefaultJobStageTemplate = [
+  {
+    isClosedStage: false,
+    key: "sourced",
+    label: "Sourced",
+    sortOrder: 1,
+  },
+  {
+    isClosedStage: false,
+    key: "screening",
+    label: "Screening",
+    sortOrder: 2,
+  },
+  {
+    isClosedStage: false,
+    key: "submitted",
+    label: "Submitted",
+    sortOrder: 3,
+  },
+  {
+    isClosedStage: false,
+    key: "client_interview",
+    label: "Client Interview",
+    sortOrder: 4,
+  },
+  {
+    isClosedStage: false,
+    key: "offer",
+    label: "Offer",
+    sortOrder: 5,
+  },
+  {
+    isClosedStage: true,
+    key: "placed",
+    label: "Placed",
+    sortOrder: 6,
+  },
+  {
+    isClosedStage: true,
+    key: "lost",
+    label: "Lost",
+    sortOrder: 7,
+  },
+] as const satisfies readonly ApiJobStageTemplateItem[];
+
 export const apiRiskFlagValues = [
   "none",
   "timing_risk",
@@ -530,6 +582,26 @@ export interface JobRecord {
 
 export type JobsListItem = JobRecord;
 
+export interface JobStageRecord {
+  createdAt: string;
+  id: string;
+  isClosedStage: boolean;
+  key: string;
+  label: string;
+  sortOrder: number;
+  updatedAt: string;
+}
+
+export type JobStageTemplateStatus = "complete" | "missing";
+
+export interface JobStageTemplateSummary {
+  expectedStages: ApiJobStageTemplateItem[];
+  missingStageKeys: ApiSubmissionStage[];
+  repairable: boolean;
+  stages: JobStageRecord[];
+  status: JobStageTemplateStatus;
+}
+
 export interface JobsListResponse {
   clientOptions: JobsListClientOption[];
   context: ApiCrmPlaceholderContext;
@@ -560,11 +632,17 @@ export interface JobDetailResponse {
   contractVersion: "phase-1";
   job: JobRecord;
   ownerOptions: JobsListOwnerOption[];
+  stageTemplate: JobStageTemplateSummary;
   workspaceScoped: true;
 }
 
 export interface JobMutationResponse extends JobDetailResponse {
   message: string;
+}
+
+export interface JobStageRepairResponse extends JobDetailResponse {
+  message: string;
+  repairedStageKeys: ApiSubmissionStage[];
 }
 
 export const candidatesListQuerySchema = apiCollectionQuerySchema.extend({

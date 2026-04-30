@@ -1,6 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 
-import type { JobDetailResponse } from "@recruitflow/contracts";
+import type {
+  JobDetailResponse,
+  JobStageTemplateSummary,
+} from "@recruitflow/contracts";
 
 import {
   Card,
@@ -9,10 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import { updateJobAction } from "../../actions";
+import {
+  repairJobStageTemplateAction,
+  updateJobAction,
+} from "../../actions";
 import {
   buildJobFormValues,
   formatDateInputValue,
@@ -27,6 +34,87 @@ type PageProps = {
   searchParams?:
     | Promise<Record<string, string | string[] | undefined>>
     | Record<string, string | string[] | undefined>;
+};
+
+const StageTemplateCard = ({
+  canRepair,
+  jobId,
+  stageTemplate,
+}: {
+  canRepair: boolean;
+  jobId: string;
+  stageTemplate: JobStageTemplateSummary;
+}) => {
+  const labelsByKey = new Map(
+    stageTemplate.expectedStages.map((stage) => [stage.key, stage.label]),
+  );
+  const missingLabels = stageTemplate.missingStageKeys.map(
+    (key) => labelsByKey.get(key) ?? key,
+  );
+
+  return (
+    <Card className="max-w-5xl">
+      <CardHeader>
+        <CardTitle>Default stage template</CardTitle>
+        <CardDescription>
+          RF-24 keeps every job aligned to the shared submission-stage contract
+          before the pipeline branch consumes it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {stageTemplate.expectedStages.map((stage) => {
+            const isPresent = stageTemplate.stages.some(
+              (existingStage) => existingStage.key === stage.key,
+            );
+
+            return (
+              <span
+                key={stage.key}
+                className={
+                  isPresent
+                    ? "rounded-full border border-border/70 bg-surface-1 px-3 py-1 text-xs font-medium text-foreground"
+                    : "rounded-full border border-amber-300/70 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900"
+                }
+              >
+                {stage.sortOrder}. {stage.label}
+              </span>
+            );
+          })}
+        </div>
+
+        {stageTemplate.status === "complete" ? (
+          <p className="text-sm leading-6 text-muted-foreground">
+            This job has the full default stage sequence. The submission branch
+            can rely on this job as a stable pipeline container.
+          </p>
+        ) : (
+          <div className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 p-4 text-amber-950">
+            <p className="text-sm font-semibold">
+              Stage template needs repair.
+            </p>
+            <p className="mt-2 text-sm leading-6">
+              Missing stages: {missingLabels.join(", ")}. Repair inserts only
+              missing default rows and keeps existing rows untouched.
+            </p>
+            {canRepair ? (
+              <form action={repairJobStageTemplateAction} className="mt-4">
+                <input type="hidden" name="jobId" value={jobId} />
+                <Button type="submit" size="sm" className="rounded-full">
+                  Repair default stages
+                </Button>
+              </form>
+            ) : (
+              <p className="mt-3 text-xs leading-5">
+                Coordinators can see this warning, but an owner or recruiter
+                must repair the stage template.
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 };
 
 const getJobForEdit = async (jobId: string) => {
@@ -56,14 +144,20 @@ const hasCreatedFlag = (params: Record<string, string | string[] | undefined>) =
 const EditJobPage = async ({ params, searchParams }: PageProps) => {
   const { jobId } = await params;
   const urlParams = await Promise.resolve(searchParams ?? {});
-  const { clientOptions, job, ownerOptions } = await getJobForEdit(jobId);
+  const {
+    clientOptions,
+    context,
+    job,
+    ownerOptions,
+    stageTemplate,
+  } = await getJobForEdit(jobId);
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
         kicker="Job maintenance"
         title={`Edit ${job.title}`}
-        description="Update the structured requisition baseline without crossing into stage-template initialization or full job detail composition."
+        description="Update the structured requisition baseline and verify the default stage container that downstream submissions will use."
       />
 
       {hasCreatedFlag(urlParams) ? (
@@ -72,6 +166,12 @@ const EditJobPage = async ({ params, searchParams }: PageProps) => {
           now this edit screen is the stable post-save checkpoint.
         </p>
       ) : null}
+
+      <StageTemplateCard
+        canRepair={context.role !== "coordinator"}
+        jobId={job.id}
+        stageTemplate={stageTemplate}
+      />
 
       <Card className="max-w-5xl">
         <CardHeader>

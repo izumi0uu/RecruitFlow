@@ -198,6 +198,13 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
+    description: "Repair missing default stage rows for one workspace-scoped job.",
+    method: "POST",
+    owner: "api",
+    path: "/jobs/:jobId/stages/repair",
+  },
+  {
+    auth: "session",
     description: "Workspace-scoped placeholder for Wave 2 candidates implementation.",
     method: "GET",
     owner: "api",

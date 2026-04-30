@@ -16,6 +16,7 @@ import {
   jobsListQuerySchema,
   type JobDetailResponse,
   type JobMutationResponse,
+  type JobStageRepairResponse,
   type JobsListResponse,
 } from "@recruitflow/contracts";
 
@@ -81,6 +82,26 @@ export class JobsController {
     }
 
     return this.jobsService.createJob(context, parsedBody.data);
+  }
+
+  @Post(":jobId/stages/repair")
+  @RequireWorkspaceRole({ allowedRoles: ["owner", "recruiter"] })
+  repairJobStageTemplate(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+  ): Promise<JobStageRepairResponse> {
+    const parsedParams = jobParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid job id",
+      );
+    }
+
+    return this.jobsService.repairJobStageTemplate(
+      context,
+      parsedParams.data.jobId,
+    );
   }
 
   @Patch(":jobId")

@@ -9,6 +9,7 @@ import {
   type ApiJobPriority,
   type ApiJobStatus,
   type JobMutationResponse,
+  type JobStageRepairResponse,
 } from "@recruitflow/contracts";
 
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
@@ -187,4 +188,33 @@ export const updateJobAction = async (
   revalidatePath("/jobs");
   revalidatePath(`/jobs/${parsedParams.data.jobId}/edit`);
   redirect("/jobs");
+};
+
+export const repairJobStageTemplateAction = async (formData: FormData) => {
+  const parsedParams = jobParamsSchema.safeParse({
+    jobId: getString(formData.get("jobId")),
+  });
+
+  if (!parsedParams.success) {
+    throw new Error("Job id is missing or invalid.");
+  }
+
+  try {
+    await requestApiJson<JobStageRepairResponse>(
+      `/jobs/${parsedParams.data.jobId}/stages/repair`,
+      {
+        method: "POST",
+      },
+    );
+  } catch (error) {
+    if (isApiRequestError(error) && error.status === 401) {
+      redirect("/sign-in");
+    }
+
+    throw error;
+  }
+
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${parsedParams.data.jobId}/edit`);
+  redirect(`/jobs/${parsedParams.data.jobId}/edit`);
 };
