@@ -1,21 +1,25 @@
 import type { NextRequest } from "next/server";
 
 import type {
+  JobDetailResponse,
   JobMutationResponse,
-  JobsListResponse,
 } from "@recruitflow/contracts";
 
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-export const GET = async (request: NextRequest) => {
-  const queryString = request.nextUrl.searchParams.toString();
+type RouteContext = {
+  params: Promise<{
+    jobId: string;
+  }>;
+};
+
+export const GET = async (_request: NextRequest, context: RouteContext) => {
+  const { jobId } = await context.params;
 
   try {
-    const jobs = await requestApiJson<JobsListResponse>(
-      `/jobs${queryString ? `?${queryString}` : ""}`,
-    );
+    const job = await requestApiJson<JobDetailResponse>(`/jobs/${jobId}`);
 
-    return Response.json(jobs);
+    return Response.json(job);
   } catch (error) {
     if (isApiRequestError(error)) {
       return Response.json(
@@ -28,15 +32,17 @@ export const GET = async (request: NextRequest) => {
   }
 };
 
-export const POST = async (request: NextRequest) => {
+export const PATCH = async (request: NextRequest, context: RouteContext) => {
+  const { jobId } = await context.params;
+
   try {
     const payload = await request.json();
-    const job = await requestApiJson<JobMutationResponse>("/jobs", {
-      method: "POST",
+    const job = await requestApiJson<JobMutationResponse>(`/jobs/${jobId}`, {
+      method: "PATCH",
       json: payload,
     });
 
-    return Response.json(job, { status: 201 });
+    return Response.json(job);
   } catch (error) {
     if (isApiRequestError(error)) {
       return Response.json(

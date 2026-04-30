@@ -1,0 +1,359 @@
+"use client";
+
+import { useActionState } from "react";
+import { Loader2 } from "lucide-react";
+
+import {
+  apiJobPriorityValues,
+  apiJobStatusValues,
+  type ApiJobPriority,
+  type ApiJobStatus,
+  type JobsListClientOption,
+  type JobsListOwnerOption,
+} from "@recruitflow/contracts";
+
+import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+
+import type {
+  JobFormState,
+  JobFormValues,
+} from "./actions";
+
+type JobFormAction = (
+  previousState: JobFormState,
+  formData: FormData,
+) => Promise<JobFormState>;
+
+type JobFormProps = {
+  action: JobFormAction;
+  clientOptions: JobsListClientOption[];
+  initialValues: JobFormValues;
+  jobId?: string;
+  mode: "create" | "edit";
+  ownerOptions: JobsListOwnerOption[];
+};
+
+const statusLabelMap: Record<ApiJobStatus, string> = {
+  closed: "Closed",
+  filled: "Filled",
+  intake: "Intake",
+  on_hold: "On hold",
+  open: "Open",
+};
+
+const priorityLabelMap: Record<ApiJobPriority, string> = {
+  high: "High",
+  low: "Low",
+  medium: "Medium",
+  urgent: "Urgent",
+};
+
+export const emptyJobFormValues: JobFormValues = {
+  clientId: "",
+  currency: "USD",
+  department: "",
+  description: "",
+  employmentType: "",
+  headcount: "1",
+  intakeSummary: "",
+  location: "",
+  ownerUserId: "",
+  placementFeePercent: "",
+  priority: "medium",
+  salaryMax: "",
+  salaryMin: "",
+  status: "intake",
+  targetFillDate: "",
+  title: "",
+};
+
+const formatNumberValue = (value: number | null | undefined) =>
+  value == null ? "" : String(value);
+
+export const formatDateInputValue = (value: string | null | undefined) =>
+  value ? value.slice(0, 10) : "";
+
+export const buildJobFormValues = (
+  values: Partial<JobFormValues>,
+): JobFormValues => ({
+  ...emptyJobFormValues,
+  ...values,
+});
+
+export const numericJobFormValue = formatNumberValue;
+
+export const JobForm = ({
+  action,
+  clientOptions,
+  initialValues,
+  jobId,
+  mode,
+  ownerOptions,
+}: JobFormProps) => {
+  const [state, formAction, isPending] = useActionState<
+    JobFormState,
+    FormData
+  >(action, {});
+  const values = {
+    ...initialValues,
+    ...(state.values ?? {}),
+  };
+  const hasClients = clientOptions.length > 0;
+
+  return (
+    <form action={formAction} className="space-y-6">
+      {jobId ? <input type="hidden" name="jobId" value={jobId} /> : null}
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="space-y-2 lg:col-span-2">
+          <Label htmlFor="title">Job title</Label>
+          <Input
+            id="title"
+            name="title"
+            placeholder="Senior Full Stack Engineer"
+            defaultValue={values.title}
+            required
+          />
+          <p className="text-xs leading-5 text-muted-foreground">
+            Use the client-facing role name. Downstream submission and
+            dashboard surfaces will inherit this label.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="clientId">Client</Label>
+          <select
+            id="clientId"
+            className="input"
+            name="clientId"
+            defaultValue={values.clientId}
+            disabled={!hasClients}
+            required
+          >
+            <option value="" disabled>
+              {hasClients ? "Select client" : "Create a client first"}
+            </option>
+            {clientOptions.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ownerUserId">Job owner</Label>
+          <select
+            id="ownerUserId"
+            className="input"
+            name="ownerUserId"
+            defaultValue={values.ownerUserId}
+            required
+          >
+            <option value="" disabled>
+              Select owner
+            </option>
+            {ownerOptions.map((owner) => (
+              <option key={owner.id} value={owner.id}>
+                {owner.name ?? owner.email}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <select
+            id="status"
+            className="input"
+            name="status"
+            defaultValue={values.status}
+            required
+          >
+            {apiJobStatusValues.map((status) => (
+              <option key={status} value={status}>
+                {statusLabelMap[status]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="priority">Priority</Label>
+          <select
+            id="priority"
+            className="input"
+            name="priority"
+            defaultValue={values.priority}
+            required
+          >
+            {apiJobPriorityValues.map((priority) => (
+              <option key={priority} value={priority}>
+                {priorityLabelMap[priority]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="department">Department</Label>
+          <Input
+            id="department"
+            name="department"
+            placeholder="Engineering"
+            defaultValue={values.department}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            name="location"
+            placeholder="Austin, TX or Remote"
+            defaultValue={values.location}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="employmentType">Employment type</Label>
+          <Input
+            id="employmentType"
+            name="employmentType"
+            placeholder="Full-time"
+            defaultValue={values.employmentType}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="headcount">Headcount</Label>
+          <Input
+            id="headcount"
+            name="headcount"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            defaultValue={values.headcount}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="salaryMin">Salary minimum</Label>
+          <Input
+            id="salaryMin"
+            name="salaryMin"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            placeholder="140000"
+            defaultValue={values.salaryMin}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="salaryMax">Salary maximum</Label>
+          <Input
+            id="salaryMax"
+            name="salaryMax"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            placeholder="180000"
+            defaultValue={values.salaryMax}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="currency">Currency</Label>
+          <Input
+            id="currency"
+            name="currency"
+            placeholder="USD"
+            defaultValue={values.currency}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="placementFeePercent">Placement fee %</Label>
+          <Input
+            id="placementFeePercent"
+            name="placementFeePercent"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            placeholder="20"
+            defaultValue={values.placementFeePercent}
+          />
+        </div>
+
+        <div className="space-y-2 lg:col-span-2">
+          <Label htmlFor="targetFillDate">Target fill date</Label>
+          <Input
+            id="targetFillDate"
+            name="targetFillDate"
+            type="date"
+            defaultValue={values.targetFillDate}
+          />
+        </div>
+
+        <div className="space-y-2 lg:col-span-2">
+          <Label htmlFor="intakeSummary">Intake summary</Label>
+          <textarea
+            id="intakeSummary"
+            className="input min-h-28 resize-y py-3"
+            name="intakeSummary"
+            placeholder="The crisp hiring context: why now, must-have skills, interview shape, and placement urgency."
+            defaultValue={values.intakeSummary}
+          />
+        </div>
+
+        <div className="space-y-2 lg:col-span-2">
+          <Label htmlFor="description">Role description</Label>
+          <textarea
+            id="description"
+            className="input min-h-36 resize-y py-3"
+            name="description"
+            placeholder="Paste the working JD or internal role notes here. RF-070+ can summarize it later without blocking the basic intake record."
+            defaultValue={values.description}
+          />
+        </div>
+      </div>
+
+      {state.error ? (
+        <p className="status-message status-error">{state.error}</p>
+      ) : null}
+
+      {!hasClients ? (
+        <p className="status-message border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+          Jobs need a client first. Create a client, then return here to attach
+          the requisition to the right account.
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="submit"
+          className="rounded-full"
+          disabled={isPending || !hasClients}
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Saving...
+            </>
+          ) : mode === "create" ? (
+            "Create job"
+          ) : (
+            "Save job"
+          )}
+        </Button>
+        <Button asChild type="button" variant="outline" className="rounded-full">
+          <TrackedLink href="/jobs">Cancel</TrackedLink>
+        </Button>
+      </div>
+    </form>
+  );
+};

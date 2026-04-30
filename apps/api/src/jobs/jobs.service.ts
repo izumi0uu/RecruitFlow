@@ -1,4 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import {
   and,
   asc,
@@ -13,6 +17,9 @@ import {
 
 import {
   type JobRecord,
+  type JobDetailResponse,
+  type JobMutationRequest,
+  type JobMutationResponse,
   type JobsListClientOption,
   type JobsListOwnerOption,
   type JobsListQuery,
@@ -22,7 +29,9 @@ import {
 import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
+import { writeAuditLog } from "@/lib/db/audit";
 import {
+  AuditAction,
   clients,
   jobs,
   users,
@@ -41,7 +50,9 @@ type JobRecordRow = {
   client: JobsListClientOption | null;
   clientId: string;
   createdAt: Date;
+  currency: string | null;
   department: string | null;
+  description: string | null;
   employmentType: string | null;
   headcount: number | null;
   id: string;
@@ -50,6 +61,7 @@ type JobRecordRow = {
   openedAt: Date | null;
   owner: JobsListOwnerOption | null;
   ownerUserId: string | null;
+  placementFeePercent: number | null;
   priority: JobRecord["priority"];
   salaryMax: number | null;
   salaryMin: number | null;
@@ -61,10 +73,19 @@ type JobRecordRow = {
 
 const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
 
+const toOptionalDate = (value: string | null | undefined) =>
+  value ? new Date(`${value}T00:00:00.000Z`) : null;
+
 const normalizeTextFilter = (value: string | undefined) => {
   const normalizedValue = value?.trim();
 
   return normalizedValue ? normalizedValue : null;
+};
+
+const normalizeCurrency = (value: string | null | undefined) => {
+  const normalizedValue = value?.trim().toUpperCase();
+
+  return normalizedValue ? normalizedValue : "USD";
 };
 
 const serializeJobRecord = (row: JobRecordRow): JobRecord => ({
@@ -77,6 +98,39 @@ const serializeJobRecord = (row: JobRecordRow): JobRecord => ({
   targetFillDate: toIsoString(row.targetFillDate),
   updatedAt: row.updatedAt.toISOString(),
 });
+
+const getJobChangedFields = (
+  existingJob: JobRecord,
+  nextValues: {
+    clientId: string;
+    currency: string | null;
+    department: string | null;
+    description: string | null;
+    employmentType: string | null;
+    headcount: number | null;
+    intakeSummary: string | null;
+    location: string | null;
+    ownerUserId: string;
+    placementFeePercent: number | null;
+    priority: JobRecord["priority"];
+    salaryMax: number | null;
+    salaryMin: number | null;
+    status: JobRecord["status"];
+    targetFillDate: Date | null;
+    title: string;
+  },
+) =>
+  Object.entries(nextValues)
+    .filter(([field, value]) => {
+      const existingValue = existingJob[field as keyof JobRecord];
+
+      if (value instanceof Date) {
+        return existingValue !== value.toISOString();
+      }
+
+      return existingValue !== value;
+    })
+    .map(([field]) => field);
 
 const getJobsOrderBy = (sort: JobsListQuery["sort"]) => {
   switch (sort) {
@@ -128,6 +182,119 @@ export class JobsService {
         ),
       )
       .orderBy(asc(clients.name), asc(clients.id));
+  }
+
+  private resolveOwnerUserId(
+    context: ApiWorkspaceContext,
+    ownerUserId: string,
+  ) {
+    const ownerBelongsToWorkspace = context.workspace.memberships.some(
+      (membership) => membership.userId === ownerUserId,
+    );
+
+    if (!ownerBelongsToWorkspace) {
+      throw new BadRequestException(
+        "Job owner must be a member of the current workspace",
+      );
+    }
+
+    return ownerUserId;
+  }
+
+  private async assertClientInWorkspace(
+    context: ApiWorkspaceContext,
+    clientId: string,
+  ) {
+    const [client] = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(
+        and(
+          eq(clients.id, clientId),
+          eq(clients.workspaceId, context.workspace.id),
+          isNull(clients.archivedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!client) {
+      throw new BadRequestException(
+        "Job client must belong to the current workspace",
+      );
+    }
+  }
+
+  private async selectJobRecord(
+    context: ApiWorkspaceContext,
+    jobId: string,
+  ) {
+    const [row] = await db
+      .select({
+        archivedAt: jobs.archivedAt,
+        client: {
+          id: clients.id,
+          name: clients.name,
+        },
+        clientId: jobs.clientId,
+        createdAt: jobs.createdAt,
+        currency: jobs.currency,
+        department: jobs.department,
+        description: jobs.description,
+        employmentType: jobs.employmentType,
+        headcount: jobs.headcount,
+        id: jobs.id,
+        intakeSummary: jobs.intakeSummary,
+        location: jobs.location,
+        openedAt: jobs.openedAt,
+        owner: {
+          email: users.email,
+          id: users.id,
+          name: users.name,
+        },
+        ownerUserId: jobs.ownerUserId,
+        placementFeePercent: jobs.placementFeePercent,
+        priority: jobs.priority,
+        salaryMax: jobs.salaryMax,
+        salaryMin: jobs.salaryMin,
+        status: jobs.status,
+        targetFillDate: jobs.targetFillDate,
+        title: jobs.title,
+        updatedAt: jobs.updatedAt,
+      })
+      .from(jobs)
+      .leftJoin(clients, eq(jobs.clientId, clients.id))
+      .leftJoin(users, eq(jobs.ownerUserId, users.id))
+      .where(
+        and(
+          eq(jobs.id, jobId),
+          eq(jobs.workspaceId, context.workspace.id),
+          isNull(jobs.archivedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new NotFoundException("Job not found");
+    }
+
+    return serializeJobRecord(row);
+  }
+
+  private async buildDetailResponse(
+    context: ApiWorkspaceContext,
+    job: JobRecord,
+  ): Promise<JobDetailResponse> {
+    return {
+      clientOptions: await this.getClientOptions(context),
+      context: {
+        role: context.membership.role,
+        workspaceId: context.workspace.id,
+      },
+      contractVersion: "phase-1",
+      job,
+      ownerOptions: this.getOwnerOptions(context),
+      workspaceScoped: true,
+    };
   }
 
   async listJobs(
@@ -190,7 +357,9 @@ export class JobsService {
         },
         clientId: jobs.clientId,
         createdAt: jobs.createdAt,
+        currency: jobs.currency,
         department: jobs.department,
+        description: jobs.description,
         employmentType: jobs.employmentType,
         headcount: jobs.headcount,
         id: jobs.id,
@@ -203,6 +372,7 @@ export class JobsService {
           name: users.name,
         },
         ownerUserId: jobs.ownerUserId,
+        placementFeePercent: jobs.placementFeePercent,
         priority: jobs.priority,
         salaryMax: jobs.salaryMax,
         salaryMin: jobs.salaryMin,
@@ -245,6 +415,169 @@ export class JobsService {
         totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
       },
       workspaceScoped: true,
+    };
+  }
+
+  async getJob(
+    context: ApiWorkspaceContext,
+    jobId: string,
+  ): Promise<JobDetailResponse> {
+    const job = await this.selectJobRecord(context, jobId);
+
+    return this.buildDetailResponse(context, job);
+  }
+
+  async createJob(
+    context: ApiWorkspaceContext,
+    input: JobMutationRequest,
+  ): Promise<JobMutationResponse> {
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const ownerUserId = this.resolveOwnerUserId(context, input.ownerUserId);
+    const openedAt = input.status === "intake" ? null : new Date();
+
+    await this.assertClientInWorkspace(context, input.clientId);
+
+    const [createdJob] = await db
+      .insert(jobs)
+      .values({
+        clientId: input.clientId,
+        createdByUserId: actorUserId,
+        currency: normalizeCurrency(input.currency),
+        department: input.department ?? null,
+        description: input.description ?? null,
+        employmentType: input.employmentType ?? null,
+        headcount: input.headcount ?? null,
+        intakeSummary: input.intakeSummary ?? null,
+        location: input.location ?? null,
+        openedAt,
+        ownerUserId,
+        placementFeePercent: input.placementFeePercent ?? null,
+        priority: input.priority,
+        salaryMax: input.salaryMax ?? null,
+        salaryMin: input.salaryMin ?? null,
+        status: input.status,
+        targetFillDate: toOptionalDate(input.targetFillDate),
+        title: input.title,
+        workspaceId,
+      })
+      .returning({ id: jobs.id });
+
+    if (!createdJob) {
+      throw new NotFoundException("Failed to create job");
+    }
+
+    await writeAuditLog({
+      action: AuditAction.JOB_CREATED,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: createdJob.id,
+      entityType: "job",
+      metadata: {
+        clientId: input.clientId,
+        jobTitle: input.title,
+        ownerUserId,
+        priority: input.priority,
+        status: input.status,
+      },
+      source: "api",
+      workspaceId,
+    });
+
+    const job = await this.selectJobRecord(context, createdJob.id);
+
+    return {
+      ...(await this.buildDetailResponse(context, job)),
+      message: "Job created successfully",
+    };
+  }
+
+  async updateJob(
+    context: ApiWorkspaceContext,
+    jobId: string,
+    input: JobMutationRequest,
+  ): Promise<JobMutationResponse> {
+    const existingJob = await this.selectJobRecord(context, jobId);
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const ownerUserId = this.resolveOwnerUserId(context, input.ownerUserId);
+    const openedAt =
+      existingJob.openedAt == null && input.status !== "intake"
+        ? new Date()
+        : existingJob.openedAt
+          ? new Date(existingJob.openedAt)
+          : null;
+    const nextValues = {
+      clientId: input.clientId,
+      currency: normalizeCurrency(input.currency),
+      department: input.department ?? null,
+      description: input.description ?? null,
+      employmentType: input.employmentType ?? null,
+      headcount: input.headcount ?? null,
+      intakeSummary: input.intakeSummary ?? null,
+      location: input.location ?? null,
+      ownerUserId,
+      placementFeePercent: input.placementFeePercent ?? null,
+      priority: input.priority,
+      salaryMax: input.salaryMax ?? null,
+      salaryMin: input.salaryMin ?? null,
+      status: input.status,
+      targetFillDate: toOptionalDate(input.targetFillDate),
+      title: input.title,
+    };
+    const changedFields = getJobChangedFields(existingJob, nextValues);
+
+    await this.assertClientInWorkspace(context, input.clientId);
+
+    await db
+      .update(jobs)
+      .set({
+        ...nextValues,
+        openedAt,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(jobs.id, jobId), eq(jobs.workspaceId, workspaceId)));
+
+    await writeAuditLog({
+      action: AuditAction.JOB_UPDATED,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: jobId,
+      entityType: "job",
+      metadata: {
+        changedFields,
+        clientId: input.clientId,
+        jobTitle: input.title,
+        ownerUserId,
+        priority: input.priority,
+        status: input.status,
+      },
+      source: "api",
+      workspaceId,
+    });
+
+    if (existingJob.status !== input.status) {
+      await writeAuditLog({
+        action: AuditAction.JOB_STATUS_CHANGED,
+        actorRole: context.membership.role,
+        actorUserId,
+        entityId: jobId,
+        entityType: "job",
+        metadata: {
+          from: existingJob.status,
+          jobTitle: input.title,
+          to: input.status,
+        },
+        source: "api",
+        workspaceId,
+      });
+    }
+
+    const job = await this.selectJobRecord(context, jobId);
+
+    return {
+      ...(await this.buildDetailResponse(context, job)),
+      message: "Job updated successfully",
     };
   }
 }

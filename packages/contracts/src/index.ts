@@ -186,6 +186,58 @@ const optionalTrimmedTextSchema = (maxLength: number) =>
     z.string().max(maxLength).nullable().optional(),
   );
 
+const optionalIntegerSchema = (message: string) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value === "string") {
+        const trimmedValue = value.trim();
+
+        if (!trimmedValue) {
+          return null;
+        }
+
+        return Number(trimmedValue);
+      }
+
+      return value ?? null;
+    },
+    z.number().int(message).min(0, message).nullable().optional(),
+  );
+
+const optionalCurrencyCodeSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value ?? null;
+    }
+
+    const trimmedValue = value.trim();
+
+    return trimmedValue.length > 0 ? trimmedValue.toUpperCase() : null;
+  },
+  z
+    .string()
+    .regex(/^[A-Z]{3}$/, "Currency must use a 3-letter code")
+    .nullable()
+    .optional(),
+);
+
+const optionalDateInputSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value ?? null;
+    }
+
+    const trimmedValue = value.trim();
+
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  },
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must use YYYY-MM-DD format")
+    .nullable()
+    .optional(),
+);
+
 const optionalWebsiteSchema = z.preprocess(
   (value) => {
     if (typeof value !== "string") {
@@ -396,6 +448,49 @@ export const jobsListQuerySchema = apiCollectionQuerySchema.extend({
 
 export type JobsListQuery = z.infer<typeof jobsListQuerySchema>;
 
+export const jobParamsSchema = z.object({
+  jobId: z.string().uuid(),
+});
+
+export type JobParams = z.infer<typeof jobParamsSchema>;
+
+export const jobMutationRequestSchema = z
+  .object({
+    clientId: z.string().uuid("Client is required"),
+    currency: optionalCurrencyCodeSchema,
+    department: optionalTrimmedTextSchema(120),
+    description: optionalTrimmedTextSchema(8000),
+    employmentType: optionalTrimmedTextSchema(80),
+    headcount: optionalIntegerSchema("Headcount must be a whole number"),
+    intakeSummary: optionalTrimmedTextSchema(4000),
+    location: optionalTrimmedTextSchema(160),
+    ownerUserId: z.string().uuid("Job owner is required"),
+    placementFeePercent: optionalIntegerSchema(
+      "Placement fee must be a whole number",
+    ),
+    priority: z.enum(apiJobPriorityValues).default("medium"),
+    salaryMax: optionalIntegerSchema("Maximum salary must be a whole number"),
+    salaryMin: optionalIntegerSchema("Minimum salary must be a whole number"),
+    status: z.enum(apiJobStatusValues).default("intake"),
+    targetFillDate: optionalDateInputSchema,
+    title: z.string().trim().min(1, "Job title is required").max(180),
+  })
+  .superRefine((input, context) => {
+    if (
+      input.salaryMin != null &&
+      input.salaryMax != null &&
+      input.salaryMax < input.salaryMin
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Maximum salary must be greater than minimum salary",
+        path: ["salaryMax"],
+      });
+    }
+  });
+
+export type JobMutationRequest = z.infer<typeof jobMutationRequestSchema>;
+
 export interface JobsListClientOption {
   id: string;
   name: string;
@@ -412,7 +507,9 @@ export interface JobRecord {
   client: JobsListClientOption | null;
   clientId: string;
   createdAt: string;
+  currency: string | null;
   department: string | null;
+  description: string | null;
   employmentType: string | null;
   headcount: number | null;
   id: string;
@@ -421,6 +518,7 @@ export interface JobRecord {
   openedAt: string | null;
   owner: JobsListOwnerOption | null;
   ownerUserId: string | null;
+  placementFeePercent: number | null;
   priority: ApiJobPriority;
   salaryMax: number | null;
   salaryMin: number | null;
@@ -454,6 +552,19 @@ export interface JobsListResponse {
     totalPages: number;
   };
   workspaceScoped: true;
+}
+
+export interface JobDetailResponse {
+  clientOptions: JobsListClientOption[];
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  job: JobRecord;
+  ownerOptions: JobsListOwnerOption[];
+  workspaceScoped: true;
+}
+
+export interface JobMutationResponse extends JobDetailResponse {
+  message: string;
 }
 
 export const candidatesListQuerySchema = apiCollectionQuerySchema.extend({
