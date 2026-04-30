@@ -19,35 +19,48 @@ type FilterSelectOption = {
 type FilterSelectProps = {
   className?: string;
   defaultValue?: string | null;
-  name: string;
+  disabled?: boolean;
+  name?: string;
+  onValueChange?: (value: string) => void;
   options: FilterSelectOption[];
   placeholder: string;
+  value?: string | null;
 };
 
 const FilterSelect = ({
   className,
   defaultValue,
+  disabled = false,
   name,
+  onValueChange,
   options,
   placeholder,
+  value: controlledValue,
 }: FilterSelectProps) => {
-  const [value, setValue] = React.useState(defaultValue ?? "");
+  const [uncontrolledValue, setUncontrolledValue] = React.useState(
+    defaultValue ?? "",
+  );
+  const isControlled = controlledValue !== undefined;
+  const value = isControlled ? (controlledValue ?? "") : uncontrolledValue;
 
   React.useEffect(() => {
-    setValue(defaultValue ?? "");
-  }, [defaultValue]);
+    if (isControlled) return;
+
+    setUncontrolledValue(defaultValue ?? "");
+  }, [defaultValue, isControlled]);
 
   const selectedOption = options.find((option) => option.value === value);
 
   return (
     <>
-      <input name={name} type="hidden" value={value} />
+      {name ? <input name={name} type="hidden" value={value} /> : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
+            disabled={disabled}
             className={cn(
-              "input cursor-pointer items-center justify-between gap-3 pr-3 text-left",
+              "input cursor-pointer items-center justify-between gap-3 pr-3 text-left disabled:cursor-not-allowed disabled:opacity-60",
               className,
             )}
           >
@@ -73,7 +86,11 @@ const FilterSelect = ({
                     "bg-workspace-muted-surface text-foreground ring-1 ring-border/70 focus:bg-workspace-muted-surface focus:text-foreground",
                 )}
                 onSelect={() => {
-                  setValue(option.value);
+                  if (!isControlled) {
+                    setUncontrolledValue(option.value);
+                  }
+
+                  onValueChange?.(option.value);
                 }}
               >
                 <Check
