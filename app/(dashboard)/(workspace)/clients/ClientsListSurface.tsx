@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -148,6 +147,32 @@ const buildUrlFromFilters = (filters: ClientListFilters) => {
   const queryString = clientListFiltersToSearchParams(filters).toString();
 
   return `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
+};
+
+const canUsePreviousClientListData = (
+  previousFilters: unknown,
+  nextFilters: ClientListFilters,
+) => {
+  const parsedPreviousFilters =
+    previousFilters && typeof previousFilters === "object"
+      ? normalizeClientListFilters(
+          previousFilters as Partial<
+            Record<keyof ClientListFilters, string | null | undefined>
+          >,
+        )
+      : null;
+
+  if (!parsedPreviousFilters) {
+    return false;
+  }
+
+  return (
+    parsedPreviousFilters.owner === nextFilters.owner &&
+    parsedPreviousFilters.priority === nextFilters.priority &&
+    parsedPreviousFilters.q === nextFilters.q &&
+    parsedPreviousFilters.sort === nextFilters.sort &&
+    parsedPreviousFilters.status === nextFilters.status
+  );
 };
 
 const getClientRestoreErrorMessage = async (response: Response) => {
@@ -510,7 +535,10 @@ const ClientsListSurface = ({
   } = useQuery({
     ...clientsListQueryOptions(filters),
     initialData: isInitialQuery ? initialData : undefined,
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) =>
+      canUsePreviousClientListData(previousQuery?.queryKey[2], filters)
+        ? previousData
+        : undefined,
   });
   const [restoreErrorMessage, setRestoreErrorMessage] = React.useState<
     string | null
@@ -520,9 +548,17 @@ const ClientsListSurface = ({
     onMutate: () => {
       setRestoreErrorMessage(null);
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
+    onSuccess: async () => {
+      await queryClient.cancelQueries({
         queryKey: ["clients", "list"],
+      });
+      queryClient.removeQueries({
+        queryKey: ["clients", "list"],
+        type: "inactive",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["clients", "list"],
+        refetchType: "active",
       });
     },
     onError: (mutationError) => {
