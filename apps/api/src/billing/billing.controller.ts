@@ -32,7 +32,7 @@ type StripeWebhookRequest = {
 
 @Controller("billing")
 export class BillingController {
-  private readonly billingService = new BillingService();
+  constructor(private readonly billingService: BillingService) {}
 
   @Post("checkout")
   @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)

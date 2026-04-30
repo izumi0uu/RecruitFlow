@@ -31,7 +31,9 @@ const hasRequiredRole = (
 
 @Injectable()
 export class WorkspaceRoleGuard implements CanActivate {
-  private readonly workspaceContextGuard = new WorkspaceContextGuard();
+  constructor(
+    private readonly workspaceContextGuard: WorkspaceContextGuard,
+  ) {}
 
   async canActivate(context: ExecutionContext) {
     const requirement =

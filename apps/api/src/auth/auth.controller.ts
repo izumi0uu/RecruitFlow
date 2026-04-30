@@ -31,7 +31,7 @@ import { CurrentAuthContext } from "./current-auth-context.decorator";
 
 @Controller("auth")
 export class AuthController {
-  private readonly authService = new AuthService();
+  constructor(private readonly authService: AuthService) {}
 
   @Get("session")
   @UseGuards(AuthGuard)

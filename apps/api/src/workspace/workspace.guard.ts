@@ -17,7 +17,7 @@ export type RequestWithWorkspaceContext = RequestWithAuthContext & {
 
 @Injectable()
 export class WorkspaceContextGuard implements CanActivate {
-  private readonly workspaceService = new WorkspaceService();
+  constructor(private readonly workspaceService: WorkspaceService) {}
 
   async canActivate(context: ExecutionContext) {
     const request = context
