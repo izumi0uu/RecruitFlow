@@ -7,6 +7,8 @@ import {
   Building2,
   Filter,
   Loader2,
+  Pencil,
+  Plus,
   RotateCcw,
   Search,
   UserRound,
@@ -24,6 +26,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import {
   areJobListFiltersEqual,
@@ -104,6 +107,12 @@ const formatDate = (value: string | null) => {
   }).format(new Date(value));
 };
 
+const getCurrencyCode = (value: string | null) => {
+  const currency = value?.trim().toUpperCase() || "USD";
+
+  return /^[A-Z]{3}$/.test(currency) ? currency : "USD";
+};
+
 const formatSalary = (job: JobsListItem) => {
   if (job.salaryMin == null && job.salaryMax == null) {
     return "Compensation not set";
@@ -113,7 +122,7 @@ const formatSalary = (job: JobsListItem) => {
     maximumFractionDigits: 0,
     notation: "compact",
     style: "currency",
-    currency: "USD",
+    currency: getCurrencyCode(job.currency),
   });
 
   if (job.salaryMin != null && job.salaryMax != null) {
@@ -173,7 +182,13 @@ const JobsHeaderMetric = ({
   </div>
 );
 
-const JobRow = ({ job }: { job: JobsListItem }) => (
+const JobRow = ({
+  canManageJobs,
+  job,
+}: {
+  canManageJobs: boolean;
+  job: JobsListItem;
+}) => (
   <article className="grid gap-4 border-t border-border/60 px-4 py-4 first:border-t-0 md:px-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(10rem,0.46fr)_minmax(10rem,0.42fr)_minmax(8rem,0.32fr)] lg:items-center">
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
@@ -183,6 +198,19 @@ const JobRow = ({ job }: { job: JobsListItem }) => (
         <JobBadge className={priorityToneMap[job.priority]}>
           {toTitleCase(job.priority)}
         </JobBadge>
+        {canManageJobs ? (
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="ml-auto rounded-full"
+          >
+            <TrackedLink href={`/jobs/${job.id}/edit`}>
+              <Pencil className="size-3.5" />
+              Edit
+            </TrackedLink>
+          </Button>
+        ) : null}
       </div>
       <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
         {job.title}
@@ -257,7 +285,7 @@ const JobsEmptyState = ({
     <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
       {hasFilters
         ? "Try loosening the search or filters. The API is still preserving workspace scope while returning an empty filtered result."
-        : "This list is ready for job intake records. RF-031 will add the create flow on top of this stable query surface."}
+        : "Create the first job intake record once a client exists, then the pipeline branch can attach submissions to a stable role container."}
     </p>
     {hasFilters ? (
       <Button
@@ -381,6 +409,7 @@ const JobsListSurface = ({
   const urgentJobsCount = jobsList.items.filter(
     (job) => job.priority === "urgent",
   ).length;
+  const canManageJobs = jobsList.context.role !== "coordinator";
   const clientOptions = [
     { label: "All clients", value: "" },
     ...jobsList.clientOptions.map((client) => ({
@@ -414,20 +443,30 @@ const JobsListSurface = ({
       <WorkspacePageHeader
         kicker="Role intake"
         title="Jobs"
-        description="Browse workspace-scoped role demand by client, owner, status, and priority before the create/edit flow lands."
+        description="Browse workspace-scoped role demand by client, owner, status, and priority, then capture new requisitions through the RF-031 create/edit flow."
         rightSlotClassName="w-full xl:w-auto"
         rightSlot={
           <div className="flex w-full flex-col gap-3 xl:w-auto xl:items-end">
             <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              {canManageJobs ? (
+                <Button asChild size="sm" className="rounded-full">
+                  <TrackedLink href="/jobs/new">
+                    <Plus className="size-4" />
+                    Create job
+                  </TrackedLink>
+                </Button>
+              ) : null}
               {isFetching ? (
                 <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-workspace-muted-surface px-3 py-1 text-xs font-medium text-muted-foreground">
                   <Loader2 className="size-3.5 animate-spin" />
                   Syncing
                 </span>
               ) : null}
-              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                Create flow lands in RF-031
-              </span>
+              {!canManageJobs ? (
+                <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
+                  Coordinator read-only view
+                </span>
+              ) : null}
             </div>
 
             <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
@@ -592,7 +631,13 @@ const JobsListSurface = ({
             </div>
 
             {jobsList.items.length > 0 ? (
-              jobsList.items.map((job) => <JobRow key={job.id} job={job} />)
+              jobsList.items.map((job) => (
+                <JobRow
+                  key={job.id}
+                  canManageJobs={canManageJobs}
+                  job={job}
+                />
+              ))
             ) : (
               <JobsEmptyState hasFilters={hasFilters} onReset={resetFilters} />
             )}
@@ -648,8 +693,9 @@ const JobsListSurface = ({
                 </p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   This page owns the workspace-scoped jobs list and filter
-                  surface. Job creation, detail editing, and stage-template
-                  initialization remain in later jobs-intake stories.
+                  surface. RF-031 adds create/edit intake forms here, while
+                  stage-template initialization and the full detail overview
+                  remain in later jobs-intake stories.
                 </p>
               </div>
             </div>

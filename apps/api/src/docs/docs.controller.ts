@@ -177,6 +177,27 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
+    description: "Create a workspace-scoped job intake record and audit the mutation.",
+    method: "POST",
+    owner: "api",
+    path: "/jobs",
+  },
+  {
+    auth: "session",
+    description: "Load one workspace-scoped job intake record for edit flows.",
+    method: "GET",
+    owner: "api",
+    path: "/jobs/:jobId",
+  },
+  {
+    auth: "session",
+    description: "Update one workspace-scoped job intake record and audit the mutation.",
+    method: "PATCH",
+    owner: "api",
+    path: "/jobs/:jobId",
+  },
+  {
+    auth: "session",
     description: "Workspace-scoped placeholder for Wave 2 candidates implementation.",
     method: "GET",
     owner: "api",
