@@ -15,8 +15,7 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import { createJobAction } from "../actions";
-import { JobForm } from "../components/JobForm";
+import { JobFormController } from "../components/JobFormController";
 import { JobMutationRestrictedState } from "../components/JobMutationRestrictedState";
 import { buildJobFormValues, emptyJobFormValues } from "../utils";
 
@@ -84,8 +83,7 @@ const NewJobPage = async ({ searchParams }: PageProps) => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <JobForm
-              action={createJobAction}
+            <JobFormController
               clientOptions={clientOptions}
               initialValues={buildJobFormValues({
                 ...emptyJobFormValues,

@@ -17,9 +17,9 @@ import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import { repairJobStageTemplateAction, updateJobAction } from "../../actions";
-import { JobForm } from "../../components/JobForm";
+import { JobFormController } from "../../components/JobFormController";
 import { JobMutationRestrictedState } from "../../components/JobMutationRestrictedState";
+import { JobStageTemplateRepairControl } from "../../components/JobStageTemplateRepairControl";
 import {
   buildJobFormValues,
   formatDateInputValue,
@@ -97,12 +97,7 @@ const StageTemplateCard = ({
               missing default rows and keeps existing rows untouched.
             </p>
             {canRepair ? (
-              <form action={repairJobStageTemplateAction} className="mt-4">
-                <input type="hidden" name="jobId" value={jobId} />
-                <Button type="submit" size="sm" className="rounded-full">
-                  Repair default stages
-                </Button>
-              </form>
+              <JobStageTemplateRepairControl jobId={jobId} />
             ) : (
               <p className="mt-3 text-xs leading-5">
                 Coordinators can see this warning, but an owner or recruiter
@@ -212,8 +207,7 @@ const EditJobPage = async ({ params, searchParams }: PageProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <JobForm
-                action={updateJobAction}
+              <JobFormController
                 clientOptions={clientOptions}
                 initialValues={buildJobFormValues({
                   clientId: job.clientId,

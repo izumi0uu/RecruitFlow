@@ -5,6 +5,7 @@ import type {
   CandidatesListResponse,
   ClientsListResponse,
   DocumentsListResponse,
+  JobDetailResponse,
   JobsListResponse,
 } from "@recruitflow/contracts";
 
@@ -95,8 +96,14 @@ export const clientDetailQueryOptions = (clientId: string) =>
     queryFn: () => fetchJson<ClientDetailResponse>(`/api/clients/${clientId}`),
   });
 
+export const jobsListRootQueryKey = ["jobs", "list"] as const;
+export const jobsDetailRootQueryKey = ["jobs", "detail"] as const;
+
 export const jobsListQueryKey = (filters: JobListFilters) =>
-  ["jobs", "list", filters] as const;
+  [...jobsListRootQueryKey, filters] as const;
+
+export const jobDetailQueryKey = (jobId: string) =>
+  [...jobsDetailRootQueryKey, jobId] as const;
 
 export const jobsListQueryOptions = (filters: JobListFilters) =>
   queryOptions({
@@ -111,6 +118,12 @@ export const jobsListQueryOptions = (filters: JobListFilters) =>
         `/api/jobs${queryString ? `?${queryString}` : ""}`,
       );
     },
+  });
+
+export const jobDetailQueryOptions = (jobId: string) =>
+  queryOptions({
+    queryKey: jobDetailQueryKey(jobId),
+    queryFn: () => fetchJson<JobDetailResponse>(`/api/jobs/${jobId}`),
   });
 
 export const documentsListRootQueryKey = ["documents", "list"] as const;
