@@ -1,40 +1,53 @@
+import { redirect } from "next/navigation";
+
+import type { DocumentsListResponse } from "@recruitflow/contracts";
+
+import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import {
-  ModulePlaceholderPage,
-  getPlaceholderViewState,
-} from "@/components/workspace/ModulePlaceholderPage";
-import { getWorkspaceDemoOverview } from "@/lib/db/queries";
+  documentListFiltersToSearchParams,
+  parseDocumentListFiltersFromRecord,
+  type DocumentListFilters,
+} from "@/lib/documents/filters";
+
+import { DocumentsListSurface } from "./components/DocumentsListSurface";
 
 type PageProps = {
-  searchParams?: Promise<{ state?: string }> | { state?: string };
+  searchParams?:
+    | Promise<Record<string, string | string[] | undefined>>
+    | Record<string, string | string[] | undefined>;
+};
+
+const buildDocumentsApiPath = (filters: DocumentListFilters) => {
+  const queryString = documentListFiltersToSearchParams(filters, {
+    includePageSize: true,
+  }).toString();
+
+  return `/documents${queryString ? `?${queryString}` : ""}`;
+};
+
+const getDocumentsList = async (filters: DocumentListFilters) => {
+  try {
+    return await requestApiJson<DocumentsListResponse>(
+      buildDocumentsApiPath(filters),
+    );
+  } catch (error) {
+    if (isApiRequestError(error) && error.status === 401) {
+      redirect("/sign-in");
+    }
+
+    throw error;
+  }
 };
 
 const DocumentsPage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
-  const overview = await getWorkspaceDemoOverview();
+  const initialFilters = parseDocumentListFiltersFromRecord(params);
+  const documentsList = await getDocumentsList(initialFilters);
 
   return (
-    <ModulePlaceholderPage
-      demoState={
-        overview?.documentCount
-          ? {
-              title: `${overview.documentCount} seeded documents attached`,
-              description:
-                "Resumes, job docs, and notes are now present in the shared workspace baseline so the documents route reads as a live module shell instead of a blank placeholder.",
-            }
-          : undefined
-      }
-      kicker="Document operations"
-      title="Documents"
-      description="Documents are now part of the core navigation skeleton so later file management and AI search work can slot into the shared business shell."
-      emptyTitle="No documents available yet"
-      emptyDescription="Recent files, type filters, linked entities, and search tooling will show up here once feature-candidates-documents wires the real document workflows."
-      ownerBranch="feature-candidates-documents"
-      plannedCapabilities={[
-        "Recent document views with type and entity filters",
-        "A future AI-assisted search entry point anchored to one URL",
-        "Shared navigation into candidate and job detail surfaces",
-      ]}
-      state={getPlaceholderViewState(params.state)}
+    <DocumentsListSurface
+      initialData={documentsList}
+      initialFilters={initialFilters}
     />
   );
 };

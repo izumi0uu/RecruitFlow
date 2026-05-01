@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -240,18 +241,27 @@ export const jobs = pgTable("jobs", {
   archivedAt: timestamp("archived_at"),
 });
 
-export const jobStages = pgTable("job_stages", {
-  id: idColumn(),
-  workspaceId: workspaceIdColumn(),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => jobs.id),
-  key: varchar("key", { length: 80 }).notNull(),
-  label: varchar("label", { length: 120 }).notNull(),
-  sortOrder: integer("sort_order").notNull().default(0),
-  isClosedStage: boolean("is_closed_stage").notNull().default(false),
-  ...timestamps(),
-});
+export const jobStages = pgTable(
+  "job_stages",
+  {
+    id: idColumn(),
+    workspaceId: workspaceIdColumn(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id),
+    key: varchar("key", { length: 80 }).notNull(),
+    label: varchar("label", { length: 120 }).notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isClosedStage: boolean("is_closed_stage").notNull().default(false),
+    ...timestamps(),
+  },
+  (table) => ({
+    jobStagesJobKeyUnique: uniqueIndex("job_stages_job_id_key_unique").on(
+      table.jobId,
+      table.key,
+    ),
+  }),
+);
 
 export const candidates = pgTable("candidates", {
   id: idColumn(),
@@ -517,6 +527,10 @@ export enum AuditAction {
   CLIENT_RESTORED = "CLIENT_RESTORED",
   CLIENT_CONTACT_CREATED = "CLIENT_CONTACT_CREATED",
   CLIENT_CONTACT_UPDATED = "CLIENT_CONTACT_UPDATED",
+  CANDIDATE_CREATED = "CANDIDATE_CREATED",
+  CANDIDATE_UPDATED = "CANDIDATE_UPDATED",
+  DOCUMENT_LINKED = "DOCUMENT_LINKED",
+  DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED",
   JOB_CREATED = "JOB_CREATED",
   JOB_UPDATED = "JOB_UPDATED",
   JOB_STATUS_CHANGED = "JOB_STATUS_CHANGED",

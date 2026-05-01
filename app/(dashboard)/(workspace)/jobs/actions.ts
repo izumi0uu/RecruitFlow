@@ -210,6 +210,10 @@ export const updateJobControlsAction = async (formData: FormData) => {
       redirect("/sign-in");
     }
 
+    if (isApiRequestError(error) && error.status === 403) {
+      redirect(`/jobs/${parsedParams.data.jobId}?restricted=1`);
+    }
+
     throw error;
   }
 
@@ -238,6 +242,10 @@ export const repairJobStageTemplateAction = async (formData: FormData) => {
   } catch (error) {
     if (isApiRequestError(error) && error.status === 401) {
       redirect("/sign-in");
+    }
+
+    if (isApiRequestError(error) && error.status === 403) {
+      redirect(`/jobs/${parsedParams.data.jobId}/edit?restricted=1`);
     }
 
     throw error;

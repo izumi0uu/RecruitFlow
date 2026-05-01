@@ -212,10 +212,24 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
-    description: "Workspace-scoped placeholder for Wave 2 candidates implementation.",
+    description: "Return a workspace-scoped candidate list for the Candidate CRM.",
     method: "GET",
     owner: "api",
     path: "/candidates",
+  },
+  {
+    auth: "session",
+    description: "Return workspace-scoped document metadata with type and linked entity filters.",
+    method: "GET",
+    owner: "api",
+    path: "/documents",
+  },
+  {
+    auth: "session",
+    description: "Create workspace-scoped document metadata linked to a candidate, job, or submission.",
+    method: "POST",
+    owner: "api",
+    path: "/documents",
   },
   {
     auth: "session",

@@ -5,6 +5,7 @@ import { BillingModule } from "./billing/billing.module";
 import { CandidatesModule } from "./candidates/candidates.module";
 import { ClientsModule } from "./clients/clients.module";
 import { DocsModule } from "./docs/docs.module";
+import { DocumentsModule } from "./documents/documents.module";
 import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { MembersModule } from "./members/members.module";
@@ -18,6 +19,7 @@ import { WorkspaceModule } from "./workspace/workspace.module";
     CandidatesModule,
     ClientsModule,
     DocsModule,
+    DocumentsModule,
     HealthModule,
     JobsModule,
     MembersModule,

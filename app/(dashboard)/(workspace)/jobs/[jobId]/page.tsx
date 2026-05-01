@@ -50,6 +50,19 @@ type PageProps = {
   params: Promise<{
     jobId: string;
   }>;
+  searchParams?:
+    | Promise<Record<string, string | string[] | undefined>>
+    | Record<string, string | string[] | undefined>;
+};
+
+const hasRestrictedFlag = (
+  params: Record<string, string | string[] | undefined>,
+) => {
+  const restricted = params.restricted;
+
+  return Array.isArray(restricted)
+    ? restricted[0] === "1"
+    : restricted === "1";
 };
 
 const getJobDetail = async (jobId: string) => {
@@ -294,8 +307,9 @@ const StageTemplateOverview = ({
   );
 };
 
-const JobDetailPage = async ({ params }: PageProps) => {
+const JobDetailPage = async ({ params, searchParams }: PageProps) => {
   const { jobId } = await params;
+  const urlParams = await Promise.resolve(searchParams ?? {});
   const { context, job, stageTemplate } = await getJobDetail(jobId);
   const ownerLabel = job.owner?.name ?? job.owner?.email ?? "Unassigned";
   const canEdit = context.role !== "coordinator";
@@ -330,6 +344,12 @@ const JobDetailPage = async ({ params }: PageProps) => {
           )
         }
       />
+
+      {hasRestrictedFlag(urlParams) ? (
+        <p className="status-message status-error">
+          Only owners and recruiters can update job status or priority.
+        </p>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">

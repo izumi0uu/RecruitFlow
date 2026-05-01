@@ -211,6 +211,34 @@ export const apiRiskFlagValues = [
 
 export type ApiRiskFlag = (typeof apiRiskFlagValues)[number];
 
+export const apiDocumentTypeValues = [
+  "jd",
+  "resume",
+  "call_note",
+  "interview_note",
+] as const;
+
+export type ApiDocumentType = (typeof apiDocumentTypeValues)[number];
+
+export const apiDocumentEntityTypeValues = [
+  "candidate",
+  "job",
+  "submission",
+] as const;
+
+export type ApiDocumentEntityType =
+  (typeof apiDocumentEntityTypeValues)[number];
+
+export const apiAutomationStatusValues = [
+  "queued",
+  "running",
+  "succeeded",
+  "failed",
+] as const;
+
+export type ApiAutomationStatus =
+  (typeof apiAutomationStatusValues)[number];
+
 export const apiCrmDomainValues = [
   "clients",
   "jobs",
@@ -289,6 +317,18 @@ const optionalDateInputSchema = z.preprocess(
     .nullable()
     .optional(),
 );
+
+const optionalQueryBooleanSchema = z.preprocess((value) => {
+  if (value === true || value === "true") {
+    return true;
+  }
+
+  if (value === false || value === "false") {
+    return false;
+  }
+
+  return undefined;
+}, z.boolean().optional());
 
 const optionalWebsiteSchema = z.preprocess(
   (value) => {
@@ -651,11 +691,181 @@ export interface JobStageRepairResponse extends JobDetailResponse {
 }
 
 export const candidatesListQuerySchema = apiCollectionQuerySchema.extend({
+  hasResume: optionalQueryBooleanSchema,
+  location: z.string().trim().max(160).optional(),
+  owner: optionalUuidSchema,
   ownerUserId: optionalUuidSchema,
+  q: z.string().trim().max(200).optional(),
   source: z.string().trim().max(100).optional(),
 });
 
 export type CandidatesListQuery = z.infer<typeof candidatesListQuerySchema>;
+
+export interface CandidatesListOwnerOption {
+  email: string;
+  id: string;
+  name: string | null;
+}
+
+export interface CandidateRecord {
+  archivedAt: string | null;
+  createdAt: string;
+  currentCompany: string | null;
+  currentTitle: string | null;
+  email: string | null;
+  fullName: string;
+  hasResume: boolean;
+  headline: string | null;
+  id: string;
+  linkedinUrl: string | null;
+  location: string | null;
+  noticePeriod: string | null;
+  owner: CandidatesListOwnerOption | null;
+  ownerUserId: string | null;
+  phone: string | null;
+  portfolioUrl: string | null;
+  salaryExpectation: string | null;
+  skillsText: string | null;
+  source: string | null;
+  summary: string | null;
+  updatedAt: string;
+}
+
+export type CandidatesListItem = CandidateRecord;
+
+export const candidateParamsSchema = z.object({
+  candidateId: z.string().uuid(),
+});
+
+export type CandidateParams = z.infer<typeof candidateParamsSchema>;
+
+export const candidateMutationRequestSchema = z.object({
+  currentCompany: optionalTrimmedTextSchema(180),
+  currentTitle: optionalTrimmedTextSchema(180),
+  email: optionalTrimmedTextSchema(255).pipe(
+    z.string().email("Candidate email must be valid").nullable().optional(),
+  ),
+  fullName: z.string().trim().min(1, "Candidate name is required").max(160),
+  headline: optionalTrimmedTextSchema(180),
+  linkedinUrl: optionalUrlSchema("LinkedIn URL must be valid"),
+  location: optionalTrimmedTextSchema(160),
+  noticePeriod: optionalTrimmedTextSchema(120),
+  ownerUserId: z.string().uuid("Candidate owner is required"),
+  phone: optionalTrimmedTextSchema(50),
+  portfolioUrl: optionalUrlSchema("Portfolio URL must be valid"),
+  salaryExpectation: optionalTrimmedTextSchema(120),
+  skillsText: optionalTrimmedTextSchema(4000),
+  source: z.string().trim().min(1, "Candidate source is required").max(120),
+});
+
+export type CandidateMutationRequest = z.infer<
+  typeof candidateMutationRequestSchema
+>;
+
+export interface CandidatesListResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    hasResume: boolean | null;
+    includeArchived: boolean;
+    location: string | null;
+    owner: string | null;
+    q: string | null;
+    source: string | null;
+  };
+  items: CandidatesListItem[];
+  ownerOptions: CandidatesListOwnerOption[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  workspaceScoped: true;
+}
+
+export interface CandidateDetailResponse {
+  candidate: CandidateRecord;
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  ownerOptions: CandidatesListOwnerOption[];
+  workspaceScoped: true;
+}
+
+export interface CandidateMutationResponse extends CandidateDetailResponse {
+  message: string;
+}
+
+export const documentMutationRequestSchema = z.object({
+  entityId: z.string().uuid("Linked entity is required"),
+  entityType: z.enum(apiDocumentEntityTypeValues),
+  mimeType: optionalTrimmedTextSchema(255),
+  sizeBytes: optionalIntegerSchema("File size must be a whole number"),
+  sourceFilename: z
+    .string()
+    .trim()
+    .min(1, "Source filename is required")
+    .max(255),
+  storageKey: z.string().trim().min(1, "Storage key is required").max(2048),
+  title: z.string().trim().min(1, "Document title is required").max(255),
+  type: z.enum(apiDocumentTypeValues),
+});
+
+export type DocumentMutationRequest = z.infer<
+  typeof documentMutationRequestSchema
+>;
+
+export interface DocumentRecord {
+  createdAt: string;
+  embeddingStatus: ApiAutomationStatus;
+  entityId: string;
+  entityType: ApiDocumentEntityType;
+  id: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  sourceFilename: string;
+  storageKey: string;
+  summaryStatus: ApiAutomationStatus;
+  summaryText: string | null;
+  title: string;
+  type: ApiDocumentType;
+  updatedAt: string;
+  uploadedByUserId: string | null;
+}
+
+export interface DocumentMutationResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  document: DocumentRecord;
+  message: string;
+  workspaceScoped: true;
+}
+
+export const documentsListQuerySchema = apiCollectionQuerySchema.extend({
+  entityId: optionalUuidSchema,
+  entityType: z.enum(apiDocumentEntityTypeValues).optional(),
+  type: z.enum(apiDocumentTypeValues).optional(),
+});
+
+export type DocumentsListQuery = z.infer<typeof documentsListQuerySchema>;
+
+export interface DocumentsListResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    entityId: string | null;
+    entityType: ApiDocumentEntityType | null;
+    type: ApiDocumentType | null;
+  };
+  items: DocumentRecord[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  workspaceScoped: true;
+}
 
 export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
   candidateId: optionalUuidSchema,
