@@ -6,6 +6,7 @@ import {
   Clock3,
   ContactRound,
   Mail,
+  Plus,
   RadioTower,
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
@@ -41,9 +42,11 @@ type PageProps = {
 };
 
 const statusToneMap: Record<ApiClientStatus, string> = {
-  active: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  active:
+    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   archived: "border-border/70 bg-surface-1 text-muted-foreground",
-  paused: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  paused:
+    "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   prospect: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
 };
 
@@ -332,7 +335,12 @@ const ClientDetailPage = async ({ params }: PageProps) => {
                       : "active jobs currently linked"}
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Button asChild size="sm" variant="outline" className="rounded-full">
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                    >
                       <TrackedLink href={`/jobs?clientId=${client.id}`}>
                         View jobs
                       </TrackedLink>
@@ -391,7 +399,11 @@ const ClientDetailPage = async ({ params }: PageProps) => {
           </Card>
 
           {isArchived || canArchive ? (
-            <Card className={cn(isArchived ? "border-border/70" : "border-destructive/30")}>
+            <Card
+              className={cn(
+                isArchived ? "border-border/70" : "border-destructive/30",
+              )}
+            >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Archive className="size-4" />
