@@ -1,14 +1,10 @@
 "use client";
 
 import { Loader2, RotateCcw } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 
-import {
-  useClientRestoreMutation,
-  useClientsListMutationState,
-} from "../hooks/useClientMutations";
+import { useRestoreClientControl } from "./hooks/useRestoreClientControl";
 
 type RestoreClientControlProps = {
   clientId: string;
@@ -17,14 +13,7 @@ type RestoreClientControlProps = {
 export const RestoreClientControl = ({
   clientId,
 }: RestoreClientControlProps) => {
-  const router = useRouter();
-  const { clearClientsListCache } = useClientsListMutationState();
-  const { error, isPending, restoreClient } = useClientRestoreMutation({
-    onSuccess: () => {
-      clearClientsListCache();
-      router.refresh();
-    },
-  });
+  const { error, handleRestoreClient, isPending } = useRestoreClientControl();
 
   return (
     <div className="space-y-3">
@@ -34,7 +23,7 @@ export const RestoreClientControl = ({
         type="button"
         variant="outline"
         onClick={() => {
-          restoreClient(clientId);
+          handleRestoreClient(clientId);
         }}
       >
         {isPending ? (

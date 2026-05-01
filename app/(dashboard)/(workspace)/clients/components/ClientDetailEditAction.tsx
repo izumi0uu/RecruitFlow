@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 
 import type {
@@ -12,6 +10,7 @@ import type {
 import { Button } from "@/components/ui/Button";
 
 import { ClientEditDialog } from "./ClientEditDialog";
+import { useClientDetailEditAction } from "./hooks/useClientDetailEditAction";
 
 type ClientDetailEditActionProps = {
   canManageClientControls: boolean;
@@ -24,8 +23,7 @@ const ClientDetailEditAction = ({
   client,
   ownerOptions,
 }: ClientDetailEditActionProps) => {
-  const router = useRouter();
-  const [open, setOpen] = React.useState(false);
+  const { handleClientUpdated, open, setOpen } = useClientDetailEditAction();
 
   if (client.status === "archived" || client.archivedAt) {
     return null;
@@ -47,9 +45,7 @@ const ClientDetailEditAction = ({
       <ClientEditDialog
         canManageClientControls={canManageClientControls}
         client={client}
-        onClientUpdated={() => {
-          router.refresh();
-        }}
+        onClientUpdated={handleClientUpdated}
         onOpenChange={setOpen}
         open={open}
         ownerOptions={ownerOptions}

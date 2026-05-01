@@ -1,14 +1,8 @@
 "use client";
 
-import * as React from "react";
-import { useMutation } from "@tanstack/react-query";
 import { ContactRound, Loader2, Plus } from "lucide-react";
 
-import {
-  clientContactMutationRequestSchema,
-  type ClientContactMutationRequest,
-  type ClientContactMutationResponse,
-} from "@recruitflow/contracts";
+import type { ClientContactMutationResponse } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -22,6 +16,8 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
+import { useClientContactCreateDialog } from "./hooks/useClientContactCreateDialog";
+
 type ClientContactCreateDialogProps = {
   clientId: string;
   clientName: string;
@@ -29,75 +25,6 @@ type ClientContactCreateDialogProps = {
   onContactCreated: (contact: ClientContactMutationResponse) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-};
-
-type ContactCreateValues = {
-  email: string;
-  fullName: string;
-  isPrimary: boolean;
-  linkedinUrl: string;
-  phone: string;
-  relationshipType: string;
-  title: string;
-};
-
-type ApiErrorBody = {
-  error?: string;
-  message?: string | string[];
-};
-
-const getEmptyValues = (defaultIsPrimary: boolean): ContactCreateValues => ({
-  email: "",
-  fullName: "",
-  isPrimary: defaultIsPrimary,
-  linkedinUrl: "",
-  phone: "",
-  relationshipType: "",
-  title: "",
-});
-
-const getErrorMessage = (body: unknown, fallbackStatus: number) => {
-  if (body && typeof body === "object") {
-    const { error, message } = body as ApiErrorBody;
-
-    if (typeof error === "string" && error.trim()) {
-      return error;
-    }
-
-    if (Array.isArray(message) && message.length > 0) {
-      return String(message[0]);
-    }
-
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-  }
-
-  return `Request failed with status ${fallbackStatus}`;
-};
-
-const createClientContact = async ({
-  clientId,
-  payload,
-}: {
-  clientId: string;
-  payload: ClientContactMutationRequest;
-}) => {
-  const response = await fetch(`/api/clients/${clientId}/contacts`, {
-    body: JSON.stringify(payload),
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-    },
-    method: "POST",
-  });
-  const body = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(body, response.status));
-  }
-
-  return body as ClientContactMutationResponse;
 };
 
 const ClientContactCreateDialog = ({
@@ -108,69 +35,13 @@ const ClientContactCreateDialog = ({
   onOpenChange,
   open,
 }: ClientContactCreateDialogProps) => {
-  const [values, setValues] = React.useState<ContactCreateValues>(
-    getEmptyValues(defaultIsPrimary),
-  );
-  const [error, setError] = React.useState<string | null>(null);
-  const [success, setSuccess] = React.useState<string | null>(null);
-  const createContactMutation = useMutation({
-    mutationFn: createClientContact,
-    onError: (caughtError) => {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to create contact.",
-      );
-    },
-    onSuccess: (createdContact) => {
-      setValues(getEmptyValues(false));
-      setSuccess(createdContact.message);
-      onContactCreated(createdContact);
-    },
-  });
-
-  React.useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setValues(getEmptyValues(defaultIsPrimary));
-    setError(null);
-    setSuccess(null);
-  }, [defaultIsPrimary, open]);
-
-  const updateValue = (
-    name: keyof ContactCreateValues,
-    value: string | boolean,
-  ) => {
-    setValues((currentValues) => ({
-      ...currentValues,
-      [name]: value,
-    }));
-    setError(null);
-    setSuccess(null);
-  };
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    const parsedPayload = clientContactMutationRequestSchema.safeParse(values);
-
-    if (!parsedPayload.success) {
-      setError(
-        parsedPayload.error.issues[0]?.message ??
-          "Invalid client contact payload.",
-      );
-      return;
-    }
-
-    createContactMutation.mutate({
+  const { error, handleSubmit, isPending, success, updateValue, values } =
+    useClientContactCreateDialog({
       clientId,
-      payload: parsedPayload.data,
+      defaultIsPrimary,
+      onContactCreated,
+      open,
     });
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -317,9 +188,9 @@ const ClientContactCreateDialog = ({
             <Button
               type="submit"
               className="rounded-full"
-              disabled={createContactMutation.isPending}
+              disabled={isPending}
             >
-              {createContactMutation.isPending ? (
+              {isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   Creating...

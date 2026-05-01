@@ -2,21 +2,12 @@ import { cookies } from "next/headers";
 
 import { getInternalApiOrigin, loadRootEnv } from "@recruitflow/config";
 
-type ApiErrorBody = {
-  error?: string;
-  message?: string | string[];
-};
-
-export class ApiRequestError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly body: unknown,
-  ) {
-    super(message);
-    this.name = "ApiRequestError";
-  }
-}
+import {
+  ApiRequestError,
+  getApiErrorMessage,
+  isApiRequestError,
+  readApiResponseBody,
+} from "@/utils/apiErrors";
 
 const toApiUrl = (pathname: string) => {
   loadRootEnv();
@@ -32,34 +23,6 @@ const getCookieHeader = async () => {
     .map((cookie) => `${cookie.name}=${encodeURIComponent(cookie.value)}`)
     .join("; ");
 };
-
-const getErrorMessage = (body: unknown, fallbackStatus: number) => {
-  if (typeof body === "string" && body.trim()) {
-    return body;
-  }
-
-  if (body && typeof body === "object") {
-    const { error, message } = body as ApiErrorBody;
-
-    if (typeof error === "string" && error.trim()) {
-      return error;
-    }
-
-    if (Array.isArray(message) && message.length > 0) {
-      return String(message[0]);
-    }
-
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-  }
-
-  return `Request failed with status ${fallbackStatus}`;
-};
-
-export const isApiRequestError = (
-  error: unknown,
-): error is ApiRequestError => error instanceof ApiRequestError;
 
 export async function requestApiJson<T>(
   pathname: string,
@@ -96,14 +59,11 @@ export async function requestApiJson<T>(
     headers,
   });
 
-  const contentType = response.headers.get("content-type") ?? "";
-  const responseBody = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
+  const responseBody = await readApiResponseBody(response);
 
   if (!response.ok) {
     throw new ApiRequestError(
-      getErrorMessage(responseBody, response.status),
+      getApiErrorMessage(responseBody, response.status),
       response.status,
       responseBody,
     );
@@ -111,3 +71,5 @@ export async function requestApiJson<T>(
 
   return responseBody as T;
 }
+
+export { ApiRequestError, isApiRequestError };

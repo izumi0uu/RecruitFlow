@@ -1,15 +1,11 @@
 "use client";
 
 import { Archive, Loader2, ShieldAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { PopConfirm } from "@/components/ui/PopConfirm";
 
-import {
-  useClientArchiveMutation,
-  useClientsListMutationState,
-} from "../hooks/useClientMutations";
+import { useArchiveClientControl } from "./hooks/useArchiveClientControl";
 
 type ArchiveClientControlProps = {
   clientId: string;
@@ -18,14 +14,7 @@ type ArchiveClientControlProps = {
 export const ArchiveClientControl = ({
   clientId,
 }: ArchiveClientControlProps) => {
-  const router = useRouter();
-  const { clearClientsListCache } = useClientsListMutationState();
-  const { archiveClient, error, isPending } = useClientArchiveMutation({
-    onSuccess: () => {
-      clearClientsListCache();
-      router.push("/clients");
-    },
-  });
+  const { error, handleArchiveClient, isPending } = useArchiveClientControl();
 
   return (
     <div className="space-y-3">
@@ -42,7 +31,7 @@ export const ArchiveClientControl = ({
           ),
           disabled: isPending,
           onClick: () => {
-            archiveClient(clientId);
+            handleArchiveClient(clientId);
           },
           type: "button",
         }}

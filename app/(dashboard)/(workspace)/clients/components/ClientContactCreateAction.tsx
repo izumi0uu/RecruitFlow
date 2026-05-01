@@ -1,12 +1,11 @@
 "use client";
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 
 import { ClientContactCreateDialog } from "./ClientContactCreateDialog";
+import { useClientContactCreateAction } from "./hooks/useClientContactCreateAction";
 
 type ClientContactCreateActionProps = {
   clientId: string;
@@ -19,8 +18,8 @@ const ClientContactCreateAction = ({
   clientName,
   defaultIsPrimary,
 }: ClientContactCreateActionProps) => {
-  const router = useRouter();
-  const [open, setOpen] = React.useState(false);
+  const { handleContactCreated, open, setOpen } =
+    useClientContactCreateAction();
 
   return (
     <>
@@ -41,9 +40,7 @@ const ClientContactCreateAction = ({
         clientId={clientId}
         clientName={clientName}
         defaultIsPrimary={defaultIsPrimary}
-        onContactCreated={() => {
-          router.refresh();
-        }}
+        onContactCreated={handleContactCreated}
         onOpenChange={setOpen}
         open={open}
       />

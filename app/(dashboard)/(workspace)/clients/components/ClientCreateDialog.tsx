@@ -1,18 +1,10 @@
 "use client";
 
-import * as React from "react";
-import { useMutation } from "@tanstack/react-query";
 import { Loader2, Plus, Sparkles } from "lucide-react";
 
-import {
-  apiClientEditableStatusValues,
-  apiClientPriorityValues,
-  clientMutationRequestSchema,
-  type ApiClientEditableStatus,
-  type ApiClientPriority,
-  type ClientMutationRequest,
-  type ClientMutationResponse,
-  type ClientsListOwnerOption,
+import type {
+  ClientMutationResponse,
+  ClientsListOwnerOption,
 } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
@@ -28,123 +20,14 @@ import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
+import { useClientCreateDialog } from "./hooks/useClientCreateDialog";
+
 type ClientCreateDialogProps = {
   canManageClientControls: boolean;
   onClientCreated: (client: ClientMutationResponse) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   ownerOptions: ClientsListOwnerOption[];
-};
-
-type ClientCreateValues = {
-  hqLocation: string;
-  industry: string;
-  name: string;
-  notesPreview: string;
-  ownerUserId: string;
-  priority: ApiClientPriority;
-  status: ApiClientEditableStatus;
-  website: string;
-};
-
-type ApiErrorBody = {
-  error?: string;
-  message?: string | string[];
-};
-
-const statusLabelMap: Record<ApiClientEditableStatus, string> = {
-  active: "Active",
-  paused: "Paused",
-  prospect: "Prospect",
-};
-
-const priorityLabelMap: Record<ApiClientPriority, string> = {
-  high: "High",
-  low: "Low",
-  medium: "Medium",
-};
-
-const emptyValues: ClientCreateValues = {
-  hqLocation: "",
-  industry: "",
-  name: "",
-  notesPreview: "",
-  ownerUserId: "",
-  priority: "medium",
-  status: "active",
-  website: "",
-};
-
-const statusOptions = apiClientEditableStatusValues.map((status) => ({
-  label: statusLabelMap[status],
-  value: status,
-}));
-
-const priorityOptions = apiClientPriorityValues.map((priority) => ({
-  label: priorityLabelMap[priority],
-  value: priority,
-}));
-
-const emptyToUndefined = (value: string) => {
-  const trimmedValue = value.trim();
-
-  return trimmedValue.length > 0 ? trimmedValue : undefined;
-};
-
-const getClientPayload = (
-  values: ClientCreateValues,
-  canManageClientControls: boolean,
-) => {
-  return {
-    hqLocation: values.hqLocation,
-    industry: values.industry,
-    name: values.name,
-    notesPreview: values.notesPreview,
-    ownerUserId: canManageClientControls
-      ? emptyToUndefined(values.ownerUserId)
-      : undefined,
-    priority: canManageClientControls ? values.priority : "medium",
-    status: canManageClientControls ? values.status : "active",
-    website: values.website,
-  };
-};
-
-const getErrorMessage = (body: unknown, fallbackStatus: number) => {
-  if (body && typeof body === "object") {
-    const { error, message } = body as ApiErrorBody;
-
-    if (typeof error === "string" && error.trim()) {
-      return error;
-    }
-
-    if (Array.isArray(message) && message.length > 0) {
-      return String(message[0]);
-    }
-
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-  }
-
-  return `Request failed with status ${fallbackStatus}`;
-};
-
-const createClient = async (payload: ClientMutationRequest) => {
-  const response = await fetch("/api/clients", {
-    body: JSON.stringify(payload),
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-    },
-    method: "POST",
-  });
-  const body = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(body, response.status));
-  }
-
-  return body as ClientMutationResponse;
 };
 
 const ClientCreateDialog = ({
@@ -154,62 +37,21 @@ const ClientCreateDialog = ({
   open,
   ownerOptions,
 }: ClientCreateDialogProps) => {
-  const [values, setValues] = React.useState<ClientCreateValues>(emptyValues);
-  const [error, setError] = React.useState<string | null>(null);
-  const [success, setSuccess] = React.useState<string | null>(null);
-  const createClientMutation = useMutation({
-    mutationFn: createClient,
-    onError: (caughtError) => {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to create client.",
-      );
-    },
-    onSuccess: (createdClient) => {
-      setValues(emptyValues);
-      setSuccess(createdClient.message);
-      onClientCreated(createdClient);
-    },
+  const {
+    error,
+    handleSubmit,
+    isPending,
+    ownerSelectOptions,
+    priorityOptions,
+    statusOptions,
+    success,
+    updateValue,
+    values,
+  } = useClientCreateDialog({
+    canManageClientControls,
+    onClientCreated,
+    ownerOptions,
   });
-  const ownerSelectOptions = React.useMemo(
-    () => [
-      { label: "Default to me", value: "" },
-      ...ownerOptions.map((owner) => ({
-        label: owner.name ?? owner.email,
-        value: owner.id,
-      })),
-    ],
-    [ownerOptions],
-  );
-
-  const updateValue = (name: keyof ClientCreateValues, value: string) => {
-    setValues((currentValues) => ({
-      ...currentValues,
-      [name]: value,
-    }));
-    setError(null);
-    setSuccess(null);
-  };
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    const parsedPayload = clientMutationRequestSchema.safeParse(
-      getClientPayload(values, canManageClientControls),
-    );
-
-    if (!parsedPayload.success) {
-      setError(
-        parsedPayload.error.issues[0]?.message ?? "Invalid client payload.",
-      );
-      return;
-    }
-
-    createClientMutation.mutate(parsedPayload.data);
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -372,9 +214,9 @@ const ClientCreateDialog = ({
             <Button
               type="submit"
               className="rounded-full"
-              disabled={createClientMutation.isPending}
+              disabled={isPending}
             >
-              {createClientMutation.isPending ? (
+              {isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   Creating...

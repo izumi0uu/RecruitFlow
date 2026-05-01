@@ -1,6 +1,5 @@
 "use client";
 
-import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -12,6 +11,9 @@ import type {
   ContactFormState,
   ContactFormValues,
 } from "../actions";
+import { useContactFormState } from "./hooks/useContactFormState";
+
+export { emptyContactFormValues } from "./hooks/useContactFormState";
 
 type ContactFormAction = (
   previousState: ContactFormState,
@@ -26,16 +28,6 @@ type ContactFormProps = {
   mode: "create" | "edit";
 };
 
-export const emptyContactFormValues: ContactFormValues = {
-  email: "",
-  fullName: "",
-  isPrimary: false,
-  linkedinUrl: "",
-  phone: "",
-  relationshipType: "",
-  title: "",
-};
-
 export const ContactForm = ({
   action,
   clientId,
@@ -43,15 +35,10 @@ export const ContactForm = ({
   initialValues,
   mode,
 }: ContactFormProps) => {
-  const [state, formAction, isPending] = useActionState<
-    ContactFormState,
-    FormData
-  >(action, {});
-  const values = {
-    ...emptyContactFormValues,
-    ...initialValues,
-    ...(state.values ?? {}),
-  };
+  const { formAction, isPending, state, values } = useContactFormState({
+    action,
+    initialValues,
+  });
 
   return (
     <form action={formAction} className="space-y-6">
