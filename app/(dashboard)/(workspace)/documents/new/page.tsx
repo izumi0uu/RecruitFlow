@@ -14,11 +14,10 @@ import {
 } from "@/components/ui/Card";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 
-import { createDocumentMetadataAction } from "../actions";
 import {
   buildDocumentMetadataFormValues,
-  DocumentMetadataForm,
 } from "../components/DocumentMetadataForm";
+import { DocumentMetadataFormController } from "../components/DocumentMetadataFormController";
 
 type PageProps = {
   searchParams?:
@@ -100,8 +99,7 @@ const NewDocumentPage = async ({ searchParams }: PageProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DocumentMetadataForm
-            action={createDocumentMetadataAction}
+          <DocumentMetadataFormController
             cancelHref={getCancelHref(entityType, entityId)}
             initialValues={buildDocumentMetadataFormValues({
               entityId,

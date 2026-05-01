@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import type { FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -14,20 +14,23 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
-import type {
-  DocumentMetadataFormState,
-  DocumentMetadataFormValues,
-} from "../actions";
-
-type DocumentMetadataFormAction = (
-  previousState: DocumentMetadataFormState,
-  formData: FormData,
-) => Promise<DocumentMetadataFormState>;
+export type DocumentMetadataFormValues = {
+  entityId: string;
+  entityType: ApiDocumentEntityType | "";
+  mimeType: string;
+  sizeBytes: string;
+  sourceFilename: string;
+  storageKey: string;
+  title: string;
+  type: ApiDocumentType | "";
+};
 
 type DocumentMetadataFormProps = {
-  action: DocumentMetadataFormAction;
   cancelHref: string;
+  error?: string | null;
   initialValues: DocumentMetadataFormValues;
+  isPending: boolean;
+  onSubmit: (values: DocumentMetadataFormValues) => void;
 };
 
 const entityTypeOptions = [
@@ -63,22 +66,39 @@ export const buildDocumentMetadataFormValues = (
   ...values,
 });
 
+const getString = (value: FormDataEntryValue | null) =>
+  typeof value === "string" ? value : "";
+
+const getDocumentMetadataFormValues = (
+  formData: FormData,
+): DocumentMetadataFormValues => ({
+  entityId: getString(formData.get("entityId")),
+  entityType: getString(formData.get("entityType")) as
+    | ApiDocumentEntityType
+    | "",
+  mimeType: getString(formData.get("mimeType")),
+  sizeBytes: getString(formData.get("sizeBytes")),
+  sourceFilename: getString(formData.get("sourceFilename")),
+  storageKey: getString(formData.get("storageKey")),
+  title: getString(formData.get("title")),
+  type: getString(formData.get("type")) as ApiDocumentType | "",
+});
+
 export const DocumentMetadataForm = ({
-  action,
   cancelHref,
+  error,
   initialValues,
+  isPending,
+  onSubmit,
 }: DocumentMetadataFormProps) => {
-  const [state, formAction, isPending] = useActionState<
-    DocumentMetadataFormState,
-    FormData
-  >(action, {});
-  const values = {
-    ...initialValues,
-    ...(state.values ?? {}),
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit(getDocumentMetadataFormValues(new FormData(event.currentTarget)));
   };
+  const values = initialValues;
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="entityType">Linked entity type</Label>
@@ -192,8 +212,8 @@ export const DocumentMetadataForm = ({
         </div>
       </div>
 
-      {state.error ? (
-        <p className="status-message status-error">{state.error}</p>
+      {error ? (
+        <p className="status-message status-error">{error}</p>
       ) : null}
 
       <p className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">

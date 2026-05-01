@@ -14,11 +14,10 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import { updateCandidateAction } from "../../actions";
 import {
   buildCandidateFormValues,
-  CandidateForm,
 } from "../../components/CandidateForm";
+import { CandidateFormController } from "../../components/CandidateFormController";
 
 type PageProps = {
   params: Promise<{
@@ -94,8 +93,7 @@ const EditCandidatePage = async ({ params, searchParams }: PageProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <CandidateForm
-            action={updateCandidateAction}
+          <CandidateFormController
             candidateId={candidate.id}
             initialValues={buildCandidateFormValues({
               currentCompany: candidate.currentCompany ?? "",

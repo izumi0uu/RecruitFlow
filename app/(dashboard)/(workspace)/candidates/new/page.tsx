@@ -15,12 +15,11 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import { createCandidateAction } from "../actions";
 import {
   buildCandidateFormValues,
   emptyCandidateFormValues,
-  CandidateForm,
 } from "../components/CandidateForm";
+import { CandidateFormController } from "../components/CandidateFormController";
 
 const getCreateCandidateContext = async () => {
   try {
@@ -67,8 +66,7 @@ const NewCandidatePage = async () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <CandidateForm
-            action={createCandidateAction}
+          <CandidateFormController
             initialValues={buildCandidateFormValues({
               ...emptyCandidateFormValues,
               ownerUserId: initialOwnerUserId,

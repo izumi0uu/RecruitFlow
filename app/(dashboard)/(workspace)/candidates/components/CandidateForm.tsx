@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import type { FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 
 import type { CandidatesListOwnerOption } from "@recruitflow/contracts";
@@ -10,21 +10,30 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
-import type {
-  CandidateFormState,
-  CandidateFormValues,
-} from "../actions";
-
-type CandidateFormAction = (
-  previousState: CandidateFormState,
-  formData: FormData,
-) => Promise<CandidateFormState>;
+export type CandidateFormValues = {
+  currentCompany: string;
+  currentTitle: string;
+  email: string;
+  fullName: string;
+  headline: string;
+  linkedinUrl: string;
+  location: string;
+  noticePeriod: string;
+  ownerUserId: string;
+  phone: string;
+  portfolioUrl: string;
+  salaryExpectation: string;
+  skillsText: string;
+  source: string;
+};
 
 type CandidateFormProps = {
-  action: CandidateFormAction;
   candidateId?: string;
+  error?: string | null;
   initialValues: CandidateFormValues;
+  isPending: boolean;
   mode: "create" | "edit";
+  onSubmit: (values: CandidateFormValues) => void;
   ownerOptions: CandidatesListOwnerOption[];
 };
 
@@ -52,24 +61,43 @@ export const buildCandidateFormValues = (
   ...values,
 });
 
+const getString = (value: FormDataEntryValue | null) =>
+  typeof value === "string" ? value : "";
+
+const getCandidateFormValues = (formData: FormData): CandidateFormValues => ({
+  currentCompany: getString(formData.get("currentCompany")),
+  currentTitle: getString(formData.get("currentTitle")),
+  email: getString(formData.get("email")),
+  fullName: getString(formData.get("fullName")),
+  headline: getString(formData.get("headline")),
+  linkedinUrl: getString(formData.get("linkedinUrl")),
+  location: getString(formData.get("location")),
+  noticePeriod: getString(formData.get("noticePeriod")),
+  ownerUserId: getString(formData.get("ownerUserId")),
+  phone: getString(formData.get("phone")),
+  portfolioUrl: getString(formData.get("portfolioUrl")),
+  salaryExpectation: getString(formData.get("salaryExpectation")),
+  skillsText: getString(formData.get("skillsText")),
+  source: getString(formData.get("source")),
+});
+
 export const CandidateForm = ({
-  action,
   candidateId,
+  error,
   initialValues,
+  isPending,
   mode,
+  onSubmit,
   ownerOptions,
 }: CandidateFormProps) => {
-  const [state, formAction, isPending] = useActionState<
-    CandidateFormState,
-    FormData
-  >(action, {});
-  const values = {
-    ...initialValues,
-    ...(state.values ?? {}),
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit(getCandidateFormValues(new FormData(event.currentTarget)));
   };
+  const values = initialValues;
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {candidateId ? (
         <input type="hidden" name="candidateId" value={candidateId} />
       ) : null}
@@ -234,8 +262,8 @@ export const CandidateForm = ({
         </div>
       </div>
 
-      {state.error ? (
-        <p className="status-message status-error">{state.error}</p>
+      {error ? (
+        <p className="status-message status-error">{error}</p>
       ) : null}
 
       <p className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">

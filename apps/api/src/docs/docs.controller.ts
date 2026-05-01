@@ -219,6 +219,27 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
+    description: "Create a workspace-scoped candidate profile and audit the mutation.",
+    method: "POST",
+    owner: "api",
+    path: "/candidates",
+  },
+  {
+    auth: "session",
+    description: "Load one workspace-scoped candidate profile for detail and edit flows.",
+    method: "GET",
+    owner: "api",
+    path: "/candidates/:candidateId",
+  },
+  {
+    auth: "session",
+    description: "Update one workspace-scoped candidate profile and audit the mutation.",
+    method: "PATCH",
+    owner: "api",
+    path: "/candidates/:candidateId",
+  },
+  {
+    auth: "session",
     description: "Return workspace-scoped document metadata with type and linked entity filters.",
     method: "GET",
     owner: "api",
