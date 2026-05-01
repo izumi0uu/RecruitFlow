@@ -96,6 +96,8 @@ const ClientDetailPage = async ({ params }: PageProps) => {
   const primaryContact = contacts.find((contact) => contact.isPrimary);
   const canArchive =
     client.status !== "archived" && context.role !== "coordinator";
+  const canCreateJob =
+    client.status !== "archived" && context.role !== "coordinator";
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -298,13 +300,25 @@ const ClientDetailPage = async ({ params }: PageProps) => {
 
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BriefcaseBusiness className="size-4" />
-                  Open jobs slot
-                </CardTitle>
-                <CardDescription>
-                  Lightweight handoff point for the jobs-intake branch.
-                </CardDescription>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <BriefcaseBusiness className="size-4" />
+                      Open jobs slot
+                    </CardTitle>
+                    <CardDescription>
+                      Lightweight handoff point for the jobs-intake branch.
+                    </CardDescription>
+                  </div>
+                  {canCreateJob ? (
+                    <Button asChild size="sm" className="rounded-full">
+                      <TrackedLink href={`/jobs/new?clientId=${client.id}`}>
+                        <Plus className="size-3.5" />
+                        Create job
+                      </TrackedLink>
+                    </Button>
+                  ) : null}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="rounded-[1.35rem] border border-border/70 bg-surface-1/70 p-5">
@@ -313,9 +327,23 @@ const ClientDetailPage = async ({ params }: PageProps) => {
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {client.openJobsCount === 0
-                      ? "No active jobs linked yet; the jobs-intake branch can attach here safely."
+                      ? "No active jobs linked yet; create the first role from this account context."
                       : "active jobs currently linked"}
                   </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Button asChild size="sm" variant="outline" className="rounded-full">
+                      <TrackedLink href={`/jobs?clientId=${client.id}`}>
+                        View jobs
+                      </TrackedLink>
+                    </Button>
+                    {!canCreateJob ? (
+                      <span className="status-message border-border/70 bg-background text-muted-foreground">
+                        {client.status === "archived"
+                          ? "Archived client"
+                          : "Coordinator read-only"}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </CardContent>
             </Card>

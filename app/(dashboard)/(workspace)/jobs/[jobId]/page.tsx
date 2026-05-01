@@ -20,6 +20,10 @@ import type {
   JobRecord,
   JobStageTemplateSummary,
 } from "@recruitflow/contracts";
+import {
+  apiJobPriorityValues,
+  apiJobStatusValues,
+} from "@recruitflow/contracts";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +37,8 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
+
+import { updateJobControlsAction } from "../actions";
 
 type PageProps = {
   params: Promise<{
@@ -104,6 +110,12 @@ const formatSalaryRange = (job: JobRecord) => {
 const formatPlacementFee = (value: number | null) =>
   value == null ? "Not set" : `${value}%`;
 
+const formatNumberInputValue = (value: number | null) =>
+  value == null ? "" : String(value);
+
+const formatDateInputValue = (value: string | null) =>
+  value ? value.slice(0, 10) : "";
+
 const getJobDetail = async (jobId: string) => {
   try {
     return await requestApiJson<JobDetailResponse>(`/jobs/${jobId}`);
@@ -157,6 +169,103 @@ const DetailTile = ({
       {value}
     </p>
   </div>
+);
+
+const HiddenJobMutationFields = ({ job }: { job: JobRecord }) => (
+  <>
+    <input type="hidden" name="jobId" value={job.id} />
+    <input type="hidden" name="clientId" value={job.clientId} />
+    <input type="hidden" name="currency" value={job.currency ?? "USD"} />
+    <input type="hidden" name="department" value={job.department ?? ""} />
+    <input type="hidden" name="description" value={job.description ?? ""} />
+    <input type="hidden" name="employmentType" value={job.employmentType ?? ""} />
+    <input
+      type="hidden"
+      name="headcount"
+      value={formatNumberInputValue(job.headcount)}
+    />
+    <input type="hidden" name="intakeSummary" value={job.intakeSummary ?? ""} />
+    <input type="hidden" name="location" value={job.location ?? ""} />
+    <input type="hidden" name="ownerUserId" value={job.ownerUserId ?? ""} />
+    <input
+      type="hidden"
+      name="placementFeePercent"
+      value={formatNumberInputValue(job.placementFeePercent)}
+    />
+    <input
+      type="hidden"
+      name="salaryMax"
+      value={formatNumberInputValue(job.salaryMax)}
+    />
+    <input
+      type="hidden"
+      name="salaryMin"
+      value={formatNumberInputValue(job.salaryMin)}
+    />
+    <input
+      type="hidden"
+      name="targetFillDate"
+      value={formatDateInputValue(job.targetFillDate)}
+    />
+    <input type="hidden" name="title" value={job.title} />
+  </>
+);
+
+const JobStatusPriorityControls = ({ job }: { job: JobRecord }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Operating controls</CardTitle>
+      <CardDescription>
+        Update the job state without opening the full intake form. Status
+        changes still write API-owned audit events.
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <form action={updateJobControlsAction} className="space-y-4">
+        <HiddenJobMutationFields job={job} />
+
+        <label className="block space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Status
+          </span>
+          <select
+            className="input"
+            name="status"
+            defaultValue={job.status}
+            required
+          >
+            {apiJobStatusValues.map((status) => (
+              <option key={status} value={status}>
+                {toTitleCase(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Priority
+          </span>
+          <select
+            className="input"
+            name="priority"
+            defaultValue={job.priority}
+            required
+          >
+            {apiJobPriorityValues.map((priority) => (
+              <option key={priority} value={priority}>
+                {toTitleCase(priority)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <Button type="submit" className="w-full rounded-full">
+          Save controls
+        </Button>
+      </form>
+    </CardContent>
+  </Card>
 );
 
 const TextPanel = ({
@@ -356,6 +465,31 @@ const JobDetailPage = async ({ params }: PageProps) => {
         </div>
 
         <aside className="space-y-5">
+          {canEdit ? (
+            <JobStatusPriorityControls job={job} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Operating controls</CardTitle>
+                <CardDescription>
+                  Coordinators can inspect job urgency, but only owners and
+                  recruiters can change restricted state.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-[1.35rem] border border-border/70 bg-surface-1/70 p-4">
+                  <p className="text-sm font-medium text-foreground">
+                    Read-only controls
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    The API also enforces this restriction, so hidden UI cannot
+                    become a permission bypass.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
