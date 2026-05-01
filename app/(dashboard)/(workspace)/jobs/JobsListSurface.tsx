@@ -213,7 +213,9 @@ const JobRow = ({
         ) : null}
       </div>
       <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
-        {job.title}
+        <TrackedLink href={`/jobs/${job.id}`} className="hover:underline">
+          {job.title}
+        </TrackedLink>
       </h2>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">
         {[job.department, job.location, job.employmentType]

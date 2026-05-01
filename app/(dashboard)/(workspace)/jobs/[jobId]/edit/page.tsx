@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
@@ -162,8 +163,11 @@ const EditJobPage = async ({ params, searchParams }: PageProps) => {
 
       {hasCreatedFlag(urlParams) ? (
         <p className="status-message status-success">
-          Job created. RF-26 will add the dedicated job detail overview; for
-          now this edit screen is the stable post-save checkpoint.
+          Job created. You can keep editing here or open the dedicated job
+          overview.
+          <Button asChild size="sm" variant="outline" className="ml-2 rounded-full">
+            <TrackedLink href={`/jobs/${job.id}`}>Open overview</TrackedLink>
+          </Button>
         </p>
       ) : null}
 
@@ -177,8 +181,8 @@ const EditJobPage = async ({ params, searchParams }: PageProps) => {
         <CardHeader>
           <CardTitle>Job intake baseline</CardTitle>
           <CardDescription>
-            These fields feed the jobs list and prepare the record for RF-24
-            stage initialization and RF-26 detail overview work.
+            These fields feed the jobs list, dedicated overview, and downstream
+            stage/submission handoff surfaces.
           </CardDescription>
         </CardHeader>
         <CardContent>
