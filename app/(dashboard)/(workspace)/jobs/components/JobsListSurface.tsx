@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   BriefcaseBusiness,
   Building2,
@@ -22,19 +21,14 @@ import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
-import {
-  areJobListFiltersEqual,
-  type JobListFilters,
-} from "@/lib/jobs/filters";
-import { jobsListQueryOptions } from "@/lib/query/options";
+import type { JobListFilters } from "@/lib/jobs/filters";
 import { cn } from "@/lib/utils";
 
-import { useJobListFilters } from "../hooks/useJobListFilters";
+import { useJobsListSurface } from "./hooks/useJobsListSurface";
 import {
   formatJobDate,
   formatJobLabel,
   formatJobSalary,
-  getJobFilterCount,
   jobPriorityOptions,
   jobPriorityToneMap,
   jobSortOptions,
@@ -106,7 +100,6 @@ const JobRow = ({
           >
             <TrackedLink href={`/jobs/${job.id}/edit`}>
               <Pencil className="size-3.5" />
-              Edit
             </TrackedLink>
           </Button>
         ) : null}
@@ -207,55 +200,29 @@ const JobsListSurface = ({
   initialFilters,
 }: JobsListSurfaceProps) => {
   const {
+    activeJobsCount,
     applyFilters,
+    canManageJobs,
+    clientOptions,
+    currentPage,
+    error,
+    filterCount,
     filters,
-    normalizedInitialFilters,
+    hasFilters,
+    isError,
+    isFetching,
+    jobsList,
+    ownerOptions,
+    refetch,
     resetFilters,
     searchDraft,
     setSearchDraft,
-  } = useJobListFilters(initialFilters);
-
-  const isInitialQuery = areJobListFiltersEqual(
-    filters,
-    normalizedInitialFilters,
-  );
-  const {
-    data: jobsList = initialData,
-    error,
-    isError,
-    isFetching,
-    refetch,
-  } = useQuery({
-    ...jobsListQueryOptions(filters),
-    initialData: isInitialQuery ? initialData : undefined,
-    placeholderData: keepPreviousData,
+    totalPages,
+    urgentJobsCount,
+  } = useJobsListSurface({
+    initialData,
+    initialFilters,
   });
-
-  const filterCount = getJobFilterCount(filters);
-  const hasFilters = filterCount > 0;
-  const currentPage = jobsList.pagination.page;
-  const totalPages = jobsList.pagination.totalPages;
-  const activeJobsCount = jobsList.items.filter((job) =>
-    ["intake", "open", "on_hold"].includes(job.status),
-  ).length;
-  const urgentJobsCount = jobsList.items.filter(
-    (job) => job.priority === "urgent",
-  ).length;
-  const canManageJobs = jobsList.context.role !== "coordinator";
-  const clientOptions = [
-    { label: "All clients", value: "" },
-    ...jobsList.clientOptions.map((client) => ({
-      label: client.name,
-      value: client.id,
-    })),
-  ];
-  const ownerOptions = [
-    { label: "All owners", value: "" },
-    ...jobsList.ownerOptions.map((owner) => ({
-      label: owner.name ?? owner.email,
-      value: owner.id,
-    })),
-  ];
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -293,8 +260,14 @@ const JobsListSurface = ({
                 label="Visible"
                 value={String(jobsList.pagination.totalItems)}
               />
-              <JobsHeaderMetric label="Active" value={String(activeJobsCount)} />
-              <JobsHeaderMetric label="Urgent" value={String(urgentJobsCount)} />
+              <JobsHeaderMetric
+                label="Active"
+                value={String(activeJobsCount)}
+              />
+              <JobsHeaderMetric
+                label="Urgent"
+                value={String(urgentJobsCount)}
+              />
             </div>
           </div>
         }
@@ -308,7 +281,9 @@ const JobsListSurface = ({
                 {filterCount ? `${filterCount} active filters` : "No filters"}
               </span>
               <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                {jobsList.workspaceScoped ? "Workspace scoped" : "Scope pending"}
+                {jobsList.workspaceScoped
+                  ? "Workspace scoped"
+                  : "Scope pending"}
               </span>
             </div>
 
@@ -451,11 +426,7 @@ const JobsListSurface = ({
 
             {jobsList.items.length > 0 ? (
               jobsList.items.map((job) => (
-                <JobRow
-                  key={job.id}
-                  canManageJobs={canManageJobs}
-                  job={job}
-                />
+                <JobRow key={job.id} canManageJobs={canManageJobs} job={job} />
               ))
             ) : (
               <JobsEmptyState hasFilters={hasFilters} onReset={resetFilters} />
