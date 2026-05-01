@@ -13,9 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/Dialog";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
 
+import { ContactForm } from "./ContactForm";
 import { useClientContactCreateDialog } from "./hooks/useClientContactCreateDialog";
 
 type ClientContactCreateDialogProps = {
@@ -35,13 +34,19 @@ const ClientContactCreateDialog = ({
   onOpenChange,
   open,
 }: ClientContactCreateDialogProps) => {
-  const { error, handleSubmit, isPending, success, updateValue, values } =
-    useClientContactCreateDialog({
-      clientId,
-      defaultIsPrimary,
-      onContactCreated,
-      open,
-    });
+  const {
+    error,
+    handleSubmit,
+    handleValuesChange,
+    initialValues,
+    isPending,
+    success,
+  } = useClientContactCreateDialog({
+    clientId,
+    defaultIsPrimary,
+    onContactCreated,
+    open,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,7 +59,7 @@ const ClientContactCreateDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
+        <div className="space-y-5">
           <div className="rounded-[1.65rem] border border-border/70 bg-workspace-muted-surface/45 p-4">
             <div className="flex items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-[1.05rem] border border-border/70 bg-background/72">
@@ -72,138 +77,38 @@ const ClientContactCreateDialog = ({
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-2 lg:col-span-2">
-              <Label htmlFor="contact-create-fullName">Contact name</Label>
-              <Input
-                id="contact-create-fullName"
-                placeholder="Jordan Lee"
-                required
-                value={values.fullName}
-                onChange={(event) => {
-                  updateValue("fullName", event.target.value);
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contact-create-title">Title</Label>
-              <Input
-                id="contact-create-title"
-                placeholder="VP of Talent"
-                value={values.title}
-                onChange={(event) => {
-                  updateValue("title", event.target.value);
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contact-create-relationshipType">
-                Relationship type
-              </Label>
-              <Input
-                id="contact-create-relationshipType"
-                placeholder="hiring_manager"
-                value={values.relationshipType}
-                onChange={(event) => {
-                  updateValue("relationshipType", event.target.value);
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contact-create-email">Email</Label>
-              <Input
-                id="contact-create-email"
-                type="email"
-                placeholder="jordan@example.com"
-                value={values.email}
-                onChange={(event) => {
-                  updateValue("email", event.target.value);
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contact-create-phone">Phone</Label>
-              <Input
-                id="contact-create-phone"
-                placeholder="+1 555 0100"
-                value={values.phone}
-                onChange={(event) => {
-                  updateValue("phone", event.target.value);
-                }}
-              />
-            </div>
-
-            <div className="space-y-2 lg:col-span-2">
-              <Label htmlFor="contact-create-linkedinUrl">LinkedIn URL</Label>
-              <Input
-                id="contact-create-linkedinUrl"
-                placeholder="linkedin.com/in/jordanlee"
-                value={values.linkedinUrl}
-                onChange={(event) => {
-                  updateValue("linkedinUrl", event.target.value);
-                }}
-              />
-            </div>
-
-            <label className="flex cursor-pointer items-start gap-3 rounded-[1.25rem] border border-border/70 bg-surface-1/70 p-4 lg:col-span-2">
-              <input
-                className="mt-1 size-4 cursor-pointer accent-foreground"
-                checked={values.isPrimary}
-                type="checkbox"
-                onChange={(event) => {
-                  updateValue("isPrimary", event.target.checked);
-                }}
-              />
-              <span>
-                <span className="block text-sm font-medium text-foreground">
-                  Mark as primary contact
-                </span>
-                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                  The API will clear the previous primary contact for this
-                  client so the detail page has one best handoff person.
-                </span>
-              </span>
-            </label>
-          </div>
-
-          {error ? <p className="status-message status-error">{error}</p> : null}
-          {success ? (
-            <p className="status-message status-success">{success}</p>
-          ) : null}
-
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-full"
-              >
-                Close
-              </Button>
-            </DialogClose>
-            <Button
-              type="submit"
-              className="rounded-full"
-              disabled={isPending}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="size-4" />
-                  Create contact
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+          <ContactForm
+            clientId={clientId}
+            error={error}
+            footerClassName="flex flex-wrap items-center justify-end gap-3"
+            idPrefix="contact-create"
+            initialValues={initialValues}
+            isPending={isPending}
+            mode="create"
+            pendingContent={
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Creating...
+              </>
+            }
+            secondaryAction={
+              <DialogClose asChild>
+                <Button type="button" variant="outline" className="rounded-full">
+                  Close
+                </Button>
+              </DialogClose>
+            }
+            submitContent={
+              <>
+                <Plus className="size-4" />
+                Create contact
+              </>
+            }
+            success={success}
+            onSubmit={handleSubmit}
+            onValuesChange={handleValuesChange}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

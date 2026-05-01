@@ -21,7 +21,6 @@ import type {
   ApiClientSort,
   ApiClientStatus,
   ClientsListItem,
-  ClientsListResponse,
 } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
@@ -38,7 +37,6 @@ import { ClientEditDialog } from "./ClientEditDialog";
 import { useClientsListSurface } from "./hooks/useClientsListSurface";
 
 type ClientsListSurfaceProps = {
-  initialData: ClientsListResponse;
   initialFilters: ClientListFilters;
 };
 
@@ -140,12 +138,14 @@ const ClientsHeaderMetric = ({
 );
 
 const ClientsHeaderSummary = ({
+  canCreateClient,
   isFetching,
   onCreateClient,
   openJobsCount,
   ownerCount,
   totalItems,
 }: {
+  canCreateClient: boolean;
   isFetching: boolean;
   onCreateClient: () => void;
   openJobsCount: number;
@@ -160,7 +160,12 @@ const ClientsHeaderSummary = ({
           Syncing
         </span>
       ) : null}
-      <Button className="rounded-full" type="button" onClick={onCreateClient}>
+      <Button
+        className="rounded-full"
+        disabled={!canCreateClient}
+        type="button"
+        onClick={onCreateClient}
+      >
         <Plus className="size-4" />
         Create Client
       </Button>
@@ -362,8 +367,21 @@ const ClientsEmptyState = ({
   </div>
 );
 
+const ClientsLoadingState = () => (
+  <div className="flex min-h-72 flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+    <span className="flex size-12 items-center justify-center rounded-full border border-border/70 bg-surface-1">
+      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+    </span>
+    <div>
+      <p className="text-sm font-medium text-foreground">Loading clients</p>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        The list is loading through the client query cache.
+      </p>
+    </div>
+  </div>
+);
+
 const ClientsListSurface = ({
-  initialData,
   initialFilters,
 }: ClientsListSurfaceProps) => {
   const {
@@ -381,6 +399,7 @@ const ClientsListSurface = ({
     isCreateDialogOpen,
     isError,
     isFetching,
+    isLoading,
     openJobsCount,
     ownerFilterOptions,
     refetch,
@@ -392,9 +411,9 @@ const ClientsListSurface = ({
     setSearchDraft,
     totalPages,
   } = useClientsListSurface({
-    initialData,
     initialFilters,
   });
+  const hasClientsList = Boolean(clientsList);
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -405,13 +424,14 @@ const ClientsListSurface = ({
         rightSlotClassName="w-full xl:w-auto"
         rightSlot={
           <ClientsHeaderSummary
-            isFetching={isFetching}
+            canCreateClient={hasClientsList}
+            isFetching={isFetching || isLoading}
             onCreateClient={() => {
               setIsCreateDialogOpen(true);
             }}
             openJobsCount={openJobsCount}
-            ownerCount={clientsList.ownerOptions.length}
-            totalItems={clientsList.pagination.totalItems}
+            ownerCount={clientsList?.ownerOptions.length ?? 0}
+            totalItems={clientsList?.pagination.totalItems ?? 0}
           />
         }
       />
@@ -424,9 +444,11 @@ const ClientsListSurface = ({
                 {filterCount ? `${filterCount} active filters` : "No filters"}
               </span>
               <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                {clientsList.workspaceScoped
+                {clientsList?.workspaceScoped
                   ? "Workspace scoped"
-                  : "Scope pending"}
+                  : isLoading
+                    ? "Loading scope"
+                    : "Scope pending"}
               </span>
             </div>
 
@@ -562,7 +584,9 @@ const ClientsListSurface = ({
               <span className="text-right">Action</span>
             </div>
 
-            {clientsList.items.length > 0 ? (
+            {!clientsList ? (
+              <ClientsLoadingState />
+            ) : clientsList.items.length > 0 ? (
               clientsList.items.map((client) => (
                 <ClientRow
                   canRestoreClientControls={canRestoreClientControls}
@@ -598,9 +622,9 @@ const ClientsListSurface = ({
                 Page {currentPage} of {totalPages}
               </span>
               <span className="text-muted-foreground/60">·</span>
-              <span>{clientsList.pagination.pageSize} per page</span>
+              <span>{clientsList?.pagination.pageSize ?? 20} per page</span>
               <span className="text-muted-foreground/60">·</span>
-              <span>{clientsList.pagination.totalItems} total</span>
+              <span>{clientsList?.pagination.totalItems ?? 0} total</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -608,7 +632,7 @@ const ClientsListSurface = ({
                 className="rounded-full"
                 type="button"
                 variant="outline"
-                disabled={currentPage <= 1}
+                disabled={!clientsList || currentPage <= 1}
                 onClick={() => {
                   applyFilters({
                     page: currentPage > 2 ? String(currentPage - 1) : "",
@@ -622,7 +646,7 @@ const ClientsListSurface = ({
                 className="rounded-full"
                 type="button"
                 variant="outline"
-                disabled={currentPage >= totalPages}
+                disabled={!clientsList || currentPage >= totalPages}
                 onClick={() => {
                   applyFilters({ page: String(currentPage + 1) });
                 }}
@@ -646,26 +670,30 @@ const ClientsListSurface = ({
         </CardContent>
       </Card>
 
-      <ClientCreateDialog
-        canManageClientControls={clientsList.context.role !== "coordinator"}
-        onClientCreated={handleClientCreated}
-        onOpenChange={setIsCreateDialogOpen}
-        open={isCreateDialogOpen}
-        ownerOptions={clientsList.ownerOptions}
-      />
+      {clientsList ? (
+        <>
+          <ClientCreateDialog
+            canManageClientControls={clientsList.context.role !== "coordinator"}
+            onClientCreated={handleClientCreated}
+            onOpenChange={setIsCreateDialogOpen}
+            open={isCreateDialogOpen}
+            ownerOptions={clientsList.ownerOptions}
+          />
 
-      <ClientEditDialog
-        canManageClientControls={clientsList.context.role !== "coordinator"}
-        client={editingClient}
-        onClientUpdated={handleClientUpdated}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditingClient(null);
-          }
-        }}
-        open={editingClient !== null}
-        ownerOptions={clientsList.ownerOptions}
-      />
+          <ClientEditDialog
+            canManageClientControls={clientsList.context.role !== "coordinator"}
+            client={editingClient}
+            onClientUpdated={handleClientUpdated}
+            onOpenChange={(open) => {
+              if (!open) {
+                setEditingClient(null);
+              }
+            }}
+            open={editingClient !== null}
+            ownerOptions={clientsList.ownerOptions}
+          />
+        </>
+      ) : null}
     </section>
   );
 };

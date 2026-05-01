@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import type {
+  ClientDetailResponse,
   ClientsListResponse,
   JobsListResponse,
 } from "@recruitflow/contracts";
@@ -35,13 +36,13 @@ export const currentWorkspaceQueryOptions = () =>
 export const currentTeamQueryOptions = currentWorkspaceQueryOptions;
 
 export const clientsListRootQueryKey = ["clients", "list"] as const;
-export const clientsListMutationMarkerQueryKey = [
-  "clients",
-  "listMutationMarker",
-] as const;
+export const clientsDetailRootQueryKey = ["clients", "detail"] as const;
 
 export const clientsListQueryKey = (filters: ClientListFilters) =>
   [...clientsListRootQueryKey, filters] as const;
+
+export const clientDetailQueryKey = (clientId: string) =>
+  [...clientsDetailRootQueryKey, clientId] as const;
 
 export const clientsListQueryOptions = (filters: ClientListFilters) =>
   queryOptions({
@@ -56,6 +57,12 @@ export const clientsListQueryOptions = (filters: ClientListFilters) =>
         `/api/clients${queryString ? `?${queryString}` : ""}`,
       );
     },
+  });
+
+export const clientDetailQueryOptions = (clientId: string) =>
+  queryOptions({
+    queryKey: clientDetailQueryKey(clientId),
+    queryFn: () => fetchJson<ClientDetailResponse>(`/api/clients/${clientId}`),
   });
 
 export const jobsListQueryKey = (filters: JobListFilters) =>

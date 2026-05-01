@@ -16,6 +16,8 @@ import {
 
 import { getApiErrorMessage } from "@/utils/apiErrors";
 
+import { useClientsCacheActions } from "./useClientMutations";
+
 type UseClientCreateDialogOptions = {
   canManageClientControls: boolean;
   onClientCreated: (client: ClientMutationResponse) => void;
@@ -113,6 +115,7 @@ const useClientCreateDialog = ({
   onClientCreated,
   ownerOptions,
 }: UseClientCreateDialogOptions) => {
+  const { invalidateClientsList } = useClientsCacheActions();
   const [values, setValues] = React.useState<ClientCreateValues>(emptyValues);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
@@ -125,9 +128,10 @@ const useClientCreateDialog = ({
           : "Unable to create client.",
       );
     },
-    onSuccess: (createdClient) => {
+    onSuccess: async (createdClient) => {
       setValues(emptyValues);
       setSuccess(createdClient.message);
+      await invalidateClientsList();
       onClientCreated(createdClient);
     },
   });

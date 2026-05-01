@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -7,106 +8,172 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 
-import type {
-  ContactFormState,
-  ContactFormValues,
-} from "../actions";
-import { useContactFormState } from "./hooks/useContactFormState";
-
-export { emptyContactFormValues } from "./hooks/useContactFormState";
-
-type ContactFormAction = (
-  previousState: ContactFormState,
-  formData: FormData,
-) => Promise<ContactFormState>;
+export type ContactFormValues = {
+  email: string;
+  fullName: string;
+  isPrimary: boolean;
+  linkedinUrl: string;
+  phone: string;
+  relationshipType: string;
+  title: string;
+};
 
 type ContactFormProps = {
-  action: ContactFormAction;
   clientId: string;
-  contactId?: string;
+  error?: string | null;
+  footerClassName?: string;
+  idPrefix?: string;
   initialValues: ContactFormValues;
+  isPending: boolean;
   mode: "create" | "edit";
+  onSubmit: (values: ContactFormValues) => void;
+  onValuesChange?: () => void;
+  pendingContent?: React.ReactNode;
+  secondaryAction?: React.ReactNode;
+  submitContent?: React.ReactNode;
+  success?: string | null;
+};
+
+export const emptyContactFormValues: ContactFormValues = {
+  email: "",
+  fullName: "",
+  isPrimary: false,
+  linkedinUrl: "",
+  phone: "",
+  relationshipType: "",
+  title: "",
 };
 
 export const ContactForm = ({
-  action,
   clientId,
-  contactId,
+  error,
+  footerClassName = "flex flex-wrap items-center gap-3",
+  idPrefix = "contact",
   initialValues,
+  isPending,
   mode,
+  onSubmit,
+  onValuesChange,
+  pendingContent,
+  secondaryAction,
+  submitContent,
+  success,
 }: ContactFormProps) => {
-  const { formAction, isPending, state, values } = useContactFormState({
-    action,
-    initialValues,
+  const [values, setValues] = React.useState<ContactFormValues>({
+    ...emptyContactFormValues,
+    ...initialValues,
   });
 
-  return (
-    <form action={formAction} className="space-y-6">
-      <input type="hidden" name="clientId" value={clientId} />
-      {contactId ? (
-        <input type="hidden" name="contactId" value={contactId} />
-      ) : null}
+  React.useEffect(() => {
+    setValues({
+      ...emptyContactFormValues,
+      ...initialValues,
+    });
+  }, [initialValues]);
 
+  const updateValue = React.useCallback(
+    (name: keyof ContactFormValues, value: string | boolean) => {
+      setValues((currentValues) => ({
+        ...currentValues,
+        [name]: value,
+      }));
+      onValuesChange?.();
+    },
+    [onValuesChange],
+  );
+  const fieldId = React.useCallback(
+    (name: keyof ContactFormValues) => `${idPrefix}-${name}`,
+    [idPrefix],
+  );
+
+  return (
+    <form
+      className="space-y-6"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(values);
+      }}
+    >
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-2 lg:col-span-2">
-          <Label htmlFor="fullName">Contact name</Label>
+          <Label htmlFor={fieldId("fullName")}>Contact name</Label>
           <Input
-            id="fullName"
+            id={fieldId("fullName")}
             name="fullName"
             placeholder="Jordan Lee"
-            defaultValue={values.fullName}
             required
+            value={values.fullName}
+            onChange={(event) => {
+              updateValue("fullName", event.target.value);
+            }}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
+          <Label htmlFor={fieldId("title")}>Title</Label>
           <Input
-            id="title"
+            id={fieldId("title")}
             name="title"
             placeholder="VP of Talent"
-            defaultValue={values.title}
+            value={values.title}
+            onChange={(event) => {
+              updateValue("title", event.target.value);
+            }}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="relationshipType">Relationship type</Label>
+          <Label htmlFor={fieldId("relationshipType")}>
+            Relationship type
+          </Label>
           <Input
-            id="relationshipType"
+            id={fieldId("relationshipType")}
             name="relationshipType"
             placeholder="hiring_manager"
-            defaultValue={values.relationshipType}
+            value={values.relationshipType}
+            onChange={(event) => {
+              updateValue("relationshipType", event.target.value);
+            }}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor={fieldId("email")}>Email</Label>
           <Input
-            id="email"
+            id={fieldId("email")}
             name="email"
             type="email"
             placeholder="jordan@example.com"
-            defaultValue={values.email}
+            value={values.email}
+            onChange={(event) => {
+              updateValue("email", event.target.value);
+            }}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone</Label>
+          <Label htmlFor={fieldId("phone")}>Phone</Label>
           <Input
-            id="phone"
+            id={fieldId("phone")}
             name="phone"
             placeholder="+1 555 0100"
-            defaultValue={values.phone}
+            value={values.phone}
+            onChange={(event) => {
+              updateValue("phone", event.target.value);
+            }}
           />
         </div>
 
         <div className="space-y-2 lg:col-span-2">
-          <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
+          <Label htmlFor={fieldId("linkedinUrl")}>LinkedIn URL</Label>
           <Input
-            id="linkedinUrl"
+            id={fieldId("linkedinUrl")}
             name="linkedinUrl"
             placeholder="linkedin.com/in/jordanlee"
-            defaultValue={values.linkedinUrl}
+            value={values.linkedinUrl}
+            onChange={(event) => {
+              updateValue("linkedinUrl", event.target.value);
+            }}
           />
           <p className="text-xs leading-5 text-muted-foreground">
             URLs without a protocol are normalized to https before they reach
@@ -116,10 +183,13 @@ export const ContactForm = ({
 
         <label className="flex items-start gap-3 rounded-[1.25rem] border border-border/70 bg-surface-1/70 p-4 lg:col-span-2">
           <input
+            checked={values.isPrimary}
             className="mt-1 size-4 accent-foreground"
-            defaultChecked={values.isPrimary}
             name="isPrimary"
             type="checkbox"
+            onChange={(event) => {
+              updateValue("isPrimary", event.target.checked);
+            }}
           />
           <span>
             <span className="block text-sm font-medium text-foreground">
@@ -133,26 +203,38 @@ export const ContactForm = ({
         </label>
       </div>
 
-      {state.error ? (
-        <p className="status-message status-error">{state.error}</p>
+      {error ? <p className="status-message status-error">{error}</p> : null}
+      {success ? (
+        <p className="status-message status-success">{success}</p>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className={footerClassName}>
         <Button type="submit" className="rounded-full" disabled={isPending}>
           {isPending ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Saving...
-            </>
-          ) : mode === "create" ? (
-            "Create contact"
+            pendingContent ?? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Saving...
+              </>
+            )
           ) : (
-            "Save contact"
+            submitContent ?? (
+              <>
+                {mode === "create" ? "Create contact" : "Save contact"}
+              </>
+            )
           )}
         </Button>
-        <Button asChild type="button" variant="outline" className="rounded-full">
-          <TrackedLink href={`/clients/${clientId}`}>Cancel</TrackedLink>
-        </Button>
+        {secondaryAction ?? (
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            className="rounded-full"
+          >
+            <TrackedLink href={`/clients/${clientId}`}>Cancel</TrackedLink>
+          </Button>
+        )}
       </div>
     </form>
   );

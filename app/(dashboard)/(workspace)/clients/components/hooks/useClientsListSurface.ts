@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import type { ClientsListResponse } from "@recruitflow/contracts";
+import type { ClientsListItem } from "@recruitflow/contracts";
 
 import {
   areClientListFiltersEqual,
@@ -15,13 +15,9 @@ import {
 import { clientsListQueryOptions } from "@/lib/query/options";
 import { useUrlBackedListFilters } from "@/hooks/useUrlBackedListFilters";
 
-import {
-  useClientRestoreMutation,
-  useClientsListMutationState,
-} from "./useClientMutations";
+import { useClientRestoreMutation } from "./useClientMutations";
 
 type UseClientsListSurfaceOptions = {
-  initialData: ClientsListResponse;
   initialFilters: ClientListFilters;
 };
 
@@ -61,19 +57,14 @@ const canUsePreviousClientListData = (
 };
 
 const useClientsListSurface = ({
-  initialData,
   initialFilters,
 }: UseClientsListSurfaceOptions) => {
-  const { hasClientListMutation, refreshClientsListCache } =
-    useClientsListMutationState();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
-  const [editingClient, setEditingClient] = React.useState<
-    ClientsListResponse["items"][number] | null
-  >(null);
+  const [editingClient, setEditingClient] =
+    React.useState<ClientsListItem | null>(null);
   const {
     applyFilters,
     filters,
-    normalizedInitialFilters,
     searchDraft,
     setSearchDraft,
   } = useUrlBackedListFilters({
@@ -86,45 +77,40 @@ const useClientsListSurface = ({
     searchResetUpdates: { page: "" },
   });
 
-  const isInitialQuery =
-    areClientListFiltersEqual(filters, normalizedInitialFilters) &&
-    !hasClientListMutation;
   const {
-    data: clientsList = initialData,
+    data: clientsList,
     error,
     isError,
     isFetching,
+    isLoading,
     refetch,
   } = useQuery({
     ...clientsListQueryOptions(filters),
-    initialData: isInitialQuery ? initialData : undefined,
     placeholderData: (previousData, previousQuery) =>
       canUsePreviousClientListData(previousQuery?.queryKey[2], filters)
         ? previousData
         : undefined,
   });
-  const restoreClientMutation = useClientRestoreMutation({
-    onSuccess: async () => {
-      await refreshClientsListCache();
-    },
-  });
+  const restoreClientMutation = useClientRestoreMutation();
 
   const filterCount = getFilterCount(filters);
   const hasFilters = filterCount > 0;
   const ownerFilterOptions = [
     { label: "All owners", value: "" },
-    ...clientsList.ownerOptions.map((owner) => ({
+    ...(clientsList?.ownerOptions ?? []).map((owner) => ({
       label: owner.name ?? owner.email,
       value: owner.id,
     })),
   ];
-  const openJobsCount = clientsList.items.reduce(
+  const openJobsCount = (clientsList?.items ?? []).reduce(
     (total, client) => total + client.openJobsCount,
     0,
   );
-  const currentPage = clientsList.pagination.page;
-  const totalPages = clientsList.pagination.totalPages;
-  const canRestoreClientControls = clientsList.context.role !== "coordinator";
+  const currentPage = clientsList?.pagination.page ?? 1;
+  const totalPages = clientsList?.pagination.totalPages ?? 1;
+  const canRestoreClientControls = Boolean(
+    clientsList && clientsList.context.role !== "coordinator",
+  );
 
   const resetFilters = React.useCallback(() => {
     setSearchDraft("");
@@ -138,13 +124,9 @@ const useClientsListSurface = ({
     });
   }, [applyFilters]);
 
-  const handleClientCreated = React.useCallback(() => {
-    void refreshClientsListCache();
-  }, [refreshClientsListCache]);
+  const handleClientCreated = React.useCallback(() => undefined, []);
 
-  const handleClientUpdated = React.useCallback(() => {
-    void refreshClientsListCache();
-  }, [refreshClientsListCache]);
+  const handleClientUpdated = React.useCallback(() => undefined, []);
 
   return {
     applyFilters,
@@ -161,6 +143,7 @@ const useClientsListSurface = ({
     isCreateDialogOpen,
     isError,
     isFetching,
+    isLoading,
     openJobsCount,
     ownerFilterOptions,
     refetch,

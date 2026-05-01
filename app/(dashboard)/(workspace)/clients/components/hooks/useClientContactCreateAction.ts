@@ -1,15 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 
 const useClientContactCreateAction = () => {
-  const router = useRouter();
   const [open, setOpen] = React.useState(false);
 
-  const handleContactCreated = React.useCallback(() => {
-    router.refresh();
-  }, [router]);
+  const handleContactCreated = React.useCallback(() => undefined, []);
 
   return {
     handleContactCreated,

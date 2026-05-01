@@ -1,22 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 
-import {
-  useClientRestoreMutation,
-  useClientsListMutationState,
-} from "./useClientMutations";
+import { useClientRestoreMutation } from "./useClientMutations";
 
 const useRestoreClientControl = () => {
-  const router = useRouter();
-  const { clearClientsListCache } = useClientsListMutationState();
-  const { error, isPending, restoreClient } = useClientRestoreMutation({
-    onSuccess: () => {
-      clearClientsListCache();
-      router.refresh();
-    },
-  });
+  const { error, isPending, restoreClient } = useClientRestoreMutation();
 
   const handleRestoreClient = React.useCallback(
     (clientId: string) => {

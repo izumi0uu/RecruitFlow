@@ -1,19 +1,19 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import {
-  useMutation,
-  useQueryClient,
-  type QueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type {
   ClientArchiveResponse,
+  ClientContactMutationRequest,
+  ClientContactMutationResponse,
+  ClientDetailResponse,
   ClientRestoreResponse,
 } from "@recruitflow/contracts";
 
+import { fetchJson } from "@/lib/query/fetcher";
 import {
-  clientsListMutationMarkerQueryKey,
+  clientDetailQueryKey,
   clientsListRootQueryKey,
 } from "@/lib/query/options";
 
@@ -23,89 +23,111 @@ type ClientLifecycleMutationOptions<TResponse> = {
   onSuccess?: (response: TResponse) => Promise<void> | void;
 };
 
-const actionLabelMap: Record<ClientLifecycleAction, string> = {
-  archive: "Archive",
-  restore: "Restore",
-};
-
-const getClientLifecycleErrorMessage = async (
-  response: Response,
-  action: ClientLifecycleAction,
-) => {
-  try {
-    const body = (await response.json()) as { error?: string };
-
-    if (body.error) {
-      return body.error;
-    }
-  } catch {
-    // Use the fallback if the BFF does not return JSON.
-  }
-
-  return `${actionLabelMap[action]} failed with status ${response.status}`;
+type ClientContactMutationOptions = {
+  clientId: string;
+  contactId?: string;
+  onSuccess?: (response: ClientContactMutationResponse) => Promise<void> | void;
 };
 
 const requestClientLifecycleMutation = async <TResponse,>(
   clientId: string,
   action: ClientLifecycleAction,
-) => {
-  const response = await fetch(`/api/clients/${clientId}/${action}`, {
+) =>
+  fetchJson<TResponse>(`/api/clients/${clientId}/${action}`, {
     method: "PATCH",
   });
 
-  if (!response.ok) {
-    throw new Error(await getClientLifecycleErrorMessage(response, action));
-  }
-
-  return (await response.json()) as TResponse;
-};
-
-const markClientsListMutation = (queryClient: QueryClient) => {
-  queryClient.setQueryData(clientsListMutationMarkerQueryKey, Date.now());
-};
-
-export const useClientsListMutationState = () => {
-  const queryClient = useQueryClient();
-  const [hasClientListMutation, setHasClientListMutation] = useState(
-    () =>
-      queryClient.getQueryData(clientsListMutationMarkerQueryKey) !==
-      undefined,
+const requestClientContactMutation = async ({
+  clientId,
+  contactId,
+  method,
+  payload,
+}: {
+  clientId: string;
+  contactId?: string;
+  method: "PATCH" | "POST";
+  payload: ClientContactMutationRequest;
+}) =>
+  fetchJson<ClientContactMutationResponse>(
+    `/api/clients/${clientId}/contacts${contactId ? `/${contactId}` : ""}`,
+    {
+      body: JSON.stringify(payload),
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      method,
+    },
   );
 
-  const markMutation = useCallback(() => {
-    markClientsListMutation(queryClient);
-    setHasClientListMutation(true);
-  }, [queryClient]);
+export const useClientsCacheActions = () => {
+  const queryClient = useQueryClient();
 
-  const clearClientsListCache = useCallback(() => {
-    markMutation();
-    queryClient.removeQueries({
-      queryKey: clientsListRootQueryKey,
-    });
-  }, [markMutation, queryClient]);
-
-  const refreshClientsListCache = useCallback(async () => {
-    markMutation();
-    queryClient.removeQueries({
-      queryKey: clientsListRootQueryKey,
-      type: "inactive",
-    });
+  const invalidateClientsList = useCallback(async () => {
     await queryClient.invalidateQueries({
       queryKey: clientsListRootQueryKey,
       refetchType: "active",
     });
-  }, [markMutation, queryClient]);
+  }, [queryClient]);
+
+  const removeClientsListCache = useCallback(() => {
+    queryClient.removeQueries({
+      queryKey: clientsListRootQueryKey,
+    });
+  }, [queryClient]);
+
+  const setClientDetailCache = useCallback(
+    (detail: ClientDetailResponse) => {
+      queryClient.setQueryData(clientDetailQueryKey(detail.client.id), detail);
+    },
+    [queryClient],
+  );
+
+  const setClientDetailContactsCache = useCallback(
+    (clientId: string, response: ClientContactMutationResponse) => {
+      queryClient.setQueryData<ClientDetailResponse>(
+        clientDetailQueryKey(clientId),
+        (currentDetail) =>
+          currentDetail
+            ? {
+                ...currentDetail,
+                contacts: response.contacts,
+                context: response.context,
+                contractVersion: response.contractVersion,
+                workspaceScoped: response.workspaceScoped,
+              }
+            : currentDetail,
+      );
+    },
+    [queryClient],
+  );
+
+  const removeClientDetailCache = useCallback(
+    (clientId: string) => {
+      queryClient.removeQueries({
+        queryKey: clientDetailQueryKey(clientId),
+      });
+    },
+    [queryClient],
+  );
 
   return {
-    clearClientsListCache,
-    hasClientListMutation,
-    refreshClientsListCache,
+    invalidateClientsList,
+    removeClientDetailCache,
+    removeClientsListCache,
+    setClientDetailCache,
+    setClientDetailContactsCache,
   };
 };
 
 export const useClientArchiveMutation = ({
   onSuccess,
 }: ClientLifecycleMutationOptions<ClientArchiveResponse> = {}) => {
+  const {
+    invalidateClientsList,
+    removeClientDetailCache,
+    removeClientsListCache,
+  } = useClientsCacheActions();
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: (clientId: string) =>
@@ -117,6 +139,9 @@ export const useClientArchiveMutation = ({
       setError(null);
     },
     onSuccess: async (response) => {
+      removeClientDetailCache(response.client.id);
+      removeClientsListCache();
+      await invalidateClientsList();
       await onSuccess?.(response);
     },
     onError: (archiveError) => {
@@ -138,6 +163,8 @@ export const useClientArchiveMutation = ({
 export const useClientRestoreMutation = ({
   onSuccess,
 }: ClientLifecycleMutationOptions<ClientRestoreResponse> = {}) => {
+  const { invalidateClientsList, setClientDetailCache } =
+    useClientsCacheActions();
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: (clientId: string) =>
@@ -149,6 +176,8 @@ export const useClientRestoreMutation = ({
       setError(null);
     },
     onSuccess: async (response) => {
+      setClientDetailCache(response);
+      await invalidateClientsList();
       await onSuccess?.(response);
     },
     onError: (restoreError) => {
@@ -165,5 +194,89 @@ export const useClientRestoreMutation = ({
     isPending: mutation.isPending,
     restoreClient: mutation.mutate,
     variables: mutation.variables,
+  };
+};
+
+export const useClientContactCreateMutation = ({
+  clientId,
+  onSuccess,
+}: ClientContactMutationOptions) => {
+  const { invalidateClientsList, setClientDetailContactsCache } =
+    useClientsCacheActions();
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: (payload: ClientContactMutationRequest) =>
+      requestClientContactMutation({
+        clientId,
+        method: "POST",
+        payload,
+      }),
+    onMutate: () => {
+      setError(null);
+    },
+    onSuccess: async (response) => {
+      setClientDetailContactsCache(clientId, response);
+      await invalidateClientsList();
+      await onSuccess?.(response);
+    },
+    onError: (caughtError) => {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to create contact.",
+      );
+    },
+  });
+
+  return {
+    createContact: mutation.mutate,
+    error,
+    isPending: mutation.isPending,
+    resetError: () => {
+      setError(null);
+    },
+  };
+};
+
+export const useClientContactUpdateMutation = ({
+  clientId,
+  contactId,
+  onSuccess,
+}: ClientContactMutationOptions & { contactId: string }) => {
+  const { invalidateClientsList, setClientDetailContactsCache } =
+    useClientsCacheActions();
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: (payload: ClientContactMutationRequest) =>
+      requestClientContactMutation({
+        clientId,
+        contactId,
+        method: "PATCH",
+        payload,
+      }),
+    onMutate: () => {
+      setError(null);
+    },
+    onSuccess: async (response) => {
+      setClientDetailContactsCache(clientId, response);
+      await invalidateClientsList();
+      await onSuccess?.(response);
+    },
+    onError: (caughtError) => {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to update contact.",
+      );
+    },
+  });
+
+  return {
+    error,
+    isPending: mutation.isPending,
+    resetError: () => {
+      setError(null);
+    },
+    updateContact: mutation.mutate,
   };
 };

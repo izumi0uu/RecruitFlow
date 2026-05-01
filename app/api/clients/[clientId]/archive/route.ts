@@ -1,5 +1,3 @@
-import { revalidatePath } from "next/cache";
-
 import type { ClientArchiveResponse } from "@recruitflow/contracts";
 
 import { withBffApiErrorResponse } from "@/lib/api/bff";
@@ -20,9 +18,6 @@ export const PATCH = (_request: Request, { params }: RouteContext) =>
         method: "PATCH",
       },
     );
-
-    revalidatePath("/clients");
-    revalidatePath(`/clients/${clientId}`);
 
     return Response.json(client);
   });

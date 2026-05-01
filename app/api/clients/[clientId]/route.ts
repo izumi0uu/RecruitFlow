@@ -1,6 +1,9 @@
 import type { NextRequest } from "next/server";
 
-import type { ClientMutationResponse } from "@recruitflow/contracts";
+import type {
+  ClientDetailResponse,
+  ClientMutationResponse,
+} from "@recruitflow/contracts";
 
 import { withBffApiErrorResponse } from "@/lib/api/bff";
 import { requestApiJson } from "@/lib/api/client";
@@ -10,6 +13,16 @@ type RouteContext = {
     clientId: string;
   }>;
 };
+
+export const GET = (_request: NextRequest, { params }: RouteContext) =>
+  withBffApiErrorResponse(async () => {
+    const { clientId } = await params;
+    const client = await requestApiJson<ClientDetailResponse>(
+      `/clients/${clientId}`,
+    );
+
+    return Response.json(client);
+  });
 
 export const PATCH = (
   request: NextRequest,

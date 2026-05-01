@@ -17,6 +17,8 @@ import {
 
 import { getApiErrorMessage } from "@/utils/apiErrors";
 
+import { useClientsCacheActions } from "./useClientMutations";
+
 type UseClientEditDialogOptions = {
   canManageClientControls: boolean;
   client: ClientRecord | null;
@@ -133,6 +135,8 @@ const useClientEditDialog = ({
   open,
   ownerOptions,
 }: UseClientEditDialogOptions) => {
+  const { invalidateClientsList, setClientDetailCache } =
+    useClientsCacheActions();
   const [values, setValues] = React.useState<ClientEditValues | null>(
     client ? getInitialValues(client) : null,
   );
@@ -147,8 +151,10 @@ const useClientEditDialog = ({
           : "Unable to update client.",
       );
     },
-    onSuccess: (updatedClient) => {
+    onSuccess: async (updatedClient) => {
       setSuccess(updatedClient.message);
+      setClientDetailCache(updatedClient);
+      await invalidateClientsList();
       onClientUpdated(updatedClient);
     },
   });

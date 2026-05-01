@@ -3,17 +3,12 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-import {
-  useClientArchiveMutation,
-  useClientsListMutationState,
-} from "./useClientMutations";
+import { useClientArchiveMutation } from "./useClientMutations";
 
 const useArchiveClientControl = () => {
   const router = useRouter();
-  const { clearClientsListCache } = useClientsListMutationState();
   const { archiveClient, error, isPending } = useClientArchiveMutation({
     onSuccess: () => {
-      clearClientsListCache();
       router.push("/clients");
     },
   });

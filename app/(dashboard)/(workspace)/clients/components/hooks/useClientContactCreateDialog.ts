@@ -1,15 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { useMutation } from "@tanstack/react-query";
 
 import {
   clientContactMutationRequestSchema,
-  type ClientContactMutationRequest,
   type ClientContactMutationResponse,
 } from "@recruitflow/contracts";
 
-import { getApiErrorMessage } from "@/utils/apiErrors";
+import {
+  emptyContactFormValues,
+  type ContactFormValues,
+} from "../ContactForm";
+
+import { useClientContactCreateMutation } from "./useClientMutations";
 
 type UseClientContactCreateDialogOptions = {
   clientId: string;
@@ -18,49 +21,10 @@ type UseClientContactCreateDialogOptions = {
   open: boolean;
 };
 
-export type ContactCreateValues = {
-  email: string;
-  fullName: string;
-  isPrimary: boolean;
-  linkedinUrl: string;
-  phone: string;
-  relationshipType: string;
-  title: string;
-};
-
-const getEmptyValues = (defaultIsPrimary: boolean): ContactCreateValues => ({
-  email: "",
-  fullName: "",
+const getEmptyValues = (defaultIsPrimary: boolean): ContactFormValues => ({
+  ...emptyContactFormValues,
   isPrimary: defaultIsPrimary,
-  linkedinUrl: "",
-  phone: "",
-  relationshipType: "",
-  title: "",
 });
-
-const createClientContact = async ({
-  clientId,
-  payload,
-}: {
-  clientId: string;
-  payload: ClientContactMutationRequest;
-}) => {
-  const response = await fetch(`/api/clients/${clientId}/contacts`, {
-    body: JSON.stringify(payload),
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-    },
-    method: "POST",
-  });
-  const body = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(getApiErrorMessage(body, response.status));
-  }
-
-  return body as ClientContactMutationResponse;
-};
 
 const useClientContactCreateDialog = ({
   clientId,
@@ -68,52 +32,43 @@ const useClientContactCreateDialog = ({
   onContactCreated,
   open,
 }: UseClientContactCreateDialogOptions) => {
-  const [values, setValues] = React.useState<ContactCreateValues>(
-    getEmptyValues(defaultIsPrimary),
-  );
+  const [formDefaultIsPrimary, setFormDefaultIsPrimary] =
+    React.useState(defaultIsPrimary);
+  const [resetVersion, setResetVersion] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
-  const { isPending, mutate } = useMutation({
-    mutationFn: createClientContact,
-    onError: (caughtError) => {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to create contact.",
-      );
-    },
-    onSuccess: (createdContact) => {
-      setValues(getEmptyValues(false));
-      setSuccess(createdContact.message);
-      onContactCreated(createdContact);
-    },
-  });
+  const { createContact, error: mutationError, isPending } =
+    useClientContactCreateMutation({
+      clientId,
+      onSuccess: (createdContact) => {
+        setFormDefaultIsPrimary(false);
+        setResetVersion((currentVersion) => currentVersion + 1);
+        setSuccess(createdContact.message);
+        onContactCreated(createdContact);
+      },
+    });
+  const initialValues = React.useMemo(
+    () => getEmptyValues(formDefaultIsPrimary),
+    [formDefaultIsPrimary, resetVersion],
+  );
 
   React.useEffect(() => {
     if (!open) {
       return;
     }
 
-    setValues(getEmptyValues(defaultIsPrimary));
+    setFormDefaultIsPrimary(defaultIsPrimary);
+    setResetVersion((currentVersion) => currentVersion + 1);
     setError(null);
     setSuccess(null);
   }, [defaultIsPrimary, open]);
 
-  const updateValue = React.useCallback(
-    (name: keyof ContactCreateValues, value: string | boolean) => {
-      setValues((currentValues) => ({
-        ...currentValues,
-        [name]: value,
-      }));
-      setError(null);
-      setSuccess(null);
-    },
-    [],
-  );
+  React.useEffect(() => {
+    setError(mutationError);
+  }, [mutationError]);
 
   const handleSubmit = React.useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+    (values: ContactFormValues) => {
       setError(null);
       setSuccess(null);
 
@@ -128,21 +83,22 @@ const useClientContactCreateDialog = ({
         return;
       }
 
-      mutate({
-        clientId,
-        payload: parsedPayload.data,
-      });
+      createContact(parsedPayload.data);
     },
-    [clientId, mutate, values],
+    [createContact],
   );
+  const handleValuesChange = React.useCallback(() => {
+    setError(null);
+    setSuccess(null);
+  }, []);
 
   return {
     error,
     handleSubmit,
+    handleValuesChange,
+    initialValues,
     isPending,
     success,
-    updateValue,
-    values,
   };
 };
 
