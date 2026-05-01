@@ -7,12 +7,13 @@ import type { ClientsListResponse } from "@recruitflow/contracts";
 
 import {
   areClientListFiltersEqual,
-  clientListFiltersToSearchParams,
   normalizeClientListFilters,
   parseClientListFiltersFromSearchParams,
   type ClientListFilters,
+  clientListFiltersToSearchParams,
 } from "@/lib/clients/filters";
 import { clientsListQueryOptions } from "@/lib/query/options";
+import { useUrlBackedListFilters } from "@/hooks/useUrlBackedListFilters";
 
 import {
   useClientRestoreMutation,
@@ -32,12 +33,6 @@ const getFilterCount = (filters: ClientListFilters) =>
     filters.priority,
     filters.sort !== "name_asc" ? filters.sort : "",
   ].filter(Boolean).length;
-
-const buildUrlFromFilters = (filters: ClientListFilters) => {
-  const queryString = clientListFiltersToSearchParams(filters).toString();
-
-  return `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
-};
 
 const canUsePreviousClientListData = (
   previousFilters: unknown,
@@ -71,87 +66,25 @@ const useClientsListSurface = ({
 }: UseClientsListSurfaceOptions) => {
   const { hasClientListMutation, refreshClientsListCache } =
     useClientsListMutationState();
-  const normalizedInitialFilters = React.useMemo(
-    () => normalizeClientListFilters(initialFilters),
-    [initialFilters],
-  );
-  const [filters, setFilters] = React.useState(normalizedInitialFilters);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
   const [editingClient, setEditingClient] = React.useState<
     ClientsListResponse["items"][number] | null
   >(null);
-  const [searchDraft, setSearchDraft] = React.useState(
-    normalizedInitialFilters.q,
-  );
-  const filtersRef = React.useRef(filters);
-
-  React.useEffect(() => {
-    filtersRef.current = filters;
-  }, [filters]);
-
-  React.useEffect(() => {
-    setSearchDraft(filters.q);
-  }, [filters.q]);
-
-  const writeUrl = React.useCallback((nextFilters: ClientListFilters) => {
-    const nextUrl = buildUrlFromFilters(nextFilters);
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-
-    if (nextUrl !== currentUrl) {
-      window.history.replaceState(null, "", nextUrl);
-    }
-  }, []);
-
-  const applyFilters = React.useCallback(
-    (updates: Partial<ClientListFilters>) => {
-      const nextFilters = normalizeClientListFilters({
-        ...filtersRef.current,
-        ...updates,
-      });
-
-      if (areClientListFiltersEqual(filtersRef.current, nextFilters)) {
-        return;
-      }
-
-      filtersRef.current = nextFilters;
-      setFilters(nextFilters);
-      writeUrl(nextFilters);
-    },
-    [writeUrl],
-  );
-
-  React.useEffect(() => {
-    const handlePopState = () => {
-      const nextFilters = parseClientListFiltersFromSearchParams(
-        new URLSearchParams(window.location.search),
-      );
-
-      filtersRef.current = nextFilters;
-      setFilters(nextFilters);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const nextSearchValue = searchDraft.trim();
-
-    if (nextSearchValue === filters.q) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      applyFilters({ page: "", q: nextSearchValue });
-    }, 320);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [applyFilters, filters.q, searchDraft]);
+  const {
+    applyFilters,
+    filters,
+    normalizedInitialFilters,
+    searchDraft,
+    setSearchDraft,
+  } = useUrlBackedListFilters({
+    areFiltersEqual: areClientListFiltersEqual,
+    filtersToSearchParams: clientListFiltersToSearchParams,
+    initialFilters,
+    normalizeFilters: normalizeClientListFilters,
+    parseFiltersFromSearchParams: parseClientListFiltersFromSearchParams,
+    searchKey: "q",
+    searchResetUpdates: { page: "" },
+  });
 
   const isInitialQuery =
     areClientListFiltersEqual(filters, normalizedInitialFilters) &&
