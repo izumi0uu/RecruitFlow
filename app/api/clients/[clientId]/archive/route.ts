@@ -2,7 +2,8 @@ import { revalidatePath } from "next/cache";
 
 import type { ClientArchiveResponse } from "@recruitflow/contracts";
 
-import { isApiRequestError, requestApiJson } from "@/lib/api/client";
+import { withBffApiErrorResponse } from "@/lib/api/bff";
+import { requestApiJson } from "@/lib/api/client";
 
 type RouteContext = {
   params: Promise<{
@@ -10,10 +11,9 @@ type RouteContext = {
   }>;
 };
 
-export const PATCH = async (_request: Request, { params }: RouteContext) => {
-  const { clientId } = await params;
-
-  try {
+export const PATCH = (_request: Request, { params }: RouteContext) =>
+  withBffApiErrorResponse(async () => {
+    const { clientId } = await params;
     const client = await requestApiJson<ClientArchiveResponse>(
       `/clients/${clientId}/archive`,
       {
@@ -25,14 +25,4 @@ export const PATCH = async (_request: Request, { params }: RouteContext) => {
     revalidatePath(`/clients/${clientId}`);
 
     return Response.json(client);
-  } catch (error) {
-    if (isApiRequestError(error)) {
-      return Response.json(
-        { error: error.message },
-        { status: error.status },
-      );
-    }
-
-    throw error;
-  }
-};
+  });

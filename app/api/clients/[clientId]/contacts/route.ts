@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 
 import type { ClientContactMutationResponse } from "@recruitflow/contracts";
 
-import { isApiRequestError, requestApiJson } from "@/lib/api/client";
+import { withBffApiErrorResponse } from "@/lib/api/bff";
+import { requestApiJson } from "@/lib/api/client";
 
 type RouteContext = {
   params: Promise<{
@@ -10,13 +11,12 @@ type RouteContext = {
   }>;
 };
 
-export const POST = async (
+export const POST = (
   request: NextRequest,
   { params }: RouteContext,
-) => {
-  const { clientId } = await params;
-
-  try {
+) =>
+  withBffApiErrorResponse(async () => {
+    const { clientId } = await params;
     const payload = await request.json();
     const contact = await requestApiJson<ClientContactMutationResponse>(
       `/clients/${clientId}/contacts`,
@@ -27,14 +27,4 @@ export const POST = async (
     );
 
     return Response.json(contact, { status: 201 });
-  } catch (error) {
-    if (isApiRequestError(error)) {
-      return Response.json(
-        { error: error.message },
-        { status: error.status },
-      );
-    }
-
-    throw error;
-  }
-};
+  });

@@ -5,7 +5,8 @@ import type {
   JobMutationResponse,
 } from "@recruitflow/contracts";
 
-import { isApiRequestError, requestApiJson } from "@/lib/api/client";
+import { withBffApiErrorResponse } from "@/lib/api/bff";
+import { requestApiJson } from "@/lib/api/client";
 
 type RouteContext = {
   params: Promise<{
@@ -13,29 +14,17 @@ type RouteContext = {
   }>;
 };
 
-export const GET = async (_request: NextRequest, context: RouteContext) => {
-  const { jobId } = await context.params;
-
-  try {
+export const GET = (_request: NextRequest, context: RouteContext) =>
+  withBffApiErrorResponse(async () => {
+    const { jobId } = await context.params;
     const job = await requestApiJson<JobDetailResponse>(`/jobs/${jobId}`);
 
     return Response.json(job);
-  } catch (error) {
-    if (isApiRequestError(error)) {
-      return Response.json(
-        { error: error.message },
-        { status: error.status },
-      );
-    }
+  });
 
-    throw error;
-  }
-};
-
-export const PATCH = async (request: NextRequest, context: RouteContext) => {
-  const { jobId } = await context.params;
-
-  try {
+export const PATCH = (request: NextRequest, context: RouteContext) =>
+  withBffApiErrorResponse(async () => {
+    const { jobId } = await context.params;
     const payload = await request.json();
     const job = await requestApiJson<JobMutationResponse>(`/jobs/${jobId}`, {
       method: "PATCH",
@@ -43,14 +32,4 @@ export const PATCH = async (request: NextRequest, context: RouteContext) => {
     });
 
     return Response.json(job);
-  } catch (error) {
-    if (isApiRequestError(error)) {
-      return Response.json(
-        { error: error.message },
-        { status: error.status },
-      );
-    }
-
-    throw error;
-  }
-};
+  });
