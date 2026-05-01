@@ -17,16 +17,13 @@ import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import {
-  repairJobStageTemplateAction,
-  updateJobAction,
-} from "../../actions";
+import { repairJobStageTemplateAction, updateJobAction } from "../../actions";
+import { JobForm } from "../../components/JobForm";
 import {
   buildJobFormValues,
   formatDateInputValue,
-  JobForm,
   numericJobFormValue,
-} from "../../JobForm";
+} from "../../utils";
 
 type PageProps = {
   params: Promise<{
@@ -136,7 +133,9 @@ const getJobForEdit = async (jobId: string) => {
   }
 };
 
-const hasCreatedFlag = (params: Record<string, string | string[] | undefined>) => {
+const hasCreatedFlag = (
+  params: Record<string, string | string[] | undefined>,
+) => {
   const created = params.created;
 
   return Array.isArray(created) ? created[0] === "1" : created === "1";
@@ -145,13 +144,8 @@ const hasCreatedFlag = (params: Record<string, string | string[] | undefined>) =
 const EditJobPage = async ({ params, searchParams }: PageProps) => {
   const { jobId } = await params;
   const urlParams = await Promise.resolve(searchParams ?? {});
-  const {
-    clientOptions,
-    context,
-    job,
-    ownerOptions,
-    stageTemplate,
-  } = await getJobForEdit(jobId);
+  const { clientOptions, context, job, ownerOptions, stageTemplate } =
+    await getJobForEdit(jobId);
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -165,7 +159,12 @@ const EditJobPage = async ({ params, searchParams }: PageProps) => {
         <p className="status-message status-success">
           Job created. You can keep editing here or open the dedicated job
           overview.
-          <Button asChild size="sm" variant="outline" className="ml-2 rounded-full">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="ml-2 rounded-full"
+          >
             <TrackedLink href={`/jobs/${job.id}`}>Open overview</TrackedLink>
           </Button>
         </p>

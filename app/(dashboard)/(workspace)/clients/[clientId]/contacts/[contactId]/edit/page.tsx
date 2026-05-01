@@ -13,7 +13,7 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
 import { updateContactAction } from "../../../../actions";
-import { ContactForm } from "../../../../ContactForm";
+import { ContactForm } from "../../../../components/ContactForm";
 
 type PageProps = {
   params: Promise<{

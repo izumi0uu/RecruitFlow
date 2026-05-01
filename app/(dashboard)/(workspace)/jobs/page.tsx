@@ -9,7 +9,7 @@ import {
   type JobListFilters,
 } from "@/lib/jobs/filters";
 
-import { JobsListSurface } from "./JobsListSurface";
+import { JobsListSurface } from "./components/JobsListSurface";
 
 type PageProps = {
   searchParams?:

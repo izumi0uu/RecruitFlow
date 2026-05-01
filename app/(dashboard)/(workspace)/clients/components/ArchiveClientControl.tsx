@@ -1,15 +1,15 @@
 "use client";
 
-import { useActionState, useId } from "react";
 import { Archive, Loader2, ShieldAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { PopConfirm } from "@/components/ui/PopConfirm";
 
 import {
-  archiveClientAction,
-  type ArchiveClientState,
-} from "./actions";
+  useClientArchiveMutation,
+  useClientsListMutationState,
+} from "../hooks/useClientMutations";
 
 type ArchiveClientControlProps = {
   clientId: string;
@@ -18,15 +18,17 @@ type ArchiveClientControlProps = {
 export const ArchiveClientControl = ({
   clientId,
 }: ArchiveClientControlProps) => {
-  const formId = useId();
-  const [state, formAction, isPending] = useActionState<
-    ArchiveClientState,
-    FormData
-  >(archiveClientAction, {});
+  const router = useRouter();
+  const { clearClientsListCache } = useClientsListMutationState();
+  const { archiveClient, error, isPending } = useClientArchiveMutation({
+    onSuccess: () => {
+      clearClientsListCache();
+      router.push("/clients");
+    },
+  });
 
   return (
-    <form id={formId} action={formAction} className="space-y-3">
-      <input type="hidden" name="clientId" value={clientId} />
+    <div className="space-y-3">
       <PopConfirm
         cancelText="Keep active"
         confirmButtonProps={{
@@ -39,8 +41,10 @@ export const ArchiveClientControl = ({
             "Confirm archive"
           ),
           disabled: isPending,
-          form: formId,
-          type: "submit",
+          onClick: () => {
+            archiveClient(clientId);
+          },
+          type: "button",
         }}
         description={
           <>
@@ -73,13 +77,11 @@ export const ArchiveClientControl = ({
           </Button>
         )}
       </PopConfirm>
-      {state.error ? (
-        <p className="status-message status-error">{state.error}</p>
-      ) : null}
+      {error ? <p className="status-message status-error">{error}</p> : null}
       <p className="text-xs leading-5 text-muted-foreground">
         Coordinators do not see this control, and the API enforces
         owner/recruiter permission again before archiving.
       </p>
-    </form>
+    </div>
   );
 };

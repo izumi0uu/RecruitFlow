@@ -6,8 +6,6 @@ import { redirect } from "next/navigation";
 import {
   clientContactMutationRequestSchema,
   clientContactParamsSchema,
-  clientParamsSchema,
-  type ClientArchiveResponse,
   type ClientContactMutationResponse,
 } from "@recruitflow/contracts";
 
@@ -28,58 +26,8 @@ export type ContactFormState = {
   values?: ContactFormValues;
 };
 
-export type ArchiveClientState = {
-  error?: string;
-};
-
 const getString = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value : "";
-
-export const archiveClientAction = async (
-  _previousState: ArchiveClientState,
-  formData: FormData,
-): Promise<ArchiveClientState> => {
-  const parsedParams = clientParamsSchema.safeParse({
-    clientId: getString(formData.get("clientId")),
-  });
-
-  if (!parsedParams.success) {
-    return {
-      error: "Client id is missing or invalid.",
-    };
-  }
-
-  try {
-    await requestApiJson<ClientArchiveResponse>(
-      `/clients/${parsedParams.data.clientId}/archive`,
-      {
-        method: "PATCH",
-      },
-    );
-  } catch (error) {
-    if (isApiRequestError(error) && error.status === 401) {
-      redirect("/sign-in");
-    }
-
-    if (isApiRequestError(error) && error.status === 403) {
-      return {
-        error: "Only owners and recruiters can archive clients.",
-      };
-    }
-
-    if (isApiRequestError(error)) {
-      return {
-        error: error.message,
-      };
-    }
-
-    throw error;
-  }
-
-  revalidatePath("/clients");
-  revalidatePath(`/clients/${parsedParams.data.clientId}`);
-  redirect("/clients");
-};
 
 const getContactFormValues = (formData: FormData): ContactFormValues => ({
   email: getString(formData.get("email")),

@@ -1,11 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
@@ -27,7 +23,6 @@ import type {
   ApiClientStatus,
   ClientsListItem,
   ClientsListResponse,
-  ClientRestoreResponse,
 } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
@@ -48,6 +43,10 @@ import { cn } from "@/lib/utils";
 
 import { ClientCreateDialog } from "./ClientCreateDialog";
 import { ClientEditDialog } from "./ClientEditDialog";
+import {
+  useClientRestoreMutation,
+  useClientsListMutationState,
+} from "../hooks/useClientMutations";
 
 type ClientsListSurfaceProps = {
   initialData: ClientsListResponse;
@@ -173,32 +172,6 @@ const canUsePreviousClientListData = (
     parsedPreviousFilters.sort === nextFilters.sort &&
     parsedPreviousFilters.status === nextFilters.status
   );
-};
-
-const getClientRestoreErrorMessage = async (response: Response) => {
-  try {
-    const body = (await response.json()) as { error?: string };
-
-    if (body.error) {
-      return body.error;
-    }
-  } catch {
-    // Use the fallback if the BFF does not return JSON.
-  }
-
-  return `Restore failed with status ${response.status}`;
-};
-
-const restoreClient = async (clientId: string) => {
-  const response = await fetch(`/api/clients/${clientId}/restore`, {
-    method: "PATCH",
-  });
-
-  if (!response.ok) {
-    throw new Error(await getClientRestoreErrorMessage(response));
-  }
-
-  return (await response.json()) as ClientRestoreResponse;
 };
 
 const ClientsHeaderMetric = ({
@@ -346,7 +319,12 @@ const ClientRow = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-self-end lg:self-center">
-        <Button asChild size="sm" variant="outline" className="rounded-full px-4">
+        <Button
+          asChild
+          size="sm"
+          variant="outline"
+          className="rounded-full px-4"
+        >
           <TrackedLink href={`/clients/${client.id}`}>Detail</TrackedLink>
         </Button>
         {isArchived ? (
@@ -440,7 +418,8 @@ const ClientsListSurface = ({
   initialData,
   initialFilters,
 }: ClientsListSurfaceProps) => {
-  const queryClient = useQueryClient();
+  const { hasClientListMutation, refreshClientsListCache } =
+    useClientsListMutationState();
   const normalizedInitialFilters = React.useMemo(
     () => normalizeClientListFilters(initialFilters),
     [initialFilters],
@@ -522,10 +501,9 @@ const ClientsListSurface = ({
     };
   }, [applyFilters, filters.q, searchDraft]);
 
-  const isInitialQuery = areClientListFiltersEqual(
-    filters,
-    normalizedInitialFilters,
-  );
+  const isInitialQuery =
+    areClientListFiltersEqual(filters, normalizedInitialFilters) &&
+    !hasClientListMutation;
   const {
     data: clientsList = initialData,
     error,
@@ -540,33 +518,9 @@ const ClientsListSurface = ({
         ? previousData
         : undefined,
   });
-  const [restoreErrorMessage, setRestoreErrorMessage] = React.useState<
-    string | null
-  >(null);
-  const restoreClientMutation = useMutation({
-    mutationFn: restoreClient,
-    onMutate: () => {
-      setRestoreErrorMessage(null);
-    },
+  const restoreClientMutation = useClientRestoreMutation({
     onSuccess: async () => {
-      await queryClient.cancelQueries({
-        queryKey: ["clients", "list"],
-      });
-      queryClient.removeQueries({
-        queryKey: ["clients", "list"],
-        type: "inactive",
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["clients", "list"],
-        refetchType: "active",
-      });
-    },
-    onError: (mutationError) => {
-      setRestoreErrorMessage(
-        mutationError instanceof Error
-          ? mutationError.message
-          : "Unable to restore client.",
-      );
+      await refreshClientsListCache();
     },
   });
 
@@ -600,16 +554,12 @@ const ClientsListSurface = ({
   }, [applyFilters]);
 
   const handleClientCreated = React.useCallback(() => {
-    void queryClient.invalidateQueries({
-      queryKey: ["clients", "list"],
-    });
-  }, [queryClient]);
+    void refreshClientsListCache();
+  }, [refreshClientsListCache]);
 
   const handleClientUpdated = React.useCallback(() => {
-    void queryClient.invalidateQueries({
-      queryKey: ["clients", "list"],
-    });
-  }, [queryClient]);
+    void refreshClientsListCache();
+  }, [refreshClientsListCache]);
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -763,9 +713,9 @@ const ClientsListSurface = ({
             </div>
           ) : null}
 
-          {restoreErrorMessage ? (
+          {restoreClientMutation.error ? (
             <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {restoreErrorMessage}
+              {restoreClientMutation.error}
             </div>
           ) : null}
 
@@ -791,7 +741,7 @@ const ClientsListSurface = ({
                     setEditingClient(selectedClient);
                   }}
                   onRestoreClient={(selectedClientId) => {
-                    restoreClientMutation.mutate(selectedClientId);
+                    restoreClientMutation.restoreClient(selectedClientId);
                   }}
                 />
               ))

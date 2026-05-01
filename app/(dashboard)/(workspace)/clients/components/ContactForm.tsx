@@ -11,7 +11,7 @@ import { TrackedLink } from "@/components/navigation/TrackedLink";
 import type {
   ContactFormState,
   ContactFormValues,
-} from "./actions";
+} from "../actions";
 
 type ContactFormAction = (
   previousState: ContactFormState,

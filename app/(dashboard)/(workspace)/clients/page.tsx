@@ -9,7 +9,7 @@ import {
   type ClientListFilters,
 } from "@/lib/clients/filters";
 
-import { ClientsListSurface } from "./ClientsListSurface";
+import { ClientsListSurface } from "./components/ClientsListSurface";
 
 type PageProps = {
   searchParams?:

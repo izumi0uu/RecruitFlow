@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import type { ReactNode } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   BriefcaseBusiness,
@@ -14,13 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import type {
-  ApiJobPriority,
-  ApiJobSort,
-  ApiJobStatus,
-  JobsListItem,
-  JobsListResponse,
-} from "@recruitflow/contracts";
+import type { JobsListItem, JobsListResponse } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -30,129 +24,34 @@ import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import {
   areJobListFiltersEqual,
-  jobListFiltersToSearchParams,
-  normalizeJobListFilters,
-  parseJobListFiltersFromSearchParams,
   type JobListFilters,
 } from "@/lib/jobs/filters";
 import { jobsListQueryOptions } from "@/lib/query/options";
 import { cn } from "@/lib/utils";
+
+import { useJobListFilters } from "../hooks/useJobListFilters";
+import {
+  formatJobDate,
+  formatJobLabel,
+  formatJobSalary,
+  getJobFilterCount,
+  jobPriorityOptions,
+  jobPriorityToneMap,
+  jobSortOptions,
+  jobStatusOptions,
+  jobStatusToneMap,
+} from "../utils";
 
 type JobsListSurfaceProps = {
   initialData: JobsListResponse;
   initialFilters: JobListFilters;
 };
 
-const jobStatusOptions: Array<{
-  label: string;
-  value: ApiJobStatus;
-}> = [
-  { label: "Intake", value: "intake" },
-  { label: "Open", value: "open" },
-  { label: "On hold", value: "on_hold" },
-  { label: "Closed", value: "closed" },
-  { label: "Filled", value: "filled" },
-];
-
-const jobPriorityOptions: Array<{
-  label: string;
-  value: ApiJobPriority;
-}> = [
-  { label: "Urgent", value: "urgent" },
-  { label: "High", value: "high" },
-  { label: "Medium", value: "medium" },
-  { label: "Low", value: "low" },
-];
-
-const jobSortOptions: Array<{
-  label: string;
-  value: ApiJobSort;
-}> = [
-  { label: "Recently opened", value: "opened_desc" },
-  { label: "Recently updated", value: "updated_desc" },
-  { label: "Title A-Z", value: "title_asc" },
-  { label: "Highest priority", value: "priority_desc" },
-  { label: "Target fill date", value: "target_fill_asc" },
-];
-
-const statusToneMap: Record<ApiJobStatus, string> = {
-  closed: "border-border/70 bg-surface-1 text-muted-foreground",
-  filled: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  intake: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  on_hold: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  open: "border-lime-500/25 bg-lime-500/10 text-lime-700 dark:text-lime-300",
-};
-
-const priorityToneMap: Record<ApiJobPriority, string> = {
-  high: "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  low: "border-border/70 bg-surface-1 text-muted-foreground",
-  medium: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  urgent: "border-foreground bg-foreground text-background",
-};
-
-const toTitleCase = (value: string) =>
-  value
-    .split("_")
-    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-    .join(" ");
-
-const formatDate = (value: string | null) => {
-  if (!value) {
-    return "Not set";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "short",
-  }).format(new Date(value));
-};
-
-const getCurrencyCode = (value: string | null) => {
-  const currency = value?.trim().toUpperCase() || "USD";
-
-  return /^[A-Z]{3}$/.test(currency) ? currency : "USD";
-};
-
-const formatSalary = (job: JobsListItem) => {
-  if (job.salaryMin == null && job.salaryMax == null) {
-    return "Compensation not set";
-  }
-
-  const formatter = new Intl.NumberFormat("en", {
-    maximumFractionDigits: 0,
-    notation: "compact",
-    style: "currency",
-    currency: getCurrencyCode(job.currency),
-  });
-
-  if (job.salaryMin != null && job.salaryMax != null) {
-    return `${formatter.format(job.salaryMin)}-${formatter.format(job.salaryMax)}`;
-  }
-
-  return formatter.format(job.salaryMin ?? job.salaryMax ?? 0);
-};
-
-const getFilterCount = (filters: JobListFilters) =>
-  [
-    filters.q,
-    filters.clientId,
-    filters.status,
-    filters.owner,
-    filters.priority,
-    filters.sort !== "opened_desc" ? filters.sort : "",
-  ].filter(Boolean).length;
-
-const buildUrlFromFilters = (filters: JobListFilters) => {
-  const queryString = jobListFiltersToSearchParams(filters).toString();
-
-  return `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
-};
-
 const JobBadge = ({
   children,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) => (
   <span
@@ -192,11 +91,11 @@ const JobRow = ({
   <article className="grid gap-4 border-t border-border/60 px-4 py-4 first:border-t-0 md:px-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(10rem,0.46fr)_minmax(10rem,0.42fr)_minmax(8rem,0.32fr)] lg:items-center">
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <JobBadge className={statusToneMap[job.status]}>
-          {toTitleCase(job.status)}
+        <JobBadge className={jobStatusToneMap[job.status]}>
+          {formatJobLabel(job.status)}
         </JobBadge>
-        <JobBadge className={priorityToneMap[job.priority]}>
-          {toTitleCase(job.priority)}
+        <JobBadge className={jobPriorityToneMap[job.priority]}>
+          {formatJobLabel(job.priority)}
         </JobBadge>
         {canManageJobs ? (
           <Button
@@ -261,10 +160,10 @@ const JobRow = ({
         Target
       </p>
       <p className="mt-3 text-sm font-medium text-foreground">
-        {formatDate(job.targetFillDate)}
+        {formatJobDate(job.targetFillDate)}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        {formatSalary(job)}
+        {formatJobSalary(job)}
       </p>
     </div>
   </article>
@@ -307,83 +206,14 @@ const JobsListSurface = ({
   initialData,
   initialFilters,
 }: JobsListSurfaceProps) => {
-  const normalizedInitialFilters = React.useMemo(
-    () => normalizeJobListFilters(initialFilters),
-    [initialFilters],
-  );
-  const [filters, setFilters] = React.useState(normalizedInitialFilters);
-  const [searchDraft, setSearchDraft] = React.useState(
-    normalizedInitialFilters.q,
-  );
-  const filtersRef = React.useRef(filters);
-
-  React.useEffect(() => {
-    filtersRef.current = filters;
-  }, [filters]);
-
-  React.useEffect(() => {
-    setSearchDraft(filters.q);
-  }, [filters.q]);
-
-  const writeUrl = React.useCallback((nextFilters: JobListFilters) => {
-    const nextUrl = buildUrlFromFilters(nextFilters);
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-
-    if (nextUrl !== currentUrl) {
-      window.history.replaceState(null, "", nextUrl);
-    }
-  }, []);
-
-  const applyFilters = React.useCallback(
-    (updates: Partial<JobListFilters>) => {
-      const nextFilters = normalizeJobListFilters({
-        ...filtersRef.current,
-        ...updates,
-      });
-
-      if (areJobListFiltersEqual(filtersRef.current, nextFilters)) {
-        return;
-      }
-
-      filtersRef.current = nextFilters;
-      setFilters(nextFilters);
-      writeUrl(nextFilters);
-    },
-    [writeUrl],
-  );
-
-  React.useEffect(() => {
-    const handlePopState = () => {
-      const nextFilters = parseJobListFiltersFromSearchParams(
-        new URLSearchParams(window.location.search),
-      );
-
-      filtersRef.current = nextFilters;
-      setFilters(nextFilters);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const nextSearchValue = searchDraft.trim();
-
-    if (nextSearchValue === filters.q) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      applyFilters({ page: "", q: nextSearchValue });
-    }, 320);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [applyFilters, filters.q, searchDraft]);
+  const {
+    applyFilters,
+    filters,
+    normalizedInitialFilters,
+    resetFilters,
+    searchDraft,
+    setSearchDraft,
+  } = useJobListFilters(initialFilters);
 
   const isInitialQuery = areJobListFiltersEqual(
     filters,
@@ -401,7 +231,7 @@ const JobsListSurface = ({
     placeholderData: keepPreviousData,
   });
 
-  const filterCount = getFilterCount(filters);
+  const filterCount = getJobFilterCount(filters);
   const hasFilters = filterCount > 0;
   const currentPage = jobsList.pagination.page;
   const totalPages = jobsList.pagination.totalPages;
@@ -426,19 +256,6 @@ const JobsListSurface = ({
       value: owner.id,
     })),
   ];
-
-  const resetFilters = React.useCallback(() => {
-    setSearchDraft("");
-    applyFilters({
-      clientId: "",
-      owner: "",
-      page: "",
-      priority: "",
-      q: "",
-      sort: "opened_desc",
-      status: "",
-    });
-  }, [applyFilters]);
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">

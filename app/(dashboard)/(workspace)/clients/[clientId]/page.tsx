@@ -29,10 +29,10 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
-import { ArchiveClientControl } from "../ArchiveClientControl";
-import { ClientContactCreateAction } from "../ClientContactCreateAction";
-import { ClientDetailEditAction } from "../ClientDetailEditAction";
-import { RestoreClientControl } from "../RestoreClientControl";
+import { ArchiveClientControl } from "../components/ArchiveClientControl";
+import { ClientContactCreateAction } from "../components/ClientContactCreateAction";
+import { ClientDetailEditAction } from "../components/ClientDetailEditAction";
+import { RestoreClientControl } from "../components/RestoreClientControl";
 
 type PageProps = {
   params: Promise<{

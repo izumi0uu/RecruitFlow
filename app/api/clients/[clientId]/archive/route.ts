@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 
-import type { ClientRestoreResponse } from "@recruitflow/contracts";
+import type { ClientArchiveResponse } from "@recruitflow/contracts";
 
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
@@ -14,8 +14,8 @@ export const PATCH = async (_request: Request, { params }: RouteContext) => {
   const { clientId } = await params;
 
   try {
-    const client = await requestApiJson<ClientRestoreResponse>(
-      `/clients/${clientId}/restore`,
+    const client = await requestApiJson<ClientArchiveResponse>(
+      `/clients/${clientId}/archive`,
       {
         method: "PATCH",
       },

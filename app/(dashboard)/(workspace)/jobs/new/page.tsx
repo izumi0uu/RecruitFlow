@@ -16,11 +16,8 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
 import { createJobAction } from "../actions";
-import {
-  buildJobFormValues,
-  emptyJobFormValues,
-  JobForm,
-} from "../JobForm";
+import { JobForm } from "../components/JobForm";
+import { buildJobFormValues, emptyJobFormValues } from "../utils";
 
 type PageProps = {
   searchParams?:
@@ -60,7 +57,7 @@ const NewJobPage = async ({ searchParams }: PageProps) => {
   const initialClientId = clientOptions.some(
     (client) => client.id === requestedClientId,
   )
-    ? requestedClientId ?? ""
+    ? (requestedClientId ?? "")
     : "";
 
   return (

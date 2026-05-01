@@ -20,7 +20,13 @@ import { Label } from "@/components/ui/Label";
 import type {
   JobFormState,
   JobFormValues,
-} from "./actions";
+} from "../actions";
+export {
+  buildJobFormValues,
+  emptyJobFormValues,
+  formatDateInputValue,
+  numericJobFormValue,
+} from "../utils";
 
 type JobFormAction = (
   previousState: JobFormState,
@@ -50,40 +56,6 @@ const priorityLabelMap: Record<ApiJobPriority, string> = {
   medium: "Medium",
   urgent: "Urgent",
 };
-
-export const emptyJobFormValues: JobFormValues = {
-  clientId: "",
-  currency: "USD",
-  department: "",
-  description: "",
-  employmentType: "",
-  headcount: "1",
-  intakeSummary: "",
-  location: "",
-  ownerUserId: "",
-  placementFeePercent: "",
-  priority: "medium",
-  salaryMax: "",
-  salaryMin: "",
-  status: "intake",
-  targetFillDate: "",
-  title: "",
-};
-
-const formatNumberValue = (value: number | null | undefined) =>
-  value == null ? "" : String(value);
-
-export const formatDateInputValue = (value: string | null | undefined) =>
-  value ? value.slice(0, 10) : "";
-
-export const buildJobFormValues = (
-  values: Partial<JobFormValues>,
-): JobFormValues => ({
-  ...emptyJobFormValues,
-  ...values,
-});
-
-export const numericJobFormValue = formatNumberValue;
 
 export const JobForm = ({
   action,

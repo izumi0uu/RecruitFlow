@@ -34,8 +34,14 @@ export const currentWorkspaceQueryOptions = () =>
 
 export const currentTeamQueryOptions = currentWorkspaceQueryOptions;
 
+export const clientsListRootQueryKey = ["clients", "list"] as const;
+export const clientsListMutationMarkerQueryKey = [
+  "clients",
+  "listMutationMarker",
+] as const;
+
 export const clientsListQueryKey = (filters: ClientListFilters) =>
-  ["clients", "list", filters] as const;
+  [...clientsListRootQueryKey, filters] as const;
 
 export const clientsListQueryOptions = (filters: ClientListFilters) =>
   queryOptions({
