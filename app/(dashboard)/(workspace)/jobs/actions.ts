@@ -190,6 +190,43 @@ export const updateJobAction = async (
   redirect("/jobs");
 };
 
+export const updateJobControlsAction = async (formData: FormData) => {
+  const parsedParams = jobParamsSchema.safeParse({
+    jobId: getString(formData.get("jobId")),
+  });
+
+  if (!parsedParams.success) {
+    throw new Error("Job id is missing or invalid.");
+  }
+
+  const parsedForm = parseJobForm(formData);
+
+  if ("error" in parsedForm) {
+    throw new Error(parsedForm.error);
+  }
+
+  try {
+    await requestApiJson<JobMutationResponse>(
+      `/jobs/${parsedParams.data.jobId}`,
+      {
+        method: "PATCH",
+        json: parsedForm.data,
+      },
+    );
+  } catch (error) {
+    if (isApiRequestError(error) && error.status === 401) {
+      redirect("/sign-in");
+    }
+
+    throw error;
+  }
+
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${parsedParams.data.jobId}`);
+  revalidatePath(`/jobs/${parsedParams.data.jobId}/edit`);
+  redirect(`/jobs/${parsedParams.data.jobId}`);
+};
+
 export const repairJobStageTemplateAction = async (formData: FormData) => {
   const parsedParams = jobParamsSchema.safeParse({
     jobId: getString(formData.get("jobId")),
