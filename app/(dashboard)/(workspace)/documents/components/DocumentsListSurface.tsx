@@ -1,7 +1,6 @@
 "use client";
 
-import * as React from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { FormEvent, ReactNode } from "react";
 import {
   BadgeCheck,
   Bot,
@@ -11,6 +10,7 @@ import {
   Loader2,
   Plus,
   RotateCcw,
+  UserRound,
 } from "lucide-react";
 
 import {
@@ -20,7 +20,6 @@ import {
   type ApiDocumentEntityType,
   type ApiDocumentType,
   type DocumentRecord,
-  type DocumentsListResponse,
 } from "@recruitflow/contracts";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
@@ -29,18 +28,12 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
-import {
-  areDocumentListFiltersEqual,
-  documentListFiltersToSearchParams,
-  normalizeDocumentListFilters,
-  parseDocumentListFiltersFromSearchParams,
-  type DocumentListFilters,
-} from "@/lib/documents/filters";
-import { documentsListQueryOptions } from "@/lib/query/options";
+import type { DocumentListFilters } from "@/lib/documents/filters";
 import { cn } from "@/lib/utils";
 
+import { useDocumentsListSurface } from "./hooks/useDocumentsListSurface";
+
 type DocumentsListSurfaceProps = {
-  initialData: DocumentsListResponse;
   initialFilters: DocumentListFilters;
 };
 
@@ -63,15 +56,6 @@ const statusToneMap: Record<ApiAutomationStatus, string> = {
   running: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   succeeded:
     "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-};
-
-const getFilterCount = (filters: DocumentListFilters) =>
-  [filters.type, filters.entityType, filters.entityId].filter(Boolean).length;
-
-const buildUrlFromFilters = (filters: DocumentListFilters) => {
-  const queryString = documentListFiltersToSearchParams(filters).toString();
-
-  return `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
 };
 
 const formatDate = (value: string) =>
@@ -126,7 +110,7 @@ const DocumentBadge = ({
   children,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) => (
   <span
@@ -155,6 +139,11 @@ const StatusBadge = ({
 const DocumentRow = ({ document }: { document: DocumentRecord }) => {
   const entityHref = getEntityHref(document);
   const entityLabel = `${entityTypeLabelMap[document.entityType]} ${document.entityId.slice(0, 8)}`;
+  const uploadedByLabel =
+    document.uploadedBy?.name ??
+    document.uploadedBy?.email ??
+    document.uploadedByUserId?.slice(0, 8) ??
+    "Unknown uploader";
 
   return (
     <article className="grid gap-4 border-t border-border/60 px-4 py-4 first:border-t-0 md:px-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(12rem,0.55fr)_minmax(12rem,0.5fr)] lg:items-center">
@@ -194,6 +183,10 @@ const DocumentRow = ({ document }: { document: DocumentRecord }) => {
           )}
         </div>
         <p className="mt-1 truncate">{formatBytes(document.sizeBytes)}</p>
+        <p className="mt-1 flex items-center gap-2 truncate">
+          <UserRound className="size-3.5 text-muted-foreground" />
+          Uploaded by {uploadedByLabel}
+        </p>
         <p className="mt-1 truncate">Created {formatDate(document.createdAt)}</p>
       </div>
 
@@ -218,56 +211,31 @@ const DocumentRowsSkeleton = () => (
 );
 
 export const DocumentsListSurface = ({
-  initialData,
   initialFilters,
 }: DocumentsListSurfaceProps) => {
-  const [filters, setFilters] = React.useState(initialFilters);
-  const [entityIdDraft, setEntityIdDraft] = React.useState(
-    initialFilters.entityId,
-  );
-  const { data = initialData, isFetching } = useQuery({
-    ...documentsListQueryOptions(filters),
-    initialData,
-    placeholderData: keepPreviousData,
+  const {
+    applyFilters,
+    documentsList,
+    entityIdDraft,
+    error,
+    filterCount,
+    filters,
+    hasFilters,
+    isError,
+    isFetching,
+    isPending,
+    refetch,
+    resetFilters,
+    setEntityIdDraft,
+  } = useDocumentsListSurface({
+    initialFilters,
   });
-  const filterCount = getFilterCount(filters);
-  const hasActiveFilters = filterCount > 0;
+  const documentItems = documentsList?.items ?? [];
 
-  React.useEffect(() => {
-    setEntityIdDraft(filters.entityId);
-  }, [filters.entityId]);
-
-  React.useEffect(() => {
-    const handlePopState = () => {
-      setFilters(parseDocumentListFiltersFromSearchParams(
-        new URLSearchParams(window.location.search),
-      ));
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  const applyFilters = (nextFilters: Partial<DocumentListFilters>) => {
-    const normalizedFilters = normalizeDocumentListFilters({
-      ...filters,
-      ...nextFilters,
-      page: nextFilters.page ?? "",
-    });
-
-    if (areDocumentListFiltersEqual(filters, normalizedFilters)) {
-      return;
-    }
-
-    setFilters(normalizedFilters);
-    window.history.pushState(null, "", buildUrlFromFilters(normalizedFilters));
-  };
-
-  const handleFilterSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    applyFilters({ entityId: entityIdDraft });
+    applyFilters({ entityId: entityIdDraft, page: "" });
   };
 
   return (
@@ -285,12 +253,22 @@ export const DocumentsListSurface = ({
               </TrackedLink>
             </Button>
             <div className="grid grid-cols-3 gap-2">
-              <DocumentMetric label="Visible" value={String(data.items.length)} />
+              <DocumentMetric
+                label="Visible"
+                value={String(documentItems.length)}
+              />
               <DocumentMetric
                 label="Total"
-                value={String(data.pagination.totalItems)}
+                value={
+                  documentsList
+                    ? String(documentsList.pagination.totalItems)
+                    : "..."
+                }
               />
-              <DocumentMetric label="Role" value={data.context.role} />
+              <DocumentMetric
+                label="Role"
+                value={documentsList?.context.role ?? "..."}
+              />
             </div>
           </div>
         }
@@ -346,16 +324,12 @@ export const DocumentsListSurface = ({
                 <Filter className="size-4" />
                 Apply
               </Button>
-              {hasActiveFilters ? (
+              {hasFilters ? (
                 <Button
                   type="button"
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => applyFilters({
-                    entityId: "",
-                    entityType: "",
-                    type: "",
-                  })}
+                  onClick={resetFilters}
                 >
                   <RotateCcw className="size-4" />
                   Reset
@@ -366,11 +340,15 @@ export const DocumentsListSurface = ({
 
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
-              {hasActiveFilters
+              {hasFilters
                 ? `${filterCount} filter${filterCount === 1 ? "" : "s"} active`
                 : "Showing recent workspace document metadata"}
             </span>
-            {isFetching ? (
+            {isError ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                Document sync failed
+              </span>
+            ) : isFetching ? (
               <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface-1 px-3 py-1 text-xs font-semibold text-muted-foreground">
                 <Loader2 className="size-3.5 animate-spin" />
                 Syncing documents
@@ -386,11 +364,35 @@ export const DocumentsListSurface = ({
       </Card>
 
       <Card className="overflow-hidden">
-        {isFetching && data.items.length === 0 ? (
+        {isError && !documentsList ? (
+          <CardContent className="p-6">
+            <div className="rounded-[1.5rem] border border-dashed border-rose-500/30 bg-rose-500/10 p-6">
+              <p className="text-sm font-semibold text-foreground">
+                Could not load documents
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {error instanceof Error
+                  ? error.message
+                  : "The documents API did not return a usable response."}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 rounded-full"
+                onClick={() => {
+                  void refetch();
+                }}
+              >
+                <RotateCcw className="size-4" />
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        ) : (isPending || isFetching) && documentItems.length === 0 ? (
           <DocumentRowsSkeleton />
-        ) : data.items.length > 0 ? (
+        ) : documentItems.length > 0 ? (
           <div className="divide-y divide-border/60">
-            {data.items.map((document) => (
+            {documentItems.map((document) => (
               <DocumentRow key={document.id} document={document} />
             ))}
           </div>
@@ -398,12 +400,12 @@ export const DocumentsListSurface = ({
           <CardContent className="p-6">
             <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-surface-1/70 p-6">
               <p className="text-sm font-semibold text-foreground">
-                {hasActiveFilters
+                {hasFilters
                   ? "No documents match those filters"
                   : "No document metadata in this workspace yet"}
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {hasActiveFilters
+                {hasFilters
                   ? "Clear a filter or choose a broader entity scope to inspect more document metadata."
                   : "Register metadata for a resume, job description, call note, or interview note before the AI and document-linking branches build on this material."}
               </p>

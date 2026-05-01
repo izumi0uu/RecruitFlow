@@ -1,7 +1,6 @@
 "use client";
 
-import * as React from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { FormEvent, ReactNode } from "react";
 import {
   BadgeCheck,
   FileText,
@@ -15,10 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import type {
-  CandidatesListItem,
-  CandidatesListResponse,
-} from "@recruitflow/contracts";
+import type { CandidatesListItem } from "@recruitflow/contracts";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -26,18 +22,12 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
-import {
-  areCandidateListFiltersEqual,
-  candidateListFiltersToSearchParams,
-  normalizeCandidateListFilters,
-  parseCandidateListFiltersFromSearchParams,
-  type CandidateListFilters,
-} from "@/lib/candidates/filters";
-import { candidatesListQueryOptions } from "@/lib/query/options";
+import type { CandidateListFilters } from "@/lib/candidates/filters";
 import { cn } from "@/lib/utils";
 
+import { useCandidatesListSurface } from "./hooks/useCandidatesListSurface";
+
 type CandidatesListSurfaceProps = {
-  initialData: CandidatesListResponse;
   initialFilters: CandidateListFilters;
 };
 
@@ -45,21 +35,6 @@ const hasResumeOptions = [
   { label: "Has resume", value: "true" },
   { label: "Needs resume", value: "false" },
 ] as const;
-
-const getFilterCount = (filters: CandidateListFilters) =>
-  [
-    filters.q,
-    filters.owner,
-    filters.source,
-    filters.location,
-    filters.hasResume,
-  ].filter(Boolean).length;
-
-const buildUrlFromFilters = (filters: CandidateListFilters) => {
-  const queryString = candidateListFiltersToSearchParams(filters).toString();
-
-  return `${window.location.pathname}${queryString ? `?${queryString}` : ""}`;
-};
 
 const CandidateMetric = ({
   label,
@@ -82,7 +57,7 @@ const CandidateBadge = ({
   children,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) => (
   <span
@@ -195,61 +170,38 @@ const CandidateRowsSkeleton = () => (
 );
 
 export const CandidatesListSurface = ({
-  initialData,
   initialFilters,
 }: CandidatesListSurfaceProps) => {
-  const [filters, setFilters] = React.useState(initialFilters);
-  const [locationDraft, setLocationDraft] = React.useState(
-    initialFilters.location,
-  );
-  const [searchDraft, setSearchDraft] = React.useState(initialFilters.q);
-  const [sourceDraft, setSourceDraft] = React.useState(initialFilters.source);
-  const { data = initialData, isFetching } = useQuery({
-    ...candidatesListQueryOptions(filters),
-    initialData,
-    placeholderData: keepPreviousData,
+  const {
+    applyFilters,
+    candidatesList,
+    error,
+    filterCount,
+    filters,
+    hasFilters,
+    isError,
+    isFetching,
+    isPending,
+    locationDraft,
+    refetch,
+    resetFilters,
+    searchDraft,
+    setLocationDraft,
+    setSearchDraft,
+    setSourceDraft,
+    sourceDraft,
+  } = useCandidatesListSurface({
+    initialFilters,
   });
-  const filterCount = getFilterCount(filters);
-  const hasActiveFilters = filterCount > 0;
+  const candidateItems = candidatesList?.items ?? [];
+  const ownerOptions = candidatesList?.ownerOptions ?? [];
 
-  React.useEffect(() => {
-    setLocationDraft(filters.location);
-    setSearchDraft(filters.q);
-    setSourceDraft(filters.source);
-  }, [filters.location, filters.q, filters.source]);
-
-  React.useEffect(() => {
-    const handlePopState = () => {
-      setFilters(parseCandidateListFiltersFromSearchParams(
-        new URLSearchParams(window.location.search),
-      ));
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  const applyFilters = (nextFilters: Partial<CandidateListFilters>) => {
-    const normalizedFilters = normalizeCandidateListFilters({
-      ...filters,
-      ...nextFilters,
-      page: nextFilters.page ?? "",
-    });
-
-    if (areCandidateListFiltersEqual(filters, normalizedFilters)) {
-      return;
-    }
-
-    setFilters(normalizedFilters);
-    window.history.pushState(null, "", buildUrlFromFilters(normalizedFilters));
-  };
-
-  const handleFilterSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     applyFilters({
       location: locationDraft,
+      page: "",
       q: searchDraft,
       source: sourceDraft,
     });
@@ -272,15 +224,19 @@ export const CandidatesListSurface = ({
             <div className="grid grid-cols-3 gap-2">
               <CandidateMetric
                 label="Visible"
-                value={String(data.items.length)}
+                value={String(candidateItems.length)}
               />
               <CandidateMetric
                 label="Total"
-                value={String(data.pagination.totalItems)}
+                value={
+                  candidatesList
+                    ? String(candidatesList.pagination.totalItems)
+                    : "..."
+                }
               />
               <CandidateMetric
                 label="Role"
-                value={data.context.role}
+                value={candidatesList?.context.role ?? "..."}
               />
             </div>
           </div>
@@ -308,7 +264,7 @@ export const CandidatesListSurface = ({
               value={filters.owner}
               options={[
                 { label: "All owners", value: "" },
-                ...data.ownerOptions.map((owner) => ({
+                ...ownerOptions.map((owner) => ({
                   label: owner.name ?? owner.email,
                   value: owner.id,
                 })),
@@ -348,18 +304,12 @@ export const CandidatesListSurface = ({
                 <Filter className="size-4" />
                 Apply
               </Button>
-              {hasActiveFilters ? (
+              {hasFilters ? (
                 <Button
                   type="button"
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => applyFilters({
-                    hasResume: "",
-                    location: "",
-                    owner: "",
-                    q: "",
-                    source: "",
-                  })}
+                  onClick={resetFilters}
                 >
                   <RotateCcw className="size-4" />
                   Reset
@@ -370,11 +320,15 @@ export const CandidatesListSurface = ({
 
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
-              {hasActiveFilters
+              {hasFilters
                 ? `${filterCount} filter${filterCount === 1 ? "" : "s"} active`
                 : "Showing the current workspace candidate inventory"}
             </span>
-            {isFetching ? (
+            {isError ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                Candidate sync failed
+              </span>
+            ) : isFetching ? (
               <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface-1 px-3 py-1 text-xs font-semibold text-muted-foreground">
                 <Loader2 className="size-3.5 animate-spin" />
                 Syncing candidates
@@ -390,11 +344,35 @@ export const CandidatesListSurface = ({
       </Card>
 
       <Card className="overflow-hidden">
-        {isFetching && data.items.length === 0 ? (
+        {isError && !candidatesList ? (
+          <CardContent className="p-6">
+            <div className="rounded-[1.5rem] border border-dashed border-rose-500/30 bg-rose-500/10 p-6">
+              <p className="text-sm font-semibold text-foreground">
+                Could not load candidates
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {error instanceof Error
+                  ? error.message
+                  : "The candidates API did not return a usable response."}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 rounded-full"
+                onClick={() => {
+                  void refetch();
+                }}
+              >
+                <RotateCcw className="size-4" />
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        ) : (isPending || isFetching) && candidateItems.length === 0 ? (
           <CandidateRowsSkeleton />
-        ) : data.items.length > 0 ? (
+        ) : candidateItems.length > 0 ? (
           <div className="divide-y divide-border/60">
-            {data.items.map((candidate) => (
+            {candidateItems.map((candidate) => (
               <CandidateRow key={candidate.id} candidate={candidate} />
             ))}
           </div>
@@ -402,12 +380,12 @@ export const CandidatesListSurface = ({
           <CardContent className="p-6">
             <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-surface-1/70 p-6">
               <p className="text-sm font-semibold text-foreground">
-                {hasActiveFilters
+                {hasFilters
                   ? "No candidates match those filters"
                   : "No candidates in this workspace yet"}
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {hasActiveFilters
+                {hasFilters
                   ? "Clear a filter or search for a broader profile signal to widen the candidate pool."
                   : "Create a candidate profile to make the inventory useful for future document upload, submission, and AI summary workflows."}
               </p>

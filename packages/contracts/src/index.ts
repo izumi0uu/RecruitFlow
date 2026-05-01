@@ -707,6 +707,12 @@ export interface CandidatesListOwnerOption {
   name: string | null;
 }
 
+export interface ApiUserReference {
+  email: string;
+  id: string;
+  name: string | null;
+}
+
 export interface CandidateRecord {
   archivedAt: string | null;
   createdAt: string;
@@ -830,6 +836,7 @@ export interface DocumentRecord {
   title: string;
   type: ApiDocumentType;
   updatedAt: string;
+  uploadedBy: ApiUserReference | null;
   uploadedByUserId: string | null;
 }
 

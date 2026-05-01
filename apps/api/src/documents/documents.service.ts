@@ -34,6 +34,7 @@ import {
   documents,
   jobs,
   submissions,
+  users,
 } from "@/lib/db/schema";
 
 const countValue = sql<number>`cast(count(${documents.id}) as int)`;
@@ -55,6 +56,8 @@ type DocumentRecordRow = {
   title: string;
   type: ApiDocumentType;
   updatedAt: Date;
+  uploadedByEmail?: string | null;
+  uploadedByName?: string | null;
   uploadedByUserId: string | null;
 };
 
@@ -78,8 +81,27 @@ const serializeDocumentRecord = (row: DocumentRecordRow): DocumentRecord => {
     title: row.title,
     type: row.type,
     updatedAt: row.updatedAt.toISOString(),
+    uploadedBy:
+      row.uploadedByUserId && row.uploadedByEmail
+        ? {
+            email: row.uploadedByEmail,
+            id: row.uploadedByUserId,
+            name: row.uploadedByName ?? null,
+          }
+        : null,
     uploadedByUserId: row.uploadedByUserId,
   };
+};
+
+const getWorkspaceUserReference = (
+  context: ApiWorkspaceContext,
+  userId: string,
+) => {
+  const member = context.workspace.memberships.find(
+    (membership) => membership.userId === userId,
+  );
+
+  return member?.user ?? null;
 };
 
 @Injectable()
@@ -135,9 +157,12 @@ export class DocumentsService {
         title: documents.title,
         type: documents.type,
         updatedAt: documents.updatedAt,
+        uploadedByEmail: users.email,
+        uploadedByName: users.name,
         uploadedByUserId: documents.uploadedByUserId,
       })
       .from(documents)
+      .leftJoin(users, eq(documents.uploadedByUserId, users.id))
       .where(whereClause)
       .orderBy(desc(documents.createdAt), asc(documents.title), asc(documents.id))
       .limit(pageSize)
@@ -303,7 +328,10 @@ export class DocumentsService {
         workspaceId,
       },
       contractVersion: "phase-1",
-      document: serializeDocumentRecord(createdDocument),
+      document: {
+        ...serializeDocumentRecord(createdDocument),
+        uploadedBy: getWorkspaceUserReference(context, actorUserId),
+      },
       message: "Document metadata created successfully",
       workspaceScoped: true,
     };
