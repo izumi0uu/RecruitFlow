@@ -6,7 +6,6 @@ import {
   Building2,
   Loader2,
   Pencil,
-  Plus,
   RotateCcw,
   Search,
   Sparkles,
@@ -23,6 +22,7 @@ import {
   WorkspaceListStatusBadge,
   WorkspaceListSurfaceShell,
 } from "@/components/workspace/WorkspaceListSurfaceShell";
+import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import type { ClientListFilters } from "@/lib/clients/filters";
 import { cn } from "@/lib/utils";
@@ -58,65 +58,6 @@ const clientPriorityFilterOptions = [
 const getClientInitial = (client: ClientsListItem) => {
   return client.name.trim().charAt(0).toUpperCase() || "C";
 };
-
-const ClientsHeaderMetric = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <div className="min-w-0 rounded-[1rem] border border-border/70 bg-workspace-muted-surface/68 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:min-w-[6.8rem]">
-    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-      {label}
-    </p>
-    <p className="mt-1.5 text-xl font-semibold tracking-[-0.05em] text-foreground">
-      {value}
-    </p>
-  </div>
-);
-
-const ClientsHeaderSummary = ({
-  canCreateClient,
-  isFetching,
-  onCreateClient,
-  openJobsCount,
-  ownerCount,
-  totalItems,
-}: {
-  canCreateClient: boolean;
-  isFetching: boolean;
-  onCreateClient: () => void;
-  openJobsCount: number;
-  ownerCount: number;
-  totalItems: number;
-}) => (
-  <div className="flex w-full flex-col gap-3 xl:w-auto xl:items-end">
-    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-      {isFetching ? (
-        <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-workspace-muted-surface px-3 py-1 text-xs font-medium text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" />
-          Syncing
-        </span>
-      ) : null}
-      <Button
-        className="rounded-full"
-        disabled={!canCreateClient}
-        type="button"
-        onClick={onCreateClient}
-      >
-        <Plus className="size-4" />
-        Create Client
-      </Button>
-    </div>
-
-    <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
-      <ClientsHeaderMetric label="Visible" value={String(totalItems)} />
-      <ClientsHeaderMetric label="Open jobs" value={String(openJobsCount)} />
-      <ClientsHeaderMetric label="Owners" value={String(ownerCount)} />
-    </div>
-  </div>
-);
 
 const ClientBadge = ({
   children,
@@ -339,9 +280,7 @@ const ClientsListSurface = ({
     hasFilters,
     isCreateDialogOpen,
     isError,
-    isFetching,
     isLoading,
-    openJobsCount,
     ownerFilterOptions,
     refetch,
     resetFilters,
@@ -355,6 +294,7 @@ const ClientsListSurface = ({
     initialFilters,
   });
   const hasClientsList = Boolean(clientsList);
+  const clientItems = clientsList?.items ?? [];
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -364,15 +304,15 @@ const ClientsListSurface = ({
         description="Browse workspace-scoped client accounts, spot ownership, and keep the CRM entry point ready for create/edit flows."
         rightSlotClassName="w-full xl:w-auto"
         rightSlot={
-          <ClientsHeaderSummary
-            canCreateClient={hasClientsList}
-            isFetching={isFetching || isLoading}
-            onCreateClient={() => {
+          <WorkspacePageHeaderSummary
+            actionDisabled={!hasClientsList}
+            actionLabel="Create Client"
+            onAction={() => {
               setIsCreateDialogOpen(true);
             }}
-            openJobsCount={openJobsCount}
-            ownerCount={clientsList?.ownerOptions.length ?? 0}
+            role={clientsList?.context.role ?? "..."}
             totalItems={clientsList?.pagination.totalItems ?? 0}
+            visibleItems={clientItems.length}
           />
         }
       />

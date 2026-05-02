@@ -52,6 +52,8 @@ const useDocumentsListSurface = ({
   });
   const filterCount = getDocumentFilterCount(filters);
   const hasFilters = filterCount > 0;
+  const currentPage = documentsList?.pagination.page ?? 1;
+  const totalPages = documentsList?.pagination.totalPages ?? 1;
 
   const resetFilters = React.useCallback(() => {
     setEntityIdDraft("");
@@ -65,6 +67,7 @@ const useDocumentsListSurface = ({
 
   return {
     applyFilters,
+    currentPage,
     documentsList,
     entityIdDraft,
     error,
@@ -77,6 +80,7 @@ const useDocumentsListSurface = ({
     refetch,
     resetFilters,
     setEntityIdDraft,
+    totalPages,
   };
 };
 

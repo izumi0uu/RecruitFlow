@@ -1,14 +1,12 @@
 "use client";
 
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
-  BadgeCheck,
   Bot,
   Database,
   FileText,
   Filter,
   Loader2,
-  Plus,
   RotateCcw,
   UserRound,
 } from "lucide-react";
@@ -24,9 +22,13 @@ import {
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
+import {
+  WorkspaceListStatusBadge,
+  WorkspaceListSurfaceShell,
+} from "@/components/workspace/WorkspaceListSurfaceShell";
+import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import type { DocumentListFilters } from "@/lib/documents/filters";
 import { cn } from "@/lib/utils";
@@ -88,23 +90,6 @@ const getEntityHref = (document: DocumentRecord) => {
 
   return null;
 };
-
-const DocumentMetric = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <div className="min-w-0 rounded-[1rem] border border-border/70 bg-workspace-muted-surface/68 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:min-w-[6.8rem]">
-    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-      {label}
-    </p>
-    <p className="mt-1.5 text-xl font-semibold tracking-[-0.05em] text-foreground">
-      {value}
-    </p>
-  </div>
-);
 
 const DocumentBadge = ({
   children,
@@ -210,11 +195,53 @@ const DocumentRowsSkeleton = () => (
   </div>
 );
 
+const DocumentsEmptyState = ({
+  hasFilters,
+  onReset,
+}: {
+  hasFilters: boolean;
+  onReset: () => void;
+}) => (
+  <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-surface-1/70 p-6 text-center">
+    <span className="mx-auto flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70">
+      <FileText className="size-5 text-foreground" />
+    </span>
+    <p className="mt-5 text-sm font-semibold text-foreground">
+      {hasFilters
+        ? "No documents match those filters"
+        : "No document metadata in this workspace yet"}
+    </p>
+    <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+      {hasFilters
+        ? "Clear a filter or choose a broader entity scope to inspect more document metadata."
+        : "Register metadata for a resume, job description, call note, or interview note before the AI and document-linking branches build on this material."}
+    </p>
+    {hasFilters ? (
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-4 rounded-full"
+        onClick={onReset}
+      >
+        <RotateCcw className="size-4" />
+        Reset filters
+      </Button>
+    ) : (
+      <Button asChild variant="outline" className="mt-4 rounded-full">
+        <TrackedLink href="/documents/new">
+          Add metadata
+        </TrackedLink>
+      </Button>
+    )}
+  </div>
+);
+
 export const DocumentsListSurface = ({
   initialFilters,
 }: DocumentsListSurfaceProps) => {
   const {
     applyFilters,
+    currentPage,
     documentsList,
     entityIdDraft,
     error,
@@ -227,16 +254,11 @@ export const DocumentsListSurface = ({
     refetch,
     resetFilters,
     setEntityIdDraft,
+    totalPages,
   } = useDocumentsListSurface({
     initialFilters,
   });
   const documentItems = documentsList?.items ?? [];
-
-  const handleFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    applyFilters({ entityId: entityIdDraft, page: "" });
-  };
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -245,127 +267,175 @@ export const DocumentsListSurface = ({
         title="Documents"
         description="Browse workspace document metadata by type and linked entity before AI search, previews, and row-level document linking expand this surface."
         rightSlot={
-          <div className="flex flex-col gap-3">
-            <Button asChild className="rounded-full">
-              <TrackedLink href="/documents/new">
-                <Plus className="size-4" />
-                Add metadata
-              </TrackedLink>
-            </Button>
-            <div className="grid grid-cols-3 gap-2">
-              <DocumentMetric
-                label="Visible"
-                value={String(documentItems.length)}
-              />
-              <DocumentMetric
-                label="Total"
-                value={
-                  documentsList
-                    ? String(documentsList.pagination.totalItems)
-                    : "..."
-                }
-              />
-              <DocumentMetric
-                label="Role"
-                value={documentsList?.context.role ?? "..."}
-              />
-            </div>
-          </div>
+          <WorkspacePageHeaderSummary
+            actionHref="/documents/new"
+            actionLabel="Add metadata"
+            role={documentsList?.context.role ?? "..."}
+            totalItems={documentsList?.pagination.totalItems ?? "..."}
+            visibleItems={documentItems.length}
+          />
         }
       />
 
-      <Card>
-        <CardContent className="space-y-4 p-4 md:p-5">
-          <form
-            className="grid gap-3 lg:grid-cols-[minmax(10rem,0.35fr)_minmax(10rem,0.35fr)_minmax(16rem,1fr)_auto]"
-            onSubmit={handleFilterSubmit}
-          >
-            <FilterSelect
-              value={filters.type}
-              options={[
-                { label: "All types", value: "" },
-                ...apiDocumentTypeValues.map((type) => ({
-                  label: documentTypeLabelMap[type],
-                  value: type,
-                })),
-              ]}
-              placeholder="All types"
-              onValueChange={(type) => applyFilters({
-                page: "",
-                type: type as DocumentListFilters["type"],
-              })}
-            />
+      <WorkspaceListSurfaceShell
+        filterBadges={
+          <>
+            <WorkspaceListStatusBadge>
+              {filterCount ? `${filterCount} active filters` : "No filters"}
+            </WorkspaceListStatusBadge>
+            <WorkspaceListStatusBadge>
+              {documentsList?.workspaceScoped
+                ? "Workspace scoped"
+                : isPending
+                  ? "Loading scope"
+                  : "Scope pending"}
+            </WorkspaceListStatusBadge>
+            {isFetching ? (
+              <WorkspaceListStatusBadge>
+                <Loader2 className="size-3.5 animate-spin" />
+                Syncing
+              </WorkspaceListStatusBadge>
+            ) : null}
+          </>
+        }
+        filterControlsClassName="lg:grid-cols-[minmax(10rem,0.35fr)_minmax(10rem,0.35fr)_minmax(16rem,1fr)_auto]"
+        filterControls={
+          <>
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Type
+              </span>
+              <FilterSelect
+                value={filters.type}
+                options={[
+                  { label: "All types", value: "" },
+                  ...apiDocumentTypeValues.map((type) => ({
+                    label: documentTypeLabelMap[type],
+                    value: type,
+                  })),
+                ]}
+                placeholder="All types"
+                onValueChange={(type) => {
+                  applyFilters({
+                    page: "",
+                    type: type as DocumentListFilters["type"],
+                  });
+                }}
+              />
+            </label>
 
-            <FilterSelect
-              value={filters.entityType}
-              options={[
-                { label: "All entities", value: "" },
-                ...apiDocumentEntityTypeValues.map((entityType) => ({
-                  label: entityTypeLabelMap[entityType],
-                  value: entityType,
-                })),
-              ]}
-              placeholder="All entities"
-              onValueChange={(entityType) => applyFilters({
-                entityType: entityType as DocumentListFilters["entityType"],
-                page: "",
-              })}
-            />
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Entity
+              </span>
+              <FilterSelect
+                value={filters.entityType}
+                options={[
+                  { label: "All entities", value: "" },
+                  ...apiDocumentEntityTypeValues.map((entityType) => ({
+                    label: entityTypeLabelMap[entityType],
+                    value: entityType,
+                  })),
+                ]}
+                placeholder="All entities"
+                onValueChange={(entityType) => {
+                  applyFilters({
+                    entityType:
+                      entityType as DocumentListFilters["entityType"],
+                    page: "",
+                  });
+                }}
+              />
+            </label>
 
-            <Input
-              aria-label="Linked entity id"
-              value={entityIdDraft}
-              onChange={(event) => setEntityIdDraft(event.target.value)}
-              placeholder="Linked entity id"
-            />
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Entity ID
+              </span>
+              <Input
+                value={entityIdDraft}
+                onChange={(event) => setEntityIdDraft(event.target.value)}
+                placeholder="Linked entity id"
+              />
+            </label>
 
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <Button type="submit" className="rounded-full">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                className="rounded-full"
+                onClick={() => {
+                  applyFilters({ entityId: entityIdDraft, page: "" });
+                }}
+              >
                 <Filter className="size-4" />
                 Apply
               </Button>
-              {hasFilters ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                disabled={!hasFilters}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="size-4" />
+                Reset
+              </Button>
+            </div>
+          </>
+        }
+        alerts={
+          isError && documentsList ? (
+            <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  {error instanceof Error
+                    ? error.message
+                    : "Unable to refresh documents."}
+                </p>
                 <Button
+                  className="rounded-full"
                   type="button"
                   variant="outline"
-                  className="rounded-full"
-                  onClick={resetFilters}
+                  onClick={() => void refetch()}
                 >
-                  <RotateCcw className="size-4" />
-                  Reset
+                  Retry
                 </Button>
-              ) : null}
+              </div>
             </div>
-          </form>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>
-              {hasFilters
-                ? `${filterCount} filter${filterCount === 1 ? "" : "s"} active`
-                : "Showing recent workspace document metadata"}
-            </span>
-            {isError ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
-                Document sync failed
-              </span>
-            ) : isFetching ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface-1 px-3 py-1 text-xs font-semibold text-muted-foreground">
-                <Loader2 className="size-3.5 animate-spin" />
-                Syncing documents
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                <BadgeCheck className="size-3.5" />
-                Workspace scoped
-              </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="overflow-hidden">
+          ) : null
+        }
+        contentHeader={
+          <>
+            <span>Document</span>
+            <span>Entity</span>
+            <span className="text-right">Automation</span>
+          </>
+        }
+        contentHeaderClassName="lg:grid-cols-[minmax(0,1.2fr)_minmax(12rem,0.55fr)_minmax(12rem,0.5fr)]"
+        pagination={{
+          currentPage,
+          disabled: !documentsList,
+          onNext: () => {
+            applyFilters({ page: String(currentPage + 1) });
+          },
+          onPrevious: () => {
+            applyFilters({
+              page: currentPage > 2 ? String(currentPage - 1) : "",
+            });
+          },
+          pageSize: documentsList?.pagination.pageSize ?? 20,
+          totalItems: documentsList?.pagination.totalItems ?? 0,
+          totalPages,
+        }}
+        footerNote={{
+          icon: <FileText className="size-4 text-muted-foreground" />,
+          title: "Document metadata boundary",
+          children:
+            "This surface owns workspace-scoped document metadata browsing, linked entity filters, and AI processing status visibility before previews and semantic search expand the document workflow.",
+        }}
+      >
         {isError && !documentsList ? (
-          <CardContent className="p-6">
+          <div className="p-6">
             <div className="rounded-[1.5rem] border border-dashed border-rose-500/30 bg-rose-500/10 p-6">
               <p className="text-sm font-semibold text-foreground">
                 Could not load documents
@@ -387,7 +457,7 @@ export const DocumentsListSurface = ({
                 Retry
               </Button>
             </div>
-          </CardContent>
+          </div>
         ) : (isPending || isFetching) && documentItems.length === 0 ? (
           <DocumentRowsSkeleton />
         ) : documentItems.length > 0 ? (
@@ -397,28 +467,14 @@ export const DocumentsListSurface = ({
             ))}
           </div>
         ) : (
-          <CardContent className="p-6">
-            <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-surface-1/70 p-6">
-              <p className="text-sm font-semibold text-foreground">
-                {hasFilters
-                  ? "No documents match those filters"
-                  : "No document metadata in this workspace yet"}
-              </p>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {hasFilters
-                  ? "Clear a filter or choose a broader entity scope to inspect more document metadata."
-                  : "Register metadata for a resume, job description, call note, or interview note before the AI and document-linking branches build on this material."}
-              </p>
-              <Button asChild variant="outline" className="mt-4 rounded-full">
-                <TrackedLink href="/documents/new">
-                  <Plus className="size-4" />
-                  Add metadata
-                </TrackedLink>
-              </Button>
-            </div>
-          </CardContent>
+          <div className="p-6">
+            <DocumentsEmptyState
+              hasFilters={hasFilters}
+              onReset={resetFilters}
+            />
+          </div>
         )}
-      </Card>
+      </WorkspaceListSurfaceShell>
     </section>
   );
 };

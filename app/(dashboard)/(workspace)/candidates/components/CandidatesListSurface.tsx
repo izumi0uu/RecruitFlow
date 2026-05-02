@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import {
   FileText,
   Pencil,
-  Plus,
   Loader2,
   MapPin,
   RotateCcw,
@@ -22,6 +21,7 @@ import {
   WorkspaceListStatusBadge,
   WorkspaceListSurfaceShell,
 } from "@/components/workspace/WorkspaceListSurfaceShell";
+import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import type { CandidateListFilters } from "@/lib/candidates/filters";
 import { cn } from "@/lib/utils";
@@ -36,23 +36,6 @@ const hasResumeOptions = [
   { label: "Has resume", value: "true" },
   { label: "Needs resume", value: "false" },
 ] as const;
-
-const CandidateMetric = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <div className="min-w-0 rounded-[1rem] border border-border/70 bg-workspace-muted-surface/68 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:min-w-[6.8rem]">
-    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-      {label}
-    </p>
-    <p className="mt-1.5 text-xl font-semibold tracking-[-0.05em] text-foreground">
-      {value}
-    </p>
-  </div>
-);
 
 const CandidateBadge = ({
   children,
@@ -204,7 +187,6 @@ const CandidatesEmptyState = ({
     ) : (
       <Button asChild variant="outline" className="mt-4 rounded-full">
         <TrackedLink href="/candidates/new">
-          <Plus className="size-4" />
           Create candidate
         </TrackedLink>
       </Button>
@@ -259,32 +241,13 @@ export const CandidatesListSurface = ({
         title="Candidates"
         description="Browse workspace-scoped candidate profiles before create, detail, document upload, and submission workflows build on this material layer."
         rightSlot={
-          <div className="flex flex-col gap-3">
-            <Button asChild className="rounded-full">
-              <TrackedLink href="/candidates/new">
-                <Plus className="size-4" />
-                Create candidate
-              </TrackedLink>
-            </Button>
-            <div className="grid grid-cols-3 gap-2">
-              <CandidateMetric
-                label="Visible"
-                value={String(candidateItems.length)}
-              />
-              <CandidateMetric
-                label="Total"
-                value={
-                  candidatesList
-                    ? String(candidatesList.pagination.totalItems)
-                    : "..."
-                }
-              />
-              <CandidateMetric
-                label="Role"
-                value={candidatesList?.context.role ?? "..."}
-              />
-            </div>
-          </div>
+          <WorkspacePageHeaderSummary
+            actionHref="/candidates/new"
+            actionLabel="Create candidate"
+            role={candidatesList?.context.role ?? "..."}
+            totalItems={candidatesList?.pagination.totalItems ?? "..."}
+            visibleItems={candidateItems.length}
+          />
         }
       />
 

@@ -5,9 +5,7 @@ import {
   BriefcaseBusiness,
   Building2,
   Filter,
-  Loader2,
   Pencil,
-  Plus,
   RotateCcw,
   Search,
   UserRound,
@@ -23,6 +21,7 @@ import {
   WorkspaceListStatusBadge,
   WorkspaceListSurfaceShell,
 } from "@/components/workspace/WorkspaceListSurfaceShell";
+import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import type { JobListFilters } from "@/lib/jobs/filters";
 import { cn } from "@/lib/utils";
@@ -59,23 +58,6 @@ const JobBadge = ({
   >
     {children}
   </span>
-);
-
-const JobsHeaderMetric = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <div className="min-w-0 rounded-[1rem] border border-border/70 bg-workspace-muted-surface/68 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:min-w-[6.8rem]">
-    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-      {label}
-    </p>
-    <p className="mt-1.5 text-xl font-semibold tracking-[-0.05em] text-foreground">
-      {value}
-    </p>
-  </div>
 );
 
 const JobRow = ({
@@ -203,7 +185,6 @@ const JobsListSurface = ({
   initialFilters,
 }: JobsListSurfaceProps) => {
   const {
-    activeJobsCount,
     applyFilters,
     canManageJobs,
     clientOptions,
@@ -213,7 +194,6 @@ const JobsListSurface = ({
     filters,
     hasFilters,
     isError,
-    isFetching,
     jobsList,
     ownerOptions,
     refetch,
@@ -221,7 +201,6 @@ const JobsListSurface = ({
     searchDraft,
     setSearchDraft,
     totalPages,
-    urgentJobsCount,
   } = useJobsListSurface({
     initialData,
     initialFilters,
@@ -235,44 +214,14 @@ const JobsListSurface = ({
         description="Browse workspace-scoped role demand by client, owner, status, and priority, then capture new requisitions through the RF-031 create/edit flow."
         rightSlotClassName="w-full xl:w-auto"
         rightSlot={
-          <div className="flex w-full flex-col gap-3 xl:w-auto xl:items-end">
-            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-              {canManageJobs ? (
-                <Button asChild size="sm" className="rounded-full">
-                  <TrackedLink href="/jobs/new">
-                    <Plus className="size-4" />
-                    Create job
-                  </TrackedLink>
-                </Button>
-              ) : null}
-              {isFetching ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-workspace-muted-surface px-3 py-1 text-xs font-medium text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Syncing
-                </span>
-              ) : null}
-              {!canManageJobs ? (
-                <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                  Coordinator read-only view
-                </span>
-              ) : null}
-            </div>
-
-            <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
-              <JobsHeaderMetric
-                label="Visible"
-                value={String(jobsList.pagination.totalItems)}
-              />
-              <JobsHeaderMetric
-                label="Active"
-                value={String(activeJobsCount)}
-              />
-              <JobsHeaderMetric
-                label="Urgent"
-                value={String(urgentJobsCount)}
-              />
-            </div>
-          </div>
+          <WorkspacePageHeaderSummary
+            actionDisabled={!canManageJobs}
+            actionHref="/jobs/new"
+            actionLabel="Create job"
+            role={jobsList.context.role}
+            totalItems={jobsList.pagination.totalItems}
+            visibleItems={jobsList.items.length}
+          />
         }
       />
 
