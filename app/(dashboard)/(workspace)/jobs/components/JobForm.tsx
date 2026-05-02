@@ -1,17 +1,17 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { Loader2 } from "lucide-react";
-
-import {
-  type ApiJobPriority,
-  type ApiJobStatus,
-  type JobsListClientOption,
-  type JobsListOwnerOption,
+import type {
+  ApiJobPriority,
+  ApiJobStatus,
+  JobsListClientOption,
+  JobsListOwnerOption,
 } from "@recruitflow/contracts";
+import { Loader2 } from "lucide-react";
+import { type FormEvent, useState } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
@@ -35,6 +35,11 @@ type JobFormProps = {
   onSubmit: (values: JobFormValues) => void;
   ownerOptions: JobsListOwnerOption[];
 };
+
+type JobSelectValues = Pick<
+  JobFormValues,
+  "clientId" | "ownerUserId" | "priority" | "status"
+>;
 
 const getString = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value : "";
@@ -68,12 +73,37 @@ export const JobForm = ({
   onSubmit,
   ownerOptions,
 }: JobFormProps) => {
+  const values = initialValues;
+  const [selectValues, setSelectValues] = useState<JobSelectValues>({
+    clientId: values.clientId,
+    ownerUserId: values.ownerUserId,
+    priority: values.priority,
+    status: values.status,
+  });
+  const updateSelectValue = (field: keyof JobSelectValues) => (value: string) =>
+    setSelectValues((currentValues) => ({
+      ...currentValues,
+      [field]: value,
+    }));
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!Object.values(selectValues).every(Boolean)) {
+      return;
+    }
+
     onSubmit(getJobFormValues(new FormData(event.currentTarget)));
   };
-  const values = initialValues;
   const hasClients = clientOptions.length > 0;
+  const canSubmit = hasClients && Object.values(selectValues).every(Boolean);
+  const clientSelectOptions = clientOptions.map((client) => ({
+    label: client.name,
+    value: client.id,
+  }));
+  const ownerSelectOptions = ownerOptions.map((owner) => ({
+    label: owner.name ?? owner.email,
+    value: owner.id,
+  }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -90,84 +120,58 @@ export const JobForm = ({
             required
           />
           <p className="text-xs leading-5 text-muted-foreground">
-            Use the client-facing role name. Downstream submission and
-            dashboard surfaces will inherit this label.
+            Use the client-facing role name. Downstream submission and dashboard
+            surfaces will inherit this label.
           </p>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="clientId">Client</Label>
-          <select
+          <FilterSelect
             id="clientId"
-            className="input"
             name="clientId"
-            defaultValue={values.clientId}
             disabled={!hasClients}
-            required
-          >
-            <option value="" disabled>
-              {hasClients ? "Select client" : "Create a client first"}
-            </option>
-            {clientOptions.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={updateSelectValue("clientId")}
+            options={clientSelectOptions}
+            placeholder={hasClients ? "Select client" : "Create a client first"}
+            value={selectValues.clientId}
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="ownerUserId">Job owner</Label>
-          <select
+          <FilterSelect
             id="ownerUserId"
-            className="input"
             name="ownerUserId"
-            defaultValue={values.ownerUserId}
-            required
-          >
-            <option value="" disabled>
-              Select owner
-            </option>
-            {ownerOptions.map((owner) => (
-              <option key={owner.id} value={owner.id}>
-                {owner.name ?? owner.email}
-              </option>
-            ))}
-          </select>
+            onValueChange={updateSelectValue("ownerUserId")}
+            options={ownerSelectOptions}
+            placeholder="Select owner"
+            value={selectValues.ownerUserId}
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
-          <select
+          <FilterSelect
             id="status"
-            className="input"
             name="status"
-            defaultValue={values.status}
-            required
-          >
-            {jobStatusOptions.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
+            onValueChange={updateSelectValue("status")}
+            options={jobStatusOptions}
+            placeholder="Select status"
+            value={selectValues.status}
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="priority">Priority</Label>
-          <select
+          <FilterSelect
             id="priority"
-            className="input"
             name="priority"
-            defaultValue={values.priority}
-            required
-          >
-            {jobPriorityOptions.map((priority) => (
-              <option key={priority.value} value={priority.value}>
-                {priority.label}
-              </option>
-            ))}
-          </select>
+            onValueChange={updateSelectValue("priority")}
+            options={jobPriorityOptions}
+            placeholder="Select priority"
+            value={selectValues.priority}
+          />
         </div>
 
         <div className="space-y-2">
@@ -294,9 +298,7 @@ export const JobForm = ({
         </div>
       </div>
 
-      {error ? (
-        <p className="status-message status-error">{error}</p>
-      ) : null}
+      {error ? <p className="status-message status-error">{error}</p> : null}
 
       {!hasClients ? (
         <p className="status-message border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
@@ -309,7 +311,7 @@ export const JobForm = ({
         <Button
           type="submit"
           className="rounded-full"
-          disabled={isPending || !hasClients}
+          disabled={isPending || !canSubmit}
         >
           {isPending ? (
             <>
@@ -322,7 +324,12 @@ export const JobForm = ({
             "Save job"
           )}
         </Button>
-        <Button asChild type="button" variant="outline" className="rounded-full">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          className="rounded-full"
+        >
           <TrackedLink href="/jobs">Cancel</TrackedLink>
         </Button>
       </div>

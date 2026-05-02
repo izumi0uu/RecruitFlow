@@ -160,11 +160,7 @@ export const SubmissionForm = ({
 
   const updateInputValue =
     (field: keyof SubmissionFormValues) =>
-    (
-      event: ChangeEvent<
-        HTMLSelectElement | HTMLTextAreaElement | HTMLInputElement
-      >,
-    ) => {
+    (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
       setValues((currentValues) => ({
         ...currentValues,
         [field]: event.target.value,

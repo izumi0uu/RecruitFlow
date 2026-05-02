@@ -1,23 +1,28 @@
 "use client";
 
-import * as React from "react";
-import { Loader2 } from "lucide-react";
-
 import {
-  apiJobPriorityValues,
-  apiJobStatusValues,
   type ApiJobPriority,
   type ApiJobStatus,
+  apiJobPriorityValues,
+  apiJobStatusValues,
   type JobRecord,
 } from "@recruitflow/contracts";
+import { Loader2 } from "lucide-react";
+import * as React from "react";
 
 import { Button } from "@/components/ui/Button";
-
-import { useJobMutation } from "./hooks/useJobMutations";
+import { FilterSelect } from "@/components/ui/FilterSelect";
+import { Label } from "@/components/ui/Label";
 import type { JobFormValues } from "../utils";
+import { useJobMutation } from "./hooks/useJobMutations";
 
 type JobStatusPriorityControlsProps = {
   job: JobRecord;
+};
+
+type JobControlValues = {
+  priority: ApiJobPriority;
+  status: ApiJobStatus;
 };
 
 const toTitleCase = (value: string) =>
@@ -58,18 +63,41 @@ const buildControlValues = (
 export const JobStatusPriorityControls = ({
   job,
 }: JobStatusPriorityControlsProps) => {
-  const [status, setStatus] = React.useState(job.status);
-  const [priority, setPriority] = React.useState(job.priority);
+  const [controlValues, setControlValues] = React.useState<JobControlValues>({
+    priority: job.priority,
+    status: job.status,
+  });
   const [success, setSuccess] = React.useState<string | null>(null);
   const { error, isPending, saveJob } = useJobMutation({
     jobId: job.id,
     mode: "edit",
     onSuccess: (response) => {
-      setStatus(response.job.status);
-      setPriority(response.job.priority);
+      setControlValues({
+        priority: response.job.priority,
+        status: response.job.status,
+      });
       setSuccess("Job controls saved.");
     },
   });
+  const updateControlValue =
+    (field: keyof JobControlValues) => (value: string) => {
+      setControlValues(
+        (currentValues) =>
+          ({
+            ...currentValues,
+            [field]: value,
+          }) as JobControlValues,
+      );
+      setSuccess(null);
+    };
+  const statusOptions = apiJobStatusValues.map((nextStatus) => ({
+    label: toTitleCase(nextStatus),
+    value: nextStatus,
+  }));
+  const priorityOptions = apiJobPriorityValues.map((nextPriority) => ({
+    label: toTitleCase(nextPriority),
+    value: nextPriority,
+  }));
 
   return (
     <form
@@ -77,50 +105,32 @@ export const JobStatusPriorityControls = ({
       onSubmit={(event) => {
         event.preventDefault();
         setSuccess(null);
-        saveJob(buildControlValues(job, status, priority));
+        saveJob(
+          buildControlValues(job, controlValues.status, controlValues.priority),
+        );
       }}
     >
-      <label className="block space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Status
-        </span>
-        <select
-          className="input"
-          value={status}
-          required
-          onChange={(event) => {
-            setStatus(event.target.value as ApiJobStatus);
-            setSuccess(null);
-          }}
-        >
-          {apiJobStatusValues.map((nextStatus) => (
-            <option key={nextStatus} value={nextStatus}>
-              {toTitleCase(nextStatus)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="space-y-2">
+        <Label htmlFor="job-status">Status</Label>
+        <FilterSelect
+          id="job-status"
+          options={statusOptions}
+          placeholder="Select status"
+          value={controlValues.status}
+          onValueChange={updateControlValue("status")}
+        />
+      </div>
 
-      <label className="block space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Priority
-        </span>
-        <select
-          className="input"
-          value={priority}
-          required
-          onChange={(event) => {
-            setPriority(event.target.value as ApiJobPriority);
-            setSuccess(null);
-          }}
-        >
-          {apiJobPriorityValues.map((nextPriority) => (
-            <option key={nextPriority} value={nextPriority}>
-              {toTitleCase(nextPriority)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="space-y-2">
+        <Label htmlFor="job-priority">Priority</Label>
+        <FilterSelect
+          id="job-priority"
+          options={priorityOptions}
+          placeholder="Select priority"
+          value={controlValues.priority}
+          onValueChange={updateControlValue("priority")}
+        />
+      </div>
 
       {error ? <p className="status-message status-error">{error}</p> : null}
       {success ? (

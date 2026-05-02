@@ -1,16 +1,16 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { Loader2 } from "lucide-react";
-
 import {
-  apiDocumentTypeValues,
   type ApiDocumentEntityType,
   type ApiDocumentType,
+  apiDocumentTypeValues,
 } from "@recruitflow/contracts";
+import { Loader2 } from "lucide-react";
+import { type FormEvent, useState } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
@@ -23,6 +23,11 @@ type DocumentMetadataFormProps = {
   isPending: boolean;
   onSubmit: (values: DocumentMetadataFormValues) => void;
 };
+
+type DocumentSelectValues = Pick<
+  DocumentMetadataFormValues,
+  "entityType" | "type"
+>;
 
 const entityTypeOptions = [
   { label: "Candidate", value: "candidate" },
@@ -64,33 +69,49 @@ export const DocumentMetadataForm = ({
   isPending,
   onSubmit,
 }: DocumentMetadataFormProps) => {
+  const values = initialValues;
+  const [selectValues, setSelectValues] = useState<DocumentSelectValues>({
+    entityType: values.entityType,
+    type: values.type,
+  });
+  const canSubmit = Object.values(selectValues).every(Boolean);
+  const updateSelectValue =
+    (field: keyof DocumentSelectValues) => (value: string) => {
+      setSelectValues(
+        (currentValues) =>
+          ({
+            ...currentValues,
+            [field]: value,
+          }) as DocumentSelectValues,
+      );
+    };
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!canSubmit) {
+      return;
+    }
+
     onSubmit(getDocumentMetadataFormValues(new FormData(event.currentTarget)));
   };
-  const values = initialValues;
+  const documentTypeOptions = apiDocumentTypeValues.map((type) => ({
+    label: documentTypeLabelMap[type],
+    value: type,
+  }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="entityType">Linked entity type</Label>
-          <select
+          <FilterSelect
             id="entityType"
-            className="input"
             name="entityType"
-            defaultValue={values.entityType}
-            required
-          >
-            <option value="" disabled>
-              Select entity type
-            </option>
-            {entityTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onValueChange={updateSelectValue("entityType")}
+            options={entityTypeOptions}
+            placeholder="Select entity type"
+            value={selectValues.entityType}
+          />
         </div>
 
         <div className="space-y-2">
@@ -106,22 +127,14 @@ export const DocumentMetadataForm = ({
 
         <div className="space-y-2">
           <Label htmlFor="type">Document type</Label>
-          <select
+          <FilterSelect
             id="type"
-            className="input"
             name="type"
-            defaultValue={values.type}
-            required
-          >
-            <option value="" disabled>
-              Select document type
-            </option>
-            {apiDocumentTypeValues.map((type) => (
-              <option key={type} value={type}>
-                {documentTypeLabelMap[type]}
-              </option>
-            ))}
-          </select>
+            onValueChange={updateSelectValue("type")}
+            options={documentTypeOptions}
+            placeholder="Select document type"
+            value={selectValues.type}
+          />
         </div>
 
         <div className="space-y-2">
@@ -185,9 +198,7 @@ export const DocumentMetadataForm = ({
         </div>
       </div>
 
-      {error ? (
-        <p className="status-message status-error">{error}</p>
-      ) : null}
+      {error ? <p className="status-message status-error">{error}</p> : null}
 
       <p className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
         This is a non-destructive metadata registration flow. File deletion,
@@ -196,7 +207,11 @@ export const DocumentMetadataForm = ({
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" className="rounded-full" disabled={isPending}>
+        <Button
+          type="submit"
+          className="rounded-full"
+          disabled={isPending || !canSubmit}
+        >
           {isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
@@ -206,7 +221,12 @@ export const DocumentMetadataForm = ({
             "Save document metadata"
           )}
         </Button>
-        <Button asChild type="button" variant="outline" className="rounded-full">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          className="rounded-full"
+        >
           <TrackedLink href={cancelHref}>Cancel</TrackedLink>
         </Button>
       </div>

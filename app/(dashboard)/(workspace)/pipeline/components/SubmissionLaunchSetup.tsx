@@ -56,11 +56,7 @@ export const SubmissionLaunchSetup = ({
   jobSelectOptions: SelectOption[];
   onInputChange: (
     field: keyof SubmissionFormValues,
-  ) => (
-    event: ChangeEvent<
-      HTMLSelectElement | HTMLTextAreaElement | HTMLInputElement
-    >,
-  ) => void;
+  ) => (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
   onSelectChange: (
     field: keyof SubmissionFormValues,
   ) => (value: string) => void;

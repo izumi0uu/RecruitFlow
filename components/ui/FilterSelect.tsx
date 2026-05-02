@@ -21,9 +21,10 @@ type FilterSelectProps = {
   className?: string;
   defaultValue?: string | null;
   disabled?: boolean;
+  id?: string;
   name?: string;
   onValueChange?: (value: string) => void;
-  options: FilterSelectOption[];
+  options: ReadonlyArray<FilterSelectOption>;
   placeholder: string;
   value?: string | null;
 };
@@ -32,6 +33,7 @@ const FilterSelect = ({
   className,
   defaultValue,
   disabled = false,
+  id,
   name,
   onValueChange,
   options,
@@ -58,10 +60,11 @@ const FilterSelect = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
+            id={id}
             type="button"
             disabled={disabled}
             className={cn(
-              "input cursor-pointer items-center justify-between gap-3 pr-3 text-left disabled:cursor-not-allowed disabled:opacity-60",
+              "group input cursor-pointer items-center justify-between gap-3 pr-3 text-left disabled:cursor-not-allowed disabled:opacity-60",
               className,
             )}
           >
@@ -73,7 +76,7 @@ const FilterSelect = ({
             >
               {selectedOption?.label ?? placeholder}
             </span>
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180" />
+            <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
