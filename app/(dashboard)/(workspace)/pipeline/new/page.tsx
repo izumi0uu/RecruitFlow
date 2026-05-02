@@ -18,10 +18,9 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
 import {
-  buildSubmissionFormValues,
-  emptySubmissionFormValues,
   type SubmissionCandidateOption,
   type SubmissionExistingOption,
+  type SubmissionFormValues,
   type SubmissionJobOption,
 } from "../components/SubmissionForm";
 import { SubmissionFormController } from "../components/SubmissionFormController";
@@ -143,6 +142,14 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
   )
     ? requestedCandidateId
     : "";
+  const initialValues: SubmissionFormValues = {
+    candidateId: initialCandidateId,
+    jobId: initialJobId,
+    nextStep: "",
+    ownerUserId: initialOwnerUserId,
+    riskFlag: "none",
+    stage: "sourced",
+  };
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -178,12 +185,7 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
             )}
             candidateOptions={candidateOptions}
             existingSubmissions={existingSubmissions}
-            initialValues={buildSubmissionFormValues({
-              ...emptySubmissionFormValues,
-              candidateId: initialCandidateId,
-              jobId: initialJobId,
-              ownerUserId: initialOwnerUserId,
-            })}
+            initialValues={initialValues}
             jobOptions={jobOptions}
             ownerOptions={ownerOptions}
             redirectTarget={redirectTarget}
