@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  type CollisionDetection,
   closestCorners,
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
   type UniqueIdentifier,
   useDroppable,
@@ -29,6 +32,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 import {
@@ -37,7 +41,7 @@ import {
 } from "./PipelineFollowUpControls";
 import { PipelineStageActions } from "./PipelineStageActions";
 import type { PipelineStageGroup } from "./PipelineSurface";
-import { requestSubmissionStageTransition } from "./pipelineStageTransition";
+import { requestSubmissionStageTransition } from "./utils/pipelineStageTransition";
 
 const stageAccentClassMap: Record<ApiSubmissionStage, string> = {
   client_interview: "bg-sky-500",
@@ -57,6 +61,41 @@ const stageBorderClassMap: Record<ApiSubmissionStage, string> = {
   screening: "border-amber-500/30",
   sourced: "border-zinc-500/30",
   submitted: "border-cyan-500/30",
+};
+
+const stageDropTargetClassMap: Record<ApiSubmissionStage, string> = {
+  client_interview:
+    "border-sky-500/65 bg-sky-500/20 ring-sky-500/30 dark:border-sky-500/45 dark:bg-sky-500/15 dark:ring-sky-500/25",
+  lost: "border-slate-500/65 bg-slate-500/20 ring-slate-500/30 dark:border-slate-400/45 dark:bg-slate-400/15 dark:ring-slate-400/25",
+  offer:
+    "border-violet-500/65 bg-violet-500/20 ring-violet-500/30 dark:border-violet-500/45 dark:bg-violet-500/15 dark:ring-violet-500/25",
+  placed:
+    "border-emerald-500/65 bg-emerald-500/20 ring-emerald-500/30 dark:border-emerald-500/45 dark:bg-emerald-500/15 dark:ring-emerald-500/25",
+  screening:
+    "border-amber-500/65 bg-amber-500/20 ring-amber-500/30 dark:border-amber-500/45 dark:bg-amber-500/15 dark:ring-amber-500/25",
+  sourced:
+    "border-zinc-500/65 bg-zinc-500/20 ring-zinc-500/30 dark:border-zinc-400/45 dark:bg-zinc-400/15 dark:ring-zinc-400/25",
+  submitted:
+    "border-cyan-500/65 bg-cyan-500/20 ring-cyan-500/30 dark:border-cyan-500/45 dark:bg-cyan-500/15 dark:ring-cyan-500/25",
+};
+
+// Multiple-container boards need more than one collision strategy: pointer hits
+// make empty columns reliable, while the fallbacks keep keyboard and edge cases usable.
+// dnd-kit docs: https://dndkit.com/legacy/api-documentation/context-provider/collision-detection-algorithms/
+const pipelineCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+
+  if (pointerCollisions.length > 0) {
+    return pointerCollisions;
+  }
+
+  const intersectionCollisions = rectIntersection(args);
+
+  if (intersectionCollisions.length > 0) {
+    return intersectionCollisions;
+  }
+
+  return closestCorners(args);
 };
 
 const stageKeys = new Set<ApiSubmissionStage>([
@@ -121,6 +160,7 @@ const getStageKeyForId = (
 ): ApiSubmissionStage | null => {
   const rawId = String(id);
 
+  // dnd-kit may report either a column id or a card id; normalize both to a stage.
   if (stageKeys.has(rawId as ApiSubmissionStage)) {
     return rawId as ApiSubmissionStage;
   }
@@ -156,6 +196,7 @@ const moveSubmissionToStage = (
   submissionId: string,
   targetStage: ApiSubmissionStage,
 ) => {
+  // Keep the board responsive with an optimistic local move while the API writes audit state.
   let movingSubmission: SubmissionRecord | null = null;
   const groupsWithoutSubmission = groups.map((stage) => ({
     ...stage,
@@ -196,6 +237,9 @@ type DragHandleProps = {
   setActivatorNodeRef: (node: HTMLElement | null) => void;
 };
 
+const dragHandleButtonClassName =
+  "size-8 border-border/70 bg-background/72 text-muted-foreground hover:bg-surface-2 hover:text-foreground";
+
 const OpportunityCard = ({
   canChangeStage,
   detailHref,
@@ -204,6 +248,7 @@ const OpportunityCard = ({
   isOverlay = false,
   isSelected = false,
   isPending = false,
+  showDragHandlePreview = false,
   submission,
 }: {
   canChangeStage: boolean;
@@ -213,19 +258,19 @@ const OpportunityCard = ({
   isOverlay?: boolean;
   isSelected?: boolean;
   isPending?: boolean;
+  showDragHandlePreview?: boolean;
   submission: SubmissionRecord;
 }) => (
   <article
     className={cn(
-      "group relative overflow-hidden rounded-[1.1rem] border bg-background/76 p-3.5 shadow-[0_20px_48px_-42px_var(--shadow-color)] transition-[box-shadow,opacity,transform]",
+      "group relative w-full overflow-hidden rounded-[1.1rem] border bg-background/76 p-3.5 shadow-[0_20px_48px_-42px_var(--shadow-color)] transition-[box-shadow,opacity,transform]",
       stageBorderClassMap[submission.stage],
       detailHref &&
         !isOverlay &&
         "hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-44px_var(--shadow-color)]",
       isDragging && "opacity-45",
       isSelected && "ring-2 ring-ring/45",
-      isOverlay &&
-        "w-[18rem] rotate-[0.75deg] shadow-[0_26px_72px_-36px_var(--shadow-color)]",
+      isOverlay && "w-[18rem]",
     )}
   >
     {detailHref && !isOverlay ? (
@@ -261,12 +306,14 @@ const OpportunityCard = ({
           submissionId={submission.id}
         />
         {dragHandle ? (
-          <button
+          <Button
             aria-label={`Move ${getCandidateTitle(submission)} between pipeline stages`}
-            className="inline-flex size-8 items-center justify-center rounded-full border border-border/70 bg-background/72 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
+            className={dragHandleButtonClassName}
             disabled={dragHandle.disabled}
             ref={dragHandle.setActivatorNodeRef}
+            size="icon"
             type="button"
+            variant="outline"
             {...dragHandle.attributes}
             {...dragHandle.listeners}
           >
@@ -275,7 +322,18 @@ const OpportunityCard = ({
             ) : (
               <GripVertical className="size-3.5" />
             )}
-          </button>
+          </Button>
+        ) : showDragHandlePreview ? (
+          <Button
+            asChild
+            className={dragHandleButtonClassName}
+            size="icon"
+            variant="outline"
+          >
+            <span>
+              <GripVertical className="size-3.5" />
+            </span>
+          </Button>
         ) : null}
       </div>
     </div>
@@ -307,15 +365,13 @@ const OpportunityCard = ({
       </span>
     </div>
 
-    {!isOverlay ? (
-      <PipelineStageActions
-        canChangeStage={canChangeStage}
-        className="relative z-20 mt-3 pl-1.5"
-        compact
-        currentStage={submission.stage}
-        submissionId={submission.id}
-      />
-    ) : null}
+    <PipelineStageActions
+      canChangeStage={canChangeStage}
+      className="relative z-20 mt-3 pl-1.5"
+      compact
+      currentStage={submission.stage}
+      submissionId={submission.id}
+    />
   </article>
 );
 
@@ -376,24 +432,34 @@ const SortableOpportunityCard = ({
 const PipelineStageColumn = ({
   canChangeStage,
   children,
+  isDropTarget,
   stage,
 }: {
   canChangeStage: boolean;
   children: ReactNode;
+  isDropTarget: boolean;
   stage: PipelineStageGroup;
 }) => {
   const { isOver, setNodeRef } = useDroppable({
     disabled: !canChangeStage,
     id: stage.key,
   });
+  const shouldShowDropTarget = isOver || isDropTarget;
 
   return (
     <section
       ref={setNodeRef}
       className={cn(
         "flex min-h-[26rem] flex-col rounded-[1.25rem] border border-border/70 bg-workspace-muted-surface/45 p-3 transition-[background-color,border-color,box-shadow]",
-        isOver &&
-          "border-foreground/18 bg-background/72 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12),0_20px_60px_-48px_var(--shadow-color)]",
+        // `isOver` is false when the pointer is over a card, so the parent passes
+        // `isDropTarget` after resolving that card back to its owning column.
+        // Multiple containers also need the column itself to be droppable so empty lanes work:
+        // https://dndkit.com/legacy/presets/sortable/overview/
+        shouldShowDropTarget &&
+          cn(
+            "ring-2 ring-inset shadow-[0_24px_72px_-46px_var(--shadow-color)]",
+            stageDropTargetClassMap[stage.key],
+          ),
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -443,6 +509,7 @@ export const PipelineBoardView = ({
     null,
   );
   const [dragError, setDragError] = useState<string | null>(null);
+  const [overStage, setOverStage] = useState<ApiSubmissionStage | null>(null);
   const [, startRefresh] = useTransition();
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -485,10 +552,11 @@ export const PipelineBoardView = ({
       ) : null}
 
       <DndContext
-        collisionDetection={closestCorners}
+        collisionDetection={pipelineCollisionDetection}
         sensors={sensors}
         onDragCancel={() => {
           setActiveSubmissionId(null);
+          setOverStage(null);
         }}
         onDragEnd={(event) => {
           const submissionId = String(event.active.id);
@@ -498,6 +566,7 @@ export const PipelineBoardView = ({
             : null;
 
           setActiveSubmissionId(null);
+          setOverStage(null);
 
           if (
             !canChangeStage ||
@@ -545,13 +614,24 @@ export const PipelineBoardView = ({
           setDragError(null);
           setActiveSubmissionId(String(event.active.id));
         }}
+        onDragOver={(event) => {
+          if (!canChangeStage) {
+            return;
+          }
+
+          // Highlight the whole column even when dnd-kit reports the card under the pointer.
+          setOverStage(
+            event.over ? getStageKeyForId(localGroups, event.over.id) : null,
+          );
+        }}
       >
         <div className="overflow-x-auto pb-2">
-          <div className="grid min-w-[80rem] grid-cols-7 gap-3">
+          <div className="grid w-max grid-cols-[repeat(7,19.5rem)] gap-3">
             {localGroups.map((stage) => (
               <PipelineStageColumn
                 key={stage.key}
                 canChangeStage={canChangeStage}
+                isDropTarget={overStage === stage.key}
                 stage={stage}
               >
                 <SortableContext
@@ -588,8 +668,9 @@ export const PipelineBoardView = ({
         <DragOverlay>
           {activeSubmission ? (
             <OpportunityCard
-              canChangeStage={false}
+              canChangeStage={canChangeStage}
               isOverlay
+              showDragHandlePreview={canChangeStage}
               submission={activeSubmission}
             />
           ) : null}

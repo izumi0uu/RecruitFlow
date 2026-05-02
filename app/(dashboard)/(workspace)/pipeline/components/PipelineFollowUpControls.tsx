@@ -143,16 +143,18 @@ export const PipelineRiskControl = ({
     <div className={cn("min-w-0", className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
+          <Button
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60",
+              "h-auto gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60",
               riskToneClassMap[currentRiskFlag],
             )}
             disabled={isPending}
+            size="sm"
             type="button"
+            variant="outline"
           >
             {content}
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
           {apiRiskFlagValues.map((option) => {
@@ -249,17 +251,19 @@ export const PipelineNextStepControl = ({
             Next step
           </p>
           {canUpdate ? (
-            <button
+            <Button
               aria-label="Edit next step"
-              className="inline-flex size-7 items-center justify-center rounded-full border border-border/70 bg-background/72 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="size-7 border-border/70 bg-background/72 text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+              size="icon"
               type="button"
+              variant="outline"
               onClick={() => {
                 setDraftNextStep(currentNextStep);
                 setIsEditing(true);
               }}
             >
               <Pencil className="size-3.5" />
-            </button>
+            </Button>
           ) : null}
         </div>
         <p

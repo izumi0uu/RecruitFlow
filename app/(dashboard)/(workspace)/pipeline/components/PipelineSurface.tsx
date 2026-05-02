@@ -25,7 +25,6 @@ import {
   PipelineNextStepControl,
   PipelineRiskControl,
 } from "./PipelineFollowUpControls";
-import { PipelineStageActions } from "./PipelineStageActions";
 import { PipelineSubmissionDetailPanel } from "./PipelineSubmissionDetailPanel";
 
 export type PipelineView = "board" | "list";
@@ -380,13 +379,12 @@ const PipelineListView = ({
   selectedSubmissionId: string | null;
 }) => (
   <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-background/48">
-    <div className="hidden grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)_14rem] gap-4 bg-workspace-muted-surface/62 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+    <div className="hidden grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(14rem,0.9fr)] gap-4 bg-workspace-muted-surface/62 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
       <span>Candidate</span>
       <span>Role</span>
       <span>Stage</span>
       <span>Owner</span>
       <span>Next step</span>
-      <span>Action</span>
     </div>
 
     <div className="divide-y divide-border/60">
@@ -394,7 +392,7 @@ const PipelineListView = ({
         <article
           key={submission.id}
           className={cn(
-            "relative grid gap-4 px-4 py-4 transition-colors lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)_14rem] lg:items-center",
+            "relative grid gap-4 px-4 py-4 transition-colors lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(14rem,0.9fr)] lg:items-center",
             selectedSubmissionId === submission.id
               ? "bg-primary/8"
               : "hover:bg-workspace-muted-surface/36",
@@ -449,15 +447,6 @@ const PipelineListView = ({
               className="mt-2"
               compact
               nextStep={submission.nextStep}
-              submissionId={submission.id}
-            />
-          </div>
-
-          <div className="relative z-20">
-            <PipelineStageActions
-              canChangeStage={canChangeStage}
-              compact
-              currentStage={submission.stage}
               submissionId={submission.id}
             />
           </div>
