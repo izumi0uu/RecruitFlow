@@ -10,6 +10,7 @@ import type {
   ApiRiskFlag,
   ApiSubmissionStage,
   ApiUserReference,
+  SubmissionFollowUpUpdateRequest,
   SubmissionMutationRequest,
   SubmissionMutationResponse,
   SubmissionRecord,
@@ -46,6 +47,8 @@ const restrictedSubmissionMutationMessage =
   "Only owners and recruiters can create submissions";
 const restrictedSubmissionStageTransitionMessage =
   "Only owners and recruiters can change submission stages";
+const restrictedSubmissionFollowUpUpdateMessage =
+  "Only owners and recruiters can update submission follow-up fields";
 
 type SubmissionRecordRow = {
   candidateCurrentCompany: string | null;
@@ -167,6 +170,18 @@ export class SubmissionsService {
     }
 
     throw new ForbiddenException(restrictedSubmissionStageTransitionMessage);
+  }
+
+  private assertCanUpdateSubmissionFollowUp(context: ApiWorkspaceContext) {
+    if (context.membership.role === "owner") {
+      return;
+    }
+
+    if (context.membership.role === "recruiter") {
+      return;
+    }
+
+    throw new ForbiddenException(restrictedSubmissionFollowUpUpdateMessage);
   }
 
   private getOwnerOptions(context: ApiWorkspaceContext): ApiUserReference[] {
@@ -611,6 +626,105 @@ export class SubmissionsService {
       },
       contractVersion: "phase-1",
       message: "Submission stage updated successfully",
+      submission: await this.selectSubmissionRecord(context, submissionId),
+      workspaceScoped: true,
+    };
+  }
+
+  async updateSubmissionFollowUp(
+    context: ApiWorkspaceContext,
+    submissionId: string,
+    input: SubmissionFollowUpUpdateRequest,
+  ): Promise<SubmissionMutationResponse> {
+    this.assertCanUpdateSubmissionFollowUp(context);
+
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const existingSubmission = await this.selectSubmissionRecord(
+      context,
+      submissionId,
+    );
+    const riskChanged =
+      input.riskFlag !== undefined &&
+      input.riskFlag !== existingSubmission.riskFlag;
+    const nextStepChanged =
+      input.nextStep !== undefined &&
+      input.nextStep !== existingSubmission.nextStep;
+
+    if (!riskChanged && !nextStepChanged) {
+      return {
+        context: {
+          role: context.membership.role,
+          workspaceId,
+        },
+        contractVersion: "phase-1",
+        message: "Submission follow-up unchanged",
+        submission: existingSubmission,
+        workspaceScoped: true,
+      };
+    }
+
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(submissions)
+        .set({
+          lastTouchAt: now,
+          nextStep: nextStepChanged ? input.nextStep : undefined,
+          riskFlag: riskChanged ? input.riskFlag : undefined,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(submissions.id, submissionId),
+            eq(submissions.workspaceId, workspaceId),
+          ),
+        );
+
+      if (riskChanged) {
+        await tx.insert(auditLogs).values({
+          action: AuditAction.SUBMISSION_RISK_UPDATED,
+          actorUserId,
+          entityId: submissionId,
+          entityType: "submission",
+          metadataJson: {
+            actorRole: context.membership.role,
+            candidateId: existingSubmission.candidateId,
+            fromRiskFlag: existingSubmission.riskFlag,
+            jobId: existingSubmission.jobId,
+            source: "api",
+            toRiskFlag: input.riskFlag,
+          },
+          workspaceId,
+        });
+      }
+
+      if (nextStepChanged) {
+        await tx.insert(auditLogs).values({
+          action: AuditAction.SUBMISSION_NEXT_STEP_UPDATED,
+          actorUserId,
+          entityId: submissionId,
+          entityType: "submission",
+          metadataJson: {
+            actorRole: context.membership.role,
+            candidateId: existingSubmission.candidateId,
+            fromNextStep: existingSubmission.nextStep,
+            jobId: existingSubmission.jobId,
+            source: "api",
+            toNextStep: input.nextStep,
+          },
+          workspaceId,
+        });
+      }
+    });
+
+    return {
+      context: {
+        role: context.membership.role,
+        workspaceId,
+      },
+      contractVersion: "phase-1",
+      message: "Submission follow-up updated successfully",
       submission: await this.selectSubmissionRecord(context, submissionId),
       workspaceScoped: true,
     };

@@ -1,5 +1,4 @@
 import {
-  type ApiRiskFlag,
   type ApiSubmissionStage,
   apiDefaultJobStageTemplate,
   type SubmissionRecord,
@@ -22,6 +21,11 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { cn } from "@/lib/utils";
 
 import { PipelineBoardView } from "./PipelineBoardView";
+import {
+  PipelineNextStepControl,
+  PipelineRiskControl,
+} from "./PipelineFollowUpControls";
+import { PipelineSubmissionDetailPanel } from "./PipelineSubmissionDetailPanel";
 
 export type PipelineView = "board" | "list";
 
@@ -33,10 +37,13 @@ export type PipelineActiveFilter = {
 type PipelineSurfaceProps = {
   activeFilters: PipelineActiveFilter[];
   boardHref: string;
+  detailCloseHref: string;
   listHref: string;
   resetHref: string;
+  selectedSubmissionId: string | null;
   submissions: SubmissionsListResponse;
   submissionCreated: boolean;
+  submissionDetailHrefs: Record<string, string>;
   view: PipelineView;
 };
 
@@ -97,26 +104,6 @@ const stageBorderClassMap: Record<ApiSubmissionStage, string> = {
   screening: "border-amber-500/30",
   sourced: "border-zinc-500/30",
   submitted: "border-cyan-500/30",
-};
-
-const riskLabelMap: Record<ApiRiskFlag, string> = {
-  compensation_risk: "Comp",
-  feedback_risk: "Feedback",
-  fit_risk: "Fit",
-  none: "Clear",
-  timing_risk: "Timing",
-};
-
-const riskToneClassMap: Record<ApiRiskFlag, string> = {
-  compensation_risk:
-    "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  feedback_risk:
-    "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  fit_risk:
-    "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  none: "border-border/70 bg-surface-1 text-muted-foreground",
-  timing_risk:
-    "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 
 const formatDate = (value: string | null) => {
@@ -380,7 +367,17 @@ const StagePill = ({ stage }: { stage: ApiSubmissionStage }) => (
   </PipelineBadge>
 );
 
-const PipelineListView = ({ items }: { items: SubmissionRecord[] }) => (
+const PipelineListView = ({
+  canChangeStage,
+  detailHrefs,
+  items,
+  selectedSubmissionId,
+}: {
+  canChangeStage: boolean;
+  detailHrefs: Record<string, string>;
+  items: SubmissionRecord[];
+  selectedSubmissionId: string | null;
+}) => (
   <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-background/48">
     <div className="hidden grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(14rem,0.9fr)] gap-4 bg-workspace-muted-surface/62 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
       <span>Candidate</span>
@@ -394,8 +391,22 @@ const PipelineListView = ({ items }: { items: SubmissionRecord[] }) => (
       {items.map((submission) => (
         <article
           key={submission.id}
-          className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(14rem,0.9fr)] lg:items-center"
+          className={cn(
+            "relative grid gap-4 px-4 py-4 transition-colors lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(14rem,0.9fr)] lg:items-center",
+            selectedSubmissionId === submission.id
+              ? "bg-primary/8"
+              : "hover:bg-workspace-muted-surface/36",
+          )}
         >
+          <TrackedLink
+            aria-label={`Open ${getCandidateTitle(submission)} detail panel`}
+            className="absolute inset-0 z-10 rounded-[1rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            href={detailHrefs[submission.id] ?? "/pipeline"}
+          >
+            <span className="sr-only">
+              Open {getCandidateTitle(submission)} detail panel
+            </span>
+          </TrackedLink>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">
               {getCandidateTitle(submission)}
@@ -425,13 +436,19 @@ const PipelineListView = ({ items }: { items: SubmissionRecord[] }) => (
             </p>
           </div>
 
-          <div className="min-w-0">
-            <PipelineBadge className={riskToneClassMap[submission.riskFlag]}>
-              {riskLabelMap[submission.riskFlag]}
-            </PipelineBadge>
-            <p className="mt-2 line-clamp-2 text-sm leading-5 text-foreground/86">
-              {submission.nextStep ?? "No next step captured yet."}
-            </p>
+          <div className="relative z-20 min-w-0">
+            <PipelineRiskControl
+              canUpdate={canChangeStage}
+              riskFlag={submission.riskFlag}
+              submissionId={submission.id}
+            />
+            <PipelineNextStepControl
+              canUpdate={canChangeStage}
+              className="mt-2"
+              compact
+              nextStep={submission.nextStep}
+              submissionId={submission.id}
+            />
           </div>
         </article>
       ))}
@@ -517,13 +534,18 @@ const PipelineFilterStrip = ({
 export const PipelineSurface = ({
   activeFilters,
   boardHref,
+  detailCloseHref,
   listHref,
   resetHref,
+  selectedSubmissionId,
   submissions,
   submissionCreated,
+  submissionDetailHrefs,
   view,
 }: PipelineSurfaceProps) => {
   const items = submissions.items;
+  const selectedSubmission =
+    items.find((submission) => submission.id === selectedSubmissionId) ?? null;
   const stageGroups = buildStageGroups(items);
   const openStageGroups = stageGroups.filter((stage) => !stage.isClosedStage);
   const activeItems = items.filter(
@@ -689,16 +711,30 @@ export const PipelineSurface = ({
             view === "board" ? (
               <PipelineBoardView
                 canChangeStage={canChangeStage}
+                detailHrefs={submissionDetailHrefs}
                 groups={stageGroups}
+                selectedSubmissionId={selectedSubmissionId}
               />
             ) : (
-              <PipelineListView items={items} />
+              <PipelineListView
+                canChangeStage={canChangeStage}
+                detailHrefs={submissionDetailHrefs}
+                items={items}
+                selectedSubmissionId={selectedSubmissionId}
+              />
             )
           ) : (
             <PipelineEmptyState hasFilters={hasFilters} resetHref={resetHref} />
           )}
         </div>
       </div>
+
+      <PipelineSubmissionDetailPanel
+        canChangeStage={canChangeStage}
+        closeHref={detailCloseHref}
+        open={Boolean(selectedSubmissionId)}
+        submission={selectedSubmission}
+      />
     </section>
   );
 };

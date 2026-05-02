@@ -916,6 +916,22 @@ export type SubmissionStageTransitionRequest = z.infer<
   typeof submissionStageTransitionRequestSchema
 >;
 
+export const submissionFollowUpUpdateRequestSchema = z
+  .object({
+    nextStep: optionalTrimmedTextSchema(500),
+    riskFlag: z.enum(apiRiskFlagValues).optional(),
+  })
+  .refine(
+    (value) => value.nextStep !== undefined || value.riskFlag !== undefined,
+    {
+      message: "At least one follow-up field is required",
+    },
+  );
+
+export type SubmissionFollowUpUpdateRequest = z.infer<
+  typeof submissionFollowUpUpdateRequestSchema
+>;
+
 export interface SubmissionJobReference {
   client: JobsListClientOption | null;
   clientId: string;

@@ -23,7 +23,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type {
-  ApiRiskFlag,
   ApiSubmissionStage,
   SubmissionRecord,
 } from "@recruitflow/contracts";
@@ -32,9 +31,14 @@ import { useRouter } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
+import {
+  PipelineNextStepControl,
+  PipelineRiskControl,
+} from "./PipelineFollowUpControls";
 import { PipelineStageActions } from "./PipelineStageActions";
 import type { PipelineStageGroup } from "./PipelineSurface";
 import { requestSubmissionStageTransition } from "./utils/pipelineStageTransition";
@@ -94,26 +98,6 @@ const pipelineCollisionDetection: CollisionDetection = (args) => {
   return closestCorners(args);
 };
 
-const riskLabelMap: Record<ApiRiskFlag, string> = {
-  compensation_risk: "Comp",
-  feedback_risk: "Feedback",
-  fit_risk: "Fit",
-  none: "Clear",
-  timing_risk: "Timing",
-};
-
-const riskToneClassMap: Record<ApiRiskFlag, string> = {
-  compensation_risk:
-    "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  feedback_risk:
-    "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  fit_risk:
-    "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  none: "border-border/70 bg-surface-1 text-muted-foreground",
-  timing_risk:
-    "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-};
-
 const stageKeys = new Set<ApiSubmissionStage>([
   "sourced",
   "screening",
@@ -163,23 +147,6 @@ const getClientName = (submission: SubmissionRecord) =>
 
 const getTouchValue = (submission: SubmissionRecord) =>
   submission.lastTouchAt ?? submission.updatedAt ?? submission.createdAt;
-
-const PipelineBadge = ({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) => (
-  <span
-    className={cn(
-      "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
-      className,
-    )}
-  >
-    {children}
-  </span>
-);
 
 const getDerivedStage = (stage: PipelineStageGroup): PipelineStageGroup => ({
   ...stage,
@@ -275,17 +242,21 @@ const dragHandleButtonClassName =
 
 const OpportunityCard = ({
   canChangeStage,
+  detailHref,
   dragHandle,
   isDragging = false,
   isOverlay = false,
+  isSelected = false,
   isPending = false,
   showDragHandlePreview = false,
   submission,
 }: {
   canChangeStage: boolean;
+  detailHref?: string;
   dragHandle?: DragHandleProps;
   isDragging?: boolean;
   isOverlay?: boolean;
+  isSelected?: boolean;
   isPending?: boolean;
   showDragHandlePreview?: boolean;
   submission: SubmissionRecord;
@@ -294,10 +265,25 @@ const OpportunityCard = ({
     className={cn(
       "group relative w-full overflow-hidden rounded-[1.1rem] border bg-background/76 p-3.5 shadow-[0_20px_48px_-42px_var(--shadow-color)] transition-[box-shadow,opacity,transform]",
       stageBorderClassMap[submission.stage],
+      detailHref &&
+        !isOverlay &&
+        "hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-44px_var(--shadow-color)]",
       isDragging && "opacity-45",
+      isSelected && "ring-2 ring-ring/45",
       isOverlay && "w-[18rem]",
     )}
   >
+    {detailHref && !isOverlay ? (
+      <TrackedLink
+        aria-label={`Open ${getCandidateTitle(submission)} detail panel`}
+        className="absolute inset-0 z-10 rounded-[1.1rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        href={detailHref}
+      >
+        <span className="sr-only">
+          Open {getCandidateTitle(submission)} detail panel
+        </span>
+      </TrackedLink>
+    ) : null}
     <div
       className={cn(
         "absolute bottom-0 left-0 top-0 w-1",
@@ -313,10 +299,12 @@ const OpportunityCard = ({
           {getCandidateSubtitle(submission)}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        <PipelineBadge className={riskToneClassMap[submission.riskFlag]}>
-          {riskLabelMap[submission.riskFlag]}
-        </PipelineBadge>
+      <div className="relative z-20 flex shrink-0 items-center gap-1.5">
+        <PipelineRiskControl
+          canUpdate={canChangeStage && !isOverlay}
+          riskFlag={submission.riskFlag}
+          submissionId={submission.id}
+        />
         {dragHandle ? (
           <Button
             aria-label={`Move ${getCandidateTitle(submission)} between pipeline stages`}
@@ -359,14 +347,12 @@ const OpportunityCard = ({
       </p>
     </div>
 
-    <div className="mt-3 min-h-20 rounded-[0.95rem] bg-workspace-muted-surface/48 px-3 py-3">
-      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Next step
-      </p>
-      <p className="mt-2 line-clamp-2 text-sm leading-5 text-foreground/88">
-        {submission.nextStep ?? "No next step captured yet."}
-      </p>
-    </div>
+    <PipelineNextStepControl
+      canUpdate={canChangeStage && !isOverlay}
+      className="relative z-20 mt-3"
+      nextStep={submission.nextStep}
+      submissionId={submission.id}
+    />
 
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <span className="inline-flex min-w-0 items-center gap-1.5">
@@ -381,7 +367,7 @@ const OpportunityCard = ({
 
     <PipelineStageActions
       canChangeStage={canChangeStage}
-      className="mt-3 pl-1.5"
+      className="relative z-20 mt-3 pl-1.5"
       compact
       currentStage={submission.stage}
       submissionId={submission.id}
@@ -391,11 +377,15 @@ const OpportunityCard = ({
 
 const SortableOpportunityCard = ({
   canChangeStage,
+  detailHref,
   isPending,
+  isSelected,
   submission,
 }: {
   canChangeStage: boolean;
+  detailHref?: string;
   isPending: boolean;
+  isSelected: boolean;
   submission: SubmissionRecord;
 }) => {
   const {
@@ -419,6 +409,7 @@ const SortableOpportunityCard = ({
     <div ref={setNodeRef} style={style}>
       <OpportunityCard
         canChangeStage={canChangeStage}
+        detailHref={detailHref}
         dragHandle={
           canChangeStage
             ? {
@@ -431,6 +422,7 @@ const SortableOpportunityCard = ({
         }
         isDragging={isDragging}
         isPending={isPending}
+        isSelected={isSelected}
         submission={submission}
       />
     </div>
@@ -499,10 +491,14 @@ const PipelineStageColumn = ({
 
 export const PipelineBoardView = ({
   canChangeStage,
+  detailHrefs,
   groups,
+  selectedSubmissionId,
 }: {
   canChangeStage: boolean;
+  detailHrefs: Record<string, string>;
   groups: PipelineStageGroup[];
+  selectedSubmissionId: string | null;
 }) => {
   const router = useRouter();
   const [localGroups, setLocalGroups] = useState(groups);
@@ -647,7 +643,9 @@ export const PipelineBoardView = ({
                       <SortableOpportunityCard
                         key={submission.id}
                         canChangeStage={canChangeStage}
+                        detailHref={detailHrefs[submission.id]}
                         isPending={pendingSubmissionId === submission.id}
+                        isSelected={selectedSubmissionId === submission.id}
                         submission={submission}
                       />
                     ))
