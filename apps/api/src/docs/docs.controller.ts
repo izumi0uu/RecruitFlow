@@ -273,6 +273,13 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     owner: "api",
     path: "/submissions/:submissionId/stage",
   },
+  {
+    auth: "session",
+    description: "Update a submission risk flag or next step and audit changed fields.",
+    method: "PATCH",
+    owner: "api",
+    path: "/submissions/:submissionId/follow-up",
+  },
 ];
 
 const localApiUrl = (path: string) => {

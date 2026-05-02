@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  submissionFollowUpUpdateRequestSchema,
   type SubmissionMutationResponse,
   type SubmissionsListResponse,
   submissionMutationRequestSchema,
@@ -90,6 +91,36 @@ export class SubmissionsController {
     }
 
     return this.submissionsService.updateSubmissionStage(
+      context,
+      parsedParams.data.submissionId,
+      parsedBody.data,
+    );
+  }
+
+  @Patch(":submissionId/follow-up")
+  updateSubmissionFollowUp(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ): Promise<SubmissionMutationResponse> {
+    const parsedParams = submissionParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid submission params",
+      );
+    }
+
+    const parsedBody = submissionFollowUpUpdateRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(
+        parsedBody.error.issues[0]?.message ??
+          "Invalid follow-up update payload",
+      );
+    }
+
+    return this.submissionsService.updateSubmissionFollowUp(
       context,
       parsedParams.data.submissionId,
       parsedBody.data,

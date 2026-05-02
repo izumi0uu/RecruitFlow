@@ -1,5 +1,4 @@
 import {
-  type ApiRiskFlag,
   type ApiSubmissionStage,
   apiDefaultJobStageTemplate,
   type SubmissionRecord,
@@ -22,6 +21,10 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { cn } from "@/lib/utils";
 
 import { PipelineBoardView } from "./PipelineBoardView";
+import {
+  PipelineNextStepControl,
+  PipelineRiskControl,
+} from "./PipelineFollowUpControls";
 import { PipelineStageActions } from "./PipelineStageActions";
 
 export type PipelineView = "board" | "list";
@@ -98,26 +101,6 @@ const stageBorderClassMap: Record<ApiSubmissionStage, string> = {
   screening: "border-amber-500/30",
   sourced: "border-zinc-500/30",
   submitted: "border-cyan-500/30",
-};
-
-const riskLabelMap: Record<ApiRiskFlag, string> = {
-  compensation_risk: "Comp",
-  feedback_risk: "Feedback",
-  fit_risk: "Fit",
-  none: "Clear",
-  timing_risk: "Timing",
-};
-
-const riskToneClassMap: Record<ApiRiskFlag, string> = {
-  compensation_risk:
-    "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  feedback_risk:
-    "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  fit_risk:
-    "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  none: "border-border/70 bg-surface-1 text-muted-foreground",
-  timing_risk:
-    "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 
 const formatDate = (value: string | null) => {
@@ -434,12 +417,18 @@ const PipelineListView = ({
           </div>
 
           <div className="min-w-0">
-            <PipelineBadge className={riskToneClassMap[submission.riskFlag]}>
-              {riskLabelMap[submission.riskFlag]}
-            </PipelineBadge>
-            <p className="mt-2 line-clamp-2 text-sm leading-5 text-foreground/86">
-              {submission.nextStep ?? "No next step captured yet."}
-            </p>
+            <PipelineRiskControl
+              canUpdate={canChangeStage}
+              riskFlag={submission.riskFlag}
+              submissionId={submission.id}
+            />
+            <PipelineNextStepControl
+              canUpdate={canChangeStage}
+              className="mt-2"
+              compact
+              nextStep={submission.nextStep}
+              submissionId={submission.id}
+            />
           </div>
 
           <PipelineStageActions

@@ -20,7 +20,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type {
-  ApiRiskFlag,
   ApiSubmissionStage,
   SubmissionRecord,
 } from "@recruitflow/contracts";
@@ -31,6 +30,10 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { cn } from "@/lib/utils";
 
+import {
+  PipelineNextStepControl,
+  PipelineRiskControl,
+} from "./PipelineFollowUpControls";
 import { PipelineStageActions } from "./PipelineStageActions";
 import type { PipelineStageGroup } from "./PipelineSurface";
 import { requestSubmissionStageTransition } from "./pipelineStageTransition";
@@ -53,26 +56,6 @@ const stageBorderClassMap: Record<ApiSubmissionStage, string> = {
   screening: "border-amber-500/30",
   sourced: "border-zinc-500/30",
   submitted: "border-cyan-500/30",
-};
-
-const riskLabelMap: Record<ApiRiskFlag, string> = {
-  compensation_risk: "Comp",
-  feedback_risk: "Feedback",
-  fit_risk: "Fit",
-  none: "Clear",
-  timing_risk: "Timing",
-};
-
-const riskToneClassMap: Record<ApiRiskFlag, string> = {
-  compensation_risk:
-    "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  feedback_risk:
-    "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  fit_risk:
-    "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  none: "border-border/70 bg-surface-1 text-muted-foreground",
-  timing_risk:
-    "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 
 const stageKeys = new Set<ApiSubmissionStage>([
@@ -124,23 +107,6 @@ const getClientName = (submission: SubmissionRecord) =>
 
 const getTouchValue = (submission: SubmissionRecord) =>
   submission.lastTouchAt ?? submission.updatedAt ?? submission.createdAt;
-
-const PipelineBadge = ({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) => (
-  <span
-    className={cn(
-      "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
-      className,
-    )}
-  >
-    {children}
-  </span>
-);
 
 const getDerivedStage = (stage: PipelineStageGroup): PipelineStageGroup => ({
   ...stage,
@@ -269,9 +235,11 @@ const OpportunityCard = ({
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <PipelineBadge className={riskToneClassMap[submission.riskFlag]}>
-          {riskLabelMap[submission.riskFlag]}
-        </PipelineBadge>
+        <PipelineRiskControl
+          canUpdate={canChangeStage && !isOverlay}
+          riskFlag={submission.riskFlag}
+          submissionId={submission.id}
+        />
         {dragHandle ? (
           <button
             aria-label={`Move ${getCandidateTitle(submission)} between pipeline stages`}
@@ -301,14 +269,12 @@ const OpportunityCard = ({
       </p>
     </div>
 
-    <div className="mt-3 min-h-20 rounded-[0.95rem] bg-workspace-muted-surface/48 px-3 py-3">
-      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Next step
-      </p>
-      <p className="mt-2 line-clamp-2 text-sm leading-5 text-foreground/88">
-        {submission.nextStep ?? "No next step captured yet."}
-      </p>
-    </div>
+    <PipelineNextStepControl
+      canUpdate={canChangeStage && !isOverlay}
+      className="mt-3"
+      nextStep={submission.nextStep}
+      submissionId={submission.id}
+    />
 
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <span className="inline-flex min-w-0 items-center gap-1.5">
