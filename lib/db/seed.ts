@@ -1,5 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 
+import { apiDefaultJobStageTemplate } from "@recruitflow/contracts";
+
 import { hashPassword } from "@/lib/auth/session";
 import { ensureDevTestAccounts } from "@/lib/dev/test-accounts";
 import { stripe } from "../payments/stripe";
@@ -363,80 +365,23 @@ const seed = async () => {
     throw new Error("Failed to create the demo jobs.");
   }
 
-  await db.insert(jobStages).values([
-    {
-      workspaceId: workspace.id,
-      jobId: fullStackJob.id,
-      key: "sourced",
-      label: "Sourced",
-      sortOrder: 1,
-      createdAt: relativeDate(-10, 9),
-      updatedAt: relativeDate(-10, 9),
-    },
-    {
-      workspaceId: workspace.id,
-      jobId: fullStackJob.id,
-      key: "screening",
-      label: "Screening",
-      sortOrder: 2,
-      createdAt: relativeDate(-10, 9),
-      updatedAt: relativeDate(-10, 9),
-    },
-    {
-      workspaceId: workspace.id,
-      jobId: fullStackJob.id,
-      key: "submitted",
-      label: "Submitted",
-      sortOrder: 3,
-      createdAt: relativeDate(-10, 9),
-      updatedAt: relativeDate(-10, 9),
-    },
-    {
-      workspaceId: workspace.id,
-      jobId: fullStackJob.id,
-      key: "client_interview",
-      label: "Client Interview",
-      sortOrder: 4,
-      createdAt: relativeDate(-10, 9),
-      updatedAt: relativeDate(-10, 9),
-    },
-    {
-      workspaceId: workspace.id,
-      jobId: fullStackJob.id,
-      key: "offer",
-      label: "Offer",
-      sortOrder: 5,
-      createdAt: relativeDate(-10, 9),
-      updatedAt: relativeDate(-10, 9),
-    },
-    {
-      workspaceId: workspace.id,
-      jobId: designerJob.id,
-      key: "sourced",
-      label: "Sourced",
-      sortOrder: 1,
-      createdAt: relativeDate(-6, 10),
-      updatedAt: relativeDate(-6, 10),
-    },
-    {
-      workspaceId: workspace.id,
-      jobId: designerJob.id,
-      key: "screening",
-      label: "Screening",
-      sortOrder: 2,
-      createdAt: relativeDate(-6, 10),
-      updatedAt: relativeDate(-6, 10),
-    },
-    {
-      workspaceId: workspace.id,
-      jobId: designerJob.id,
-      key: "submitted",
-      label: "Submitted",
-      sortOrder: 3,
-      createdAt: relativeDate(-6, 10),
-      updatedAt: relativeDate(-6, 10),
-    },
-  ]);
+  await db.insert(jobStages).values(
+    [
+      { job: fullStackJob, timestamp: relativeDate(-10, 9) },
+      { job: designerJob, timestamp: relativeDate(-6, 10) },
+    ].flatMap(({ job, timestamp }) =>
+      apiDefaultJobStageTemplate.map((stage) => ({
+        workspaceId: workspace.id,
+        jobId: job.id,
+        key: stage.key,
+        label: stage.label,
+        sortOrder: stage.sortOrder,
+        isClosedStage: stage.isClosedStage,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })),
+    ),
+  );
 
   const createdCandidates = await db
     .insert(candidates)

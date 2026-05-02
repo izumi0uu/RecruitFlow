@@ -5,17 +5,26 @@ import {
 import { getWorkspaceDemoOverview } from "@/lib/db/queries";
 
 type PageProps = {
-  searchParams?: Promise<{ state?: string }> | { state?: string };
+  searchParams?:
+    | Promise<{ state?: string; submissionCreated?: string }>
+    | { state?: string; submissionCreated?: string };
 };
 
 const PipelinePage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
   const overview = await getWorkspaceDemoOverview();
+  const submissionCreated = params.submissionCreated === "1";
 
   return (
     <ModulePlaceholderPage
       demoState={
-        overview?.submissionCount
+        submissionCreated
+          ? {
+              title: "Opportunity launched",
+              description:
+                "The candidate is now active for this role through the API-owned create flow. Board and list views will take over this route in the next pipeline story.",
+            }
+          : overview?.submissionCount
           ? {
               title: `${overview.submissionCount} seeded submissions in motion`,
               description:

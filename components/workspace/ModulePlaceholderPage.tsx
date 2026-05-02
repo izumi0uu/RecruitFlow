@@ -1,7 +1,6 @@
 import { ArrowRight, Lock, Sparkles } from "lucide-react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
-import { RouteLoadingFallback } from "@/components/navigation/RouteLoadingFallback";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -12,7 +11,7 @@ import {
 } from "@/components/ui/Card";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 
-type PlaceholderViewState = "default" | "restricted" | "loading";
+type PlaceholderViewState = "default" | "restricted";
 
 type ModuleDemoState = {
   description: string;
@@ -34,7 +33,7 @@ type ModulePlaceholderPageProps = {
 const getPlaceholderViewState = (
   state?: string,
 ): PlaceholderViewState => {
-  if (state === "restricted" || state === "loading") {
+  if (state === "restricted") {
     return state;
   }
 
@@ -52,19 +51,6 @@ const ModulePlaceholderPage = ({
   state = "default",
   title,
 }: ModulePlaceholderPageProps) => {
-  if (state === "loading") {
-    return (
-      <RouteLoadingFallback
-        kicker={kicker}
-        title={`Loading ${title.toLowerCase()}`}
-        description={`Preparing the ${title.toLowerCase()} shell so the next module route keeps the same workspace context.`}
-        cardTitle={`Preparing ${title.toLowerCase()}`}
-        cardDescription="Syncing the shared foundation shell, route state, and placeholder content."
-        rows={4}
-      />
-    );
-  }
-
   if (state === "restricted") {
     return (
       <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -164,9 +150,8 @@ const ModulePlaceholderPage = ({
                 QA hint
               </p>
               <p className="mt-3 text-sm leading-6 text-foreground">
-                Append <code>?state=restricted</code> or{" "}
-                <code>?state=loading</code> to this route to manually validate
-                the shared restricted and loading states.
+                Append <code>?state=restricted</code> to this route to manually
+                validate the shared restricted state.
               </p>
             </div>
           </CardContent>

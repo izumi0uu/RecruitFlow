@@ -14,6 +14,8 @@ import {
   sql,
 } from "drizzle-orm";
 
+// TODO(api-boundary): Dashboard reads remain here only as compatibility code.
+// New dashboard/domain reads should move behind Nest API query endpoints.
 import { db } from "@/lib/db/drizzle";
 import {
   activityLogs,
@@ -183,6 +185,8 @@ const mapAuditAction = (action: string) => {
       return "joined the workspace";
     case "BILLING_PORTAL_OPENED":
       return "opened the billing portal";
+    case "CLIENT_RESTORED":
+      return "restored a client";
     case "SIGN_IN":
       return "signed in";
     case "SIGN_OUT":

@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, Suspense, useActionState } from "react";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { type FormEvent, Suspense } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
-import { updateAccount } from "@/app/(login)/actions";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -16,24 +15,21 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
-import { currentUserQueryOptions, userQueryKey } from "@/lib/query/options";
+import { getFormString } from "@/lib/form-data";
+import { currentUserQueryOptions } from "@/lib/query/options";
 
-type ActionState = {
-  name?: string;
-  error?: string;
-  success?: string;
-};
+import { useAccountUpdateMutation } from "../hooks/useAccountSettingsMutations";
 
 type AccountFormProps = {
-  state: ActionState;
   nameValue?: string;
   emailValue?: string;
+  isPending?: boolean;
 };
 
 const AccountForm = ({
-  state,
   nameValue = "",
   emailValue = "",
+  isPending = false,
 }: AccountFormProps) => {
   return (
     <>
@@ -43,8 +39,9 @@ const AccountForm = ({
           id="name"
           name="name"
           placeholder="Enter your name"
-          defaultValue={state.name || nameValue}
+          defaultValue={nameValue}
           required
+          disabled={isPending}
         />
       </div>
       <div className="space-y-2">
@@ -56,37 +53,57 @@ const AccountForm = ({
           placeholder="Enter your email"
           defaultValue={emailValue}
           required
+          disabled={isPending}
         />
       </div>
     </>
   );
 };
 
-const AccountFormWithData = ({ state }: { state: ActionState }) => {
+const AccountSettingsForm = () => {
   const { data: user } = useSuspenseQuery(currentUserQueryOptions());
+  const { error, isPending, saveAccount, success } =
+    useAccountUpdateMutation();
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+
+    saveAccount({
+      email: getFormString(formData, "email"),
+      name: getFormString(formData, "name"),
+    });
+  };
 
   return (
-    <AccountForm
-      state={state}
-      nameValue={user?.name ?? ""}
-      emailValue={user?.email ?? ""}
-    />
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <AccountForm
+        emailValue={user?.email ?? ""}
+        isPending={isPending}
+        nameValue={user?.name ?? ""}
+      />
+
+      {error ? <p className="status-message status-error">{error}</p> : null}
+      {success ? (
+        <p className="status-message status-success">{success}</p>
+      ) : null}
+
+      <Button type="submit" className="rounded-full" disabled={isPending}>
+        {isPending ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          "Save changes"
+        )}
+      </Button>
+    </form>
   );
 };
 
 const GeneralPage = () => {
-  const queryClient = useQueryClient();
-  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
-    updateAccount,
-    {},
-  );
-
-  useEffect(() => {
-    if (!state.success) return;
-
-    queryClient.invalidateQueries({ queryKey: userQueryKey, exact: true });
-  }, [queryClient, state]);
-
   return (
     <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
       <WorkspacePageHeader
@@ -103,29 +120,9 @@ const GeneralPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-5" action={formAction}>
-            <Suspense fallback={<AccountForm state={state} />}>
-              <AccountFormWithData state={state} />
-            </Suspense>
-
-            {state.error ? (
-              <p className="status-message status-error">{state.error}</p>
-            ) : null}
-            {state.success ? (
-              <p className="status-message status-success">{state.success}</p>
-            ) : null}
-
-            <Button type="submit" className="rounded-full" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save changes"
-              )}
-            </Button>
-          </form>
+          <Suspense fallback={<AccountForm />}>
+            <AccountSettingsForm />
+          </Suspense>
         </CardContent>
       </Card>
     </section>

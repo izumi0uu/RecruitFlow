@@ -1,9 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { type FormEvent, useActionState, useRef } from "react";
 import { Loader2, Lock, Trash2 } from "lucide-react";
 
-import { deleteAccount, updatePassword } from "@/app/(login)/actions";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -15,14 +14,10 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
+import { getFormString } from "@/lib/form-data";
 
-type PasswordState = {
-  currentPassword?: string;
-  newPassword?: string;
-  confirmPassword?: string;
-  error?: string;
-  success?: string;
-};
+import { usePasswordUpdateMutation } from "../hooks/useAccountSettingsMutations";
+import { deleteAccount } from "./actions";
 
 type DeleteState = {
   password?: string;
@@ -31,14 +26,33 @@ type DeleteState = {
 };
 
 const SecurityPage = () => {
-  const [passwordState, passwordAction, isPasswordPending] = useActionState<
-    PasswordState,
-    FormData
-  >(updatePassword, {});
+  const passwordFormRef = useRef<HTMLFormElement>(null);
+  const {
+    error: passwordError,
+    isPending: isPasswordPending,
+    savePassword,
+    success: passwordSuccess,
+  } = usePasswordUpdateMutation({
+    onSuccess: () => {
+      passwordFormRef.current?.reset();
+    },
+  });
   const [deleteState, deleteAction, isDeletePending] = useActionState<
     DeleteState,
     FormData
   >(deleteAccount, {});
+
+  const handlePasswordSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+
+    savePassword({
+      confirmPassword: getFormString(formData, "confirmPassword"),
+      currentPassword: getFormString(formData, "currentPassword"),
+      newPassword: getFormString(formData, "newPassword"),
+    });
+  };
 
   return (
     <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
@@ -57,7 +71,11 @@ const SecurityPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="min-h-0 overflow-y-auto">
-            <form className="space-y-5" action={passwordAction}>
+            <form
+              ref={passwordFormRef}
+              className="space-y-5"
+              onSubmit={handlePasswordSubmit}
+            >
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current password</Label>
                 <Input
@@ -68,7 +86,7 @@ const SecurityPage = () => {
                   required
                   minLength={8}
                   maxLength={100}
-                  defaultValue={passwordState.currentPassword}
+                  disabled={isPasswordPending}
                 />
               </div>
               <div className="space-y-2">
@@ -81,7 +99,7 @@ const SecurityPage = () => {
                   required
                   minLength={8}
                   maxLength={100}
-                  defaultValue={passwordState.newPassword}
+                  disabled={isPasswordPending}
                 />
               </div>
               <div className="space-y-2">
@@ -93,18 +111,18 @@ const SecurityPage = () => {
                   required
                   minLength={8}
                   maxLength={100}
-                  defaultValue={passwordState.confirmPassword}
+                  disabled={isPasswordPending}
                 />
               </div>
 
-              {passwordState.error ? (
+              {passwordError ? (
                 <p className="status-message status-error">
-                  {passwordState.error}
+                  {passwordError}
                 </p>
               ) : null}
-              {passwordState.success ? (
+              {passwordSuccess ? (
                 <p className="status-message status-success">
-                  {passwordState.success}
+                  {passwordSuccess}
                 </p>
               ) : null}
 

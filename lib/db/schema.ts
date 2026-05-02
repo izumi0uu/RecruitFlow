@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -240,18 +241,27 @@ export const jobs = pgTable("jobs", {
   archivedAt: timestamp("archived_at"),
 });
 
-export const jobStages = pgTable("job_stages", {
-  id: idColumn(),
-  workspaceId: workspaceIdColumn(),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => jobs.id),
-  key: varchar("key", { length: 80 }).notNull(),
-  label: varchar("label", { length: 120 }).notNull(),
-  sortOrder: integer("sort_order").notNull().default(0),
-  isClosedStage: boolean("is_closed_stage").notNull().default(false),
-  ...timestamps(),
-});
+export const jobStages = pgTable(
+  "job_stages",
+  {
+    id: idColumn(),
+    workspaceId: workspaceIdColumn(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id),
+    key: varchar("key", { length: 80 }).notNull(),
+    label: varchar("label", { length: 120 }).notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isClosedStage: boolean("is_closed_stage").notNull().default(false),
+    ...timestamps(),
+  },
+  (table) => ({
+    jobStagesJobKeyUnique: uniqueIndex("job_stages_job_id_key_unique").on(
+      table.jobId,
+      table.key,
+    ),
+  }),
+);
 
 export const candidates = pgTable("candidates", {
   id: idColumn(),
@@ -276,28 +286,36 @@ export const candidates = pgTable("candidates", {
   archivedAt: timestamp("archived_at"),
 });
 
-export const submissions = pgTable("submissions", {
-  id: idColumn(),
-  workspaceId: workspaceIdColumn(),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => jobs.id),
-  candidateId: uuid("candidate_id")
-    .notNull()
-    .references(() => candidates.id),
-  ownerUserId: userIdColumn("owner_user_id"),
-  stage: submissionStageEnum("stage").notNull().default("sourced"),
-  riskFlag: riskFlagEnum("risk_flag").notNull().default("none"),
-  nextStep: text("next_step"),
-  submittedAt: timestamp("submitted_at"),
-  lastTouchAt: timestamp("last_touch_at"),
-  latestFeedbackAt: timestamp("latest_feedback_at"),
-  lostReason: text("lost_reason"),
-  offerAmount: integer("offer_amount"),
-  currency: varchar("currency", { length: 8 }),
-  createdByUserId: userIdColumn("created_by_user_id"),
-  ...timestamps(),
-});
+export const submissions = pgTable(
+  "submissions",
+  {
+    id: idColumn(),
+    workspaceId: workspaceIdColumn(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id),
+    ownerUserId: userIdColumn("owner_user_id"),
+    stage: submissionStageEnum("stage").notNull().default("sourced"),
+    riskFlag: riskFlagEnum("risk_flag").notNull().default("none"),
+    nextStep: text("next_step"),
+    submittedAt: timestamp("submitted_at"),
+    lastTouchAt: timestamp("last_touch_at"),
+    latestFeedbackAt: timestamp("latest_feedback_at"),
+    lostReason: text("lost_reason"),
+    offerAmount: integer("offer_amount"),
+    currency: varchar("currency", { length: 8 }),
+    createdByUserId: userIdColumn("created_by_user_id"),
+    ...timestamps(),
+  },
+  (table) => ({
+    submissionsWorkspaceJobCandidateUnique: uniqueIndex(
+      "submissions_workspace_job_candidate_unique",
+    ).on(table.workspaceId, table.jobId, table.candidateId),
+  }),
+);
 
 export const tasks = pgTable("tasks", {
   id: idColumn(),
@@ -511,6 +529,24 @@ export enum AuditAction {
   BILLING_CHECKOUT_STARTED = "BILLING_CHECKOUT_STARTED",
   BILLING_PORTAL_OPENED = "BILLING_PORTAL_OPENED",
   BILLING_SUBSCRIPTION_SYNCED = "BILLING_SUBSCRIPTION_SYNCED",
+  CLIENT_CREATED = "CLIENT_CREATED",
+  CLIENT_UPDATED = "CLIENT_UPDATED",
+  CLIENT_ARCHIVED = "CLIENT_ARCHIVED",
+  CLIENT_RESTORED = "CLIENT_RESTORED",
+  CLIENT_CONTACT_CREATED = "CLIENT_CONTACT_CREATED",
+  CLIENT_CONTACT_UPDATED = "CLIENT_CONTACT_UPDATED",
+  CANDIDATE_CREATED = "CANDIDATE_CREATED",
+  CANDIDATE_UPDATED = "CANDIDATE_UPDATED",
+  DOCUMENT_LINKED = "DOCUMENT_LINKED",
+  DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED",
+  JOB_CREATED = "JOB_CREATED",
+  JOB_UPDATED = "JOB_UPDATED",
+  JOB_STATUS_CHANGED = "JOB_STATUS_CHANGED",
+  JOB_STAGE_TEMPLATE_INITIALIZED = "JOB_STAGE_TEMPLATE_INITIALIZED",
+  SUBMISSION_CREATED = "SUBMISSION_CREATED",
+  SUBMISSION_STAGE_CHANGED = "SUBMISSION_STAGE_CHANGED",
+  SUBMISSION_RISK_UPDATED = "SUBMISSION_RISK_UPDATED",
+  SUBMISSION_NEXT_STEP_UPDATED = "SUBMISSION_NEXT_STEP_UPDATED",
   ACCOUNT_UPDATED = "ACCOUNT_UPDATED",
   PASSWORD_UPDATED = "PASSWORD_UPDATED",
   ACCOUNT_DELETED = "ACCOUNT_DELETED",

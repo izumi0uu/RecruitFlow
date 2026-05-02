@@ -28,7 +28,7 @@ import { MembersService } from "./members.service";
 @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
 @RequireWorkspaceRole({ allowedRoles: ["owner"] })
 export class MembersController {
-  private readonly membersService = new MembersService();
+  constructor(private readonly membersService: MembersService) {}
 
   @Post("invitations")
   async createInvitation(
