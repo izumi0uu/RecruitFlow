@@ -266,6 +266,13 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     owner: "api",
     path: "/submissions",
   },
+  {
+    auth: "session",
+    description: "Move a workspace-scoped submission to another stage and audit the transition.",
+    method: "PATCH",
+    owner: "api",
+    path: "/submissions/:submissionId/stage",
+  },
 ];
 
 const localApiUrl = (path: string) => {
