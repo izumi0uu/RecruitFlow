@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  type CollisionDetection,
   closestCorners,
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
   type UniqueIdentifier,
   useDroppable,
@@ -70,6 +73,25 @@ const stageDropTargetClassMap: Record<ApiSubmissionStage, string> = {
     "border-zinc-500/65 bg-zinc-500/20 ring-zinc-500/30 dark:border-zinc-400/45 dark:bg-zinc-400/15 dark:ring-zinc-400/25",
   submitted:
     "border-cyan-500/65 bg-cyan-500/20 ring-cyan-500/30 dark:border-cyan-500/45 dark:bg-cyan-500/15 dark:ring-cyan-500/25",
+};
+
+// Multiple-container boards need more than one collision strategy: pointer hits
+// make empty columns reliable, while the fallbacks keep keyboard and edge cases usable.
+// dnd-kit docs: https://dndkit.com/legacy/api-documentation/context-provider/collision-detection-algorithms/
+const pipelineCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+
+  if (pointerCollisions.length > 0) {
+    return pointerCollisions;
+  }
+
+  const intersectionCollisions = rectIntersection(args);
+
+  if (intersectionCollisions.length > 0) {
+    return intersectionCollisions;
+  }
+
+  return closestCorners(args);
 };
 
 const riskLabelMap: Record<ApiRiskFlag, string> = {
@@ -171,6 +193,7 @@ const getStageKeyForId = (
 ): ApiSubmissionStage | null => {
   const rawId = String(id);
 
+  // dnd-kit may report either a column id or a card id; normalize both to a stage.
   if (stageKeys.has(rawId as ApiSubmissionStage)) {
     return rawId as ApiSubmissionStage;
   }
@@ -206,6 +229,7 @@ const moveSubmissionToStage = (
   submissionId: string,
   targetStage: ApiSubmissionStage,
 ) => {
+  // Keep the board responsive with an optimistic local move while the API writes audit state.
   let movingSubmission: SubmissionRecord | null = null;
   const groupsWithoutSubmission = groups.map((stage) => ({
     ...stage,
@@ -416,23 +440,30 @@ const SortableOpportunityCard = ({
 const PipelineStageColumn = ({
   canChangeStage,
   children,
+  isDropTarget,
   stage,
 }: {
   canChangeStage: boolean;
   children: ReactNode;
+  isDropTarget: boolean;
   stage: PipelineStageGroup;
 }) => {
   const { isOver, setNodeRef } = useDroppable({
     disabled: !canChangeStage,
     id: stage.key,
   });
+  const shouldShowDropTarget = isOver || isDropTarget;
 
   return (
     <section
       ref={setNodeRef}
       className={cn(
         "flex min-h-[26rem] flex-col rounded-[1.25rem] border border-border/70 bg-workspace-muted-surface/45 p-3 transition-[background-color,border-color,box-shadow]",
-        isOver &&
+        // `isOver` is false when the pointer is over a card, so the parent passes
+        // `isDropTarget` after resolving that card back to its owning column.
+        // Multiple containers also need the column itself to be droppable so empty lanes work:
+        // https://dndkit.com/legacy/presets/sortable/overview/
+        shouldShowDropTarget &&
           cn(
             "ring-2 ring-inset shadow-[0_24px_72px_-46px_var(--shadow-color)]",
             stageDropTargetClassMap[stage.key],
@@ -482,6 +513,7 @@ export const PipelineBoardView = ({
     null,
   );
   const [dragError, setDragError] = useState<string | null>(null);
+  const [overStage, setOverStage] = useState<ApiSubmissionStage | null>(null);
   const [, startRefresh] = useTransition();
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -524,10 +556,11 @@ export const PipelineBoardView = ({
       ) : null}
 
       <DndContext
-        collisionDetection={closestCorners}
+        collisionDetection={pipelineCollisionDetection}
         sensors={sensors}
         onDragCancel={() => {
           setActiveSubmissionId(null);
+          setOverStage(null);
         }}
         onDragEnd={(event) => {
           const submissionId = String(event.active.id);
@@ -537,6 +570,7 @@ export const PipelineBoardView = ({
             : null;
 
           setActiveSubmissionId(null);
+          setOverStage(null);
 
           if (
             !canChangeStage ||
@@ -584,6 +618,16 @@ export const PipelineBoardView = ({
           setDragError(null);
           setActiveSubmissionId(String(event.active.id));
         }}
+        onDragOver={(event) => {
+          if (!canChangeStage) {
+            return;
+          }
+
+          // Highlight the whole column even when dnd-kit reports the card under the pointer.
+          setOverStage(
+            event.over ? getStageKeyForId(localGroups, event.over.id) : null,
+          );
+        }}
       >
         <div className="overflow-x-auto pb-2">
           <div className="grid w-max grid-cols-[repeat(7,19.5rem)] gap-3">
@@ -591,6 +635,7 @@ export const PipelineBoardView = ({
               <PipelineStageColumn
                 key={stage.key}
                 canChangeStage={canChangeStage}
+                isDropTarget={overStage === stage.key}
                 stage={stage}
               >
                 <SortableContext
