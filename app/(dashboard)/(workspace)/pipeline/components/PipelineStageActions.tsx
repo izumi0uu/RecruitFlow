@@ -3,8 +3,6 @@
 import {
   type ApiSubmissionStage,
   apiDefaultJobStageTemplate,
-  type SubmissionMutationResponse,
-  submissionStageTransitionRequestSchema,
 } from "@recruitflow/contracts";
 import { ArrowRight, Check, Loader2, Lock, MoveRight } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -18,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { cn } from "@/lib/utils";
+
+import { requestSubmissionStageTransition } from "./pipelineStageTransition";
 
 type PipelineStageActionsProps = {
   canChangeStage: boolean;
@@ -38,53 +38,6 @@ const getNextStage = (currentStage: ApiSubmissionStage) => {
   );
 
   return currentIndex >= 0 ? stageOptions[currentIndex + 1] : undefined;
-};
-
-const getMutationErrorMessage = async (response: Response) => {
-  try {
-    const body = (await response.json()) as { error?: string };
-
-    if (body.error) {
-      return body.error;
-    }
-  } catch {
-    // Fall through to the generic status message.
-  }
-
-  return `Stage update failed with status ${response.status}`;
-};
-
-const requestStageTransition = async (
-  submissionId: string,
-  stage: ApiSubmissionStage,
-) => {
-  const parsedPayload = submissionStageTransitionRequestSchema.safeParse({
-    stage,
-  });
-
-  if (!parsedPayload.success) {
-    throw new Error(
-      parsedPayload.error.issues[0]?.message ?? "Invalid stage transition",
-    );
-  }
-
-  const response = await fetch(`/api/submissions/${submissionId}/stage`, {
-    body: JSON.stringify(parsedPayload.data),
-    headers: {
-      "content-type": "application/json",
-    },
-    method: "PATCH",
-  });
-
-  if (response.status === 401) {
-    throw new Error("UNAUTHENTICATED");
-  }
-
-  if (!response.ok) {
-    throw new Error(await getMutationErrorMessage(response));
-  }
-
-  return (await response.json()) as SubmissionMutationResponse;
 };
 
 export const PipelineStageActions = ({
@@ -112,7 +65,7 @@ export const PipelineStageActions = ({
     setPendingStage(stage);
 
     try {
-      await requestStageTransition(submissionId, stage);
+      await requestSubmissionStageTransition(submissionId, stage);
       startRefresh(() => {
         router.refresh();
       });
