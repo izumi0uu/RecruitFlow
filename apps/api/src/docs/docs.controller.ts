@@ -254,8 +254,15 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
-    description: "Workspace-scoped placeholder for Wave 3 submissions implementation.",
+    description: "Return workspace-scoped submissions with job, candidate, owner, stage, risk, and next-step filters.",
     method: "GET",
+    owner: "api",
+    path: "/submissions",
+  },
+  {
+    auth: "session",
+    description: "Create a workspace-scoped candidate-to-job submission and audit the mutation.",
+    method: "POST",
     owner: "api",
     path: "/submissions",
   },
