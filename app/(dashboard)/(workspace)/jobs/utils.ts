@@ -8,7 +8,24 @@ import type {
 
 import type { JobListFilters } from "@/lib/jobs/filters";
 
-import type { JobFormValues } from "./actions";
+export type JobFormValues = {
+  clientId: string;
+  currency: string;
+  department: string;
+  description: string;
+  employmentType: string;
+  headcount: string;
+  intakeSummary: string;
+  location: string;
+  ownerUserId: string;
+  placementFeePercent: string;
+  priority: ApiJobPriority | "";
+  salaryMax: string;
+  salaryMin: string;
+  status: ApiJobStatus | "";
+  targetFillDate: string;
+  title: string;
+};
 
 export const jobStatusOptions: Array<{
   label: string;

@@ -90,6 +90,8 @@ type JobStageRow = {
 
 const restrictedStageTemplateMessage =
   "Coordinators can read job stage templates but cannot repair or initialize them";
+const restrictedJobMutationMessage =
+  "Only owners and recruiters can create, update, or repair jobs";
 
 const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
 
@@ -292,9 +294,22 @@ export class JobsService {
   }
 
   private assertCanRepairStageTemplate(context: ApiWorkspaceContext) {
-    if (context.membership.role === "coordinator") {
-      throw new ForbiddenException(restrictedStageTemplateMessage);
+    this.assertCanMutateJobs(context, restrictedStageTemplateMessage);
+  }
+
+  private assertCanMutateJobs(
+    context: ApiWorkspaceContext,
+    message = restrictedJobMutationMessage,
+  ) {
+    if (context.membership.role === "owner") {
+      return;
     }
+
+    if (context.membership.role === "recruiter") {
+      return;
+    }
+
+    throw new ForbiddenException(message);
   }
 
   private async selectJobRecord(
@@ -535,6 +550,8 @@ export class JobsService {
     context: ApiWorkspaceContext,
     input: JobMutationRequest,
   ): Promise<JobMutationResponse> {
+    this.assertCanMutateJobs(context);
+
     const workspaceId = context.workspace.id;
     const actorUserId = context.membership.userId;
     const ownerUserId = this.resolveOwnerUserId(context, input.ownerUserId);
@@ -633,17 +650,27 @@ export class JobsService {
     const existingStages = await this.selectJobStages(context, jobId);
     const missingStageKeys = getMissingStageKeys(existingStages);
 
-    if (missingStageKeys.length > 0) {
-      // TODO(RF-029): Add a DB-level uniqueness guard for jobId + key before
-      // editable stages or concurrent repair actions are exposed broadly.
-      await db.insert(jobStages).values(
-        getDefaultStageRows({
-          jobId,
-          keys: missingStageKeys,
-          workspaceId,
-        }),
-      );
+    const repairedStageRows =
+      missingStageKeys.length > 0
+        ? await db
+            .insert(jobStages)
+            .values(
+              getDefaultStageRows({
+                jobId,
+                keys: missingStageKeys,
+                workspaceId,
+              }),
+            )
+            .onConflictDoNothing({
+              target: [jobStages.jobId, jobStages.key],
+            })
+            .returning({ key: jobStages.key })
+        : [];
+    const repairedStageKeys = repairedStageRows.map(
+      (stage) => stage.key as ApiSubmissionStage,
+    );
 
+    if (repairedStageKeys.length > 0) {
       await writeAuditLog({
         action: AuditAction.JOB_STAGE_TEMPLATE_INITIALIZED,
         actorRole: context.membership.role,
@@ -652,7 +679,7 @@ export class JobsService {
         entityType: "job",
         metadata: {
           mode: "repair",
-          repairedStageKeys: missingStageKeys,
+          repairedStageKeys,
         },
         source: "api",
         workspaceId,
@@ -662,10 +689,10 @@ export class JobsService {
     return {
       ...(await this.buildDetailResponse(context, job)),
       message:
-        missingStageKeys.length > 0
+        repairedStageKeys.length > 0
           ? "Job stage template repaired successfully"
           : "Job stage template is already complete",
-      repairedStageKeys: missingStageKeys,
+      repairedStageKeys,
     };
   }
 
@@ -674,6 +701,8 @@ export class JobsService {
     jobId: string,
     input: JobMutationRequest,
   ): Promise<JobMutationResponse> {
+    this.assertCanMutateJobs(context);
+
     const existingJob = await this.selectJobRecord(context, jobId);
     const workspaceId = context.workspace.id;
     const actorUserId = context.membership.userId;

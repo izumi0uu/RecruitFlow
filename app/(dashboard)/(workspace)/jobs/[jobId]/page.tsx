@@ -32,24 +32,33 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
-import { updateJobControlsAction } from "../actions";
+import { JobStatusPriorityControls as JobStatusPriorityControlsForm } from "../components/JobStatusPriorityControls";
 import {
-  formatDateInputValue,
   formatJobDetailDate,
   formatJobLabel,
   formatJobPlacementFee,
   formatJobSalaryRange,
   jobDetailPriorityToneMap,
-  jobPriorityOptions,
-  jobStatusOptions,
   jobStatusToneMap,
-  numericJobFormValue,
 } from "../utils";
 
 type PageProps = {
   params: Promise<{
     jobId: string;
   }>;
+  searchParams?:
+    | Promise<Record<string, string | string[] | undefined>>
+    | Record<string, string | string[] | undefined>;
+};
+
+const hasRestrictedFlag = (
+  params: Record<string, string | string[] | undefined>,
+) => {
+  const restricted = params.restricted;
+
+  return Array.isArray(restricted)
+    ? restricted[0] === "1"
+    : restricted === "1";
 };
 
 const getJobDetail = async (jobId: string) => {
@@ -107,46 +116,6 @@ const DetailTile = ({
   </div>
 );
 
-const HiddenJobMutationFields = ({ job }: { job: JobRecord }) => (
-  <>
-    <input type="hidden" name="jobId" value={job.id} />
-    <input type="hidden" name="clientId" value={job.clientId} />
-    <input type="hidden" name="currency" value={job.currency ?? "USD"} />
-    <input type="hidden" name="department" value={job.department ?? ""} />
-    <input type="hidden" name="description" value={job.description ?? ""} />
-    <input type="hidden" name="employmentType" value={job.employmentType ?? ""} />
-    <input
-      type="hidden"
-      name="headcount"
-      value={numericJobFormValue(job.headcount)}
-    />
-    <input type="hidden" name="intakeSummary" value={job.intakeSummary ?? ""} />
-    <input type="hidden" name="location" value={job.location ?? ""} />
-    <input type="hidden" name="ownerUserId" value={job.ownerUserId ?? ""} />
-    <input
-      type="hidden"
-      name="placementFeePercent"
-      value={numericJobFormValue(job.placementFeePercent)}
-    />
-    <input
-      type="hidden"
-      name="salaryMax"
-      value={numericJobFormValue(job.salaryMax)}
-    />
-    <input
-      type="hidden"
-      name="salaryMin"
-      value={numericJobFormValue(job.salaryMin)}
-    />
-    <input
-      type="hidden"
-      name="targetFillDate"
-      value={formatDateInputValue(job.targetFillDate)}
-    />
-    <input type="hidden" name="title" value={job.title} />
-  </>
-);
-
 const JobStatusPriorityControls = ({ job }: { job: JobRecord }) => (
   <Card>
     <CardHeader>
@@ -157,49 +126,7 @@ const JobStatusPriorityControls = ({ job }: { job: JobRecord }) => (
       </CardDescription>
     </CardHeader>
     <CardContent>
-      <form action={updateJobControlsAction} className="space-y-4">
-        <HiddenJobMutationFields job={job} />
-
-        <label className="block space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Status
-          </span>
-          <select
-            className="input"
-            name="status"
-            defaultValue={job.status}
-            required
-          >
-            {jobStatusOptions.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Priority
-          </span>
-          <select
-            className="input"
-            name="priority"
-            defaultValue={job.priority}
-            required
-          >
-            {jobPriorityOptions.map((priority) => (
-              <option key={priority.value} value={priority.value}>
-                {priority.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Button type="submit" className="w-full rounded-full">
-          Save controls
-        </Button>
-      </form>
+      <JobStatusPriorityControlsForm job={job} />
     </CardContent>
   </Card>
 );
@@ -294,8 +221,9 @@ const StageTemplateOverview = ({
   );
 };
 
-const JobDetailPage = async ({ params }: PageProps) => {
+const JobDetailPage = async ({ params, searchParams }: PageProps) => {
   const { jobId } = await params;
+  const urlParams = await Promise.resolve(searchParams ?? {});
   const { context, job, stageTemplate } = await getJobDetail(jobId);
   const ownerLabel = job.owner?.name ?? job.owner?.email ?? "Unassigned";
   const canEdit = context.role !== "coordinator";
@@ -330,6 +258,12 @@ const JobDetailPage = async ({ params }: PageProps) => {
           )
         }
       />
+
+      {hasRestrictedFlag(urlParams) ? (
+        <p className="status-message status-error">
+          Only owners and recruiters can update job status or priority.
+        </p>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">

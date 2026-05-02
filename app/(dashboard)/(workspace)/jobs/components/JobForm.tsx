@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import type { FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
+  type ApiJobPriority,
+  type ApiJobStatus,
   type JobsListClientOption,
   type JobsListOwnerOption,
 } from "@recruitflow/contracts";
@@ -13,11 +15,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
-import type {
-  JobFormState,
-  JobFormValues,
-} from "../actions";
+import type { JobFormValues } from "../utils";
 import { jobPriorityOptions, jobStatusOptions } from "../utils";
+
 export {
   buildJobFormValues,
   emptyJobFormValues,
@@ -25,40 +25,58 @@ export {
   numericJobFormValue,
 } from "../utils";
 
-type JobFormAction = (
-  previousState: JobFormState,
-  formData: FormData,
-) => Promise<JobFormState>;
-
 type JobFormProps = {
-  action: JobFormAction;
   clientOptions: JobsListClientOption[];
+  error?: string | null;
   initialValues: JobFormValues;
+  isPending: boolean;
   jobId?: string;
   mode: "create" | "edit";
+  onSubmit: (values: JobFormValues) => void;
   ownerOptions: JobsListOwnerOption[];
 };
 
+const getString = (value: FormDataEntryValue | null) =>
+  typeof value === "string" ? value : "";
+
+const getJobFormValues = (formData: FormData): JobFormValues => ({
+  clientId: getString(formData.get("clientId")),
+  currency: getString(formData.get("currency")),
+  department: getString(formData.get("department")),
+  description: getString(formData.get("description")),
+  employmentType: getString(formData.get("employmentType")),
+  headcount: getString(formData.get("headcount")),
+  intakeSummary: getString(formData.get("intakeSummary")),
+  location: getString(formData.get("location")),
+  ownerUserId: getString(formData.get("ownerUserId")),
+  placementFeePercent: getString(formData.get("placementFeePercent")),
+  priority: getString(formData.get("priority")) as ApiJobPriority | "",
+  salaryMax: getString(formData.get("salaryMax")),
+  salaryMin: getString(formData.get("salaryMin")),
+  status: getString(formData.get("status")) as ApiJobStatus | "",
+  targetFillDate: getString(formData.get("targetFillDate")),
+  title: getString(formData.get("title")),
+});
+
 export const JobForm = ({
-  action,
   clientOptions,
+  error,
   initialValues,
+  isPending,
   jobId,
   mode,
+  onSubmit,
   ownerOptions,
 }: JobFormProps) => {
-  const [state, formAction, isPending] = useActionState<
-    JobFormState,
-    FormData
-  >(action, {});
-  const values = {
-    ...initialValues,
-    ...(state.values ?? {}),
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit(getJobFormValues(new FormData(event.currentTarget)));
   };
+  const values = initialValues;
   const hasClients = clientOptions.length > 0;
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {jobId ? <input type="hidden" name="jobId" value={jobId} /> : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -276,8 +294,8 @@ export const JobForm = ({
         </div>
       </div>
 
-      {state.error ? (
-        <p className="status-message status-error">{state.error}</p>
+      {error ? (
+        <p className="status-message status-error">{error}</p>
       ) : null}
 
       {!hasClients ? (
