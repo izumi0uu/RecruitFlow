@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
-
 import type {
   CurrentMembershipResponse,
   JobsListResponse,
 } from "@recruitflow/contracts";
+import { redirect } from "next/navigation";
 
 import {
   Card,
@@ -74,7 +73,7 @@ const NewJobPage = async ({ searchParams }: PageProps) => {
           title="Create job is restricted"
         />
       ) : (
-        <Card className="max-w-5xl">
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>Job intake baseline</CardTitle>
             <CardDescription>

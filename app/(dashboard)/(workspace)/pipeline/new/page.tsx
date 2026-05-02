@@ -1,11 +1,10 @@
-import { redirect } from "next/navigation";
-
 import type {
   CandidatesListResponse,
   CurrentMembershipResponse,
   JobsListResponse,
   SubmissionsListResponse,
 } from "@recruitflow/contracts";
+import { redirect } from "next/navigation";
 
 import {
   Card,
@@ -17,11 +16,11 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import {
-  type SubmissionCandidateOption,
-  type SubmissionExistingOption,
-  type SubmissionFormValues,
-  type SubmissionJobOption,
+import type {
+  SubmissionCandidateOption,
+  SubmissionExistingOption,
+  SubmissionFormValues,
+  SubmissionJobOption,
 } from "../components/SubmissionForm";
 import { SubmissionFormController } from "../components/SubmissionFormController";
 
@@ -160,7 +159,7 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
       />
 
       {membership.role === "coordinator" ? (
-        <Card className="max-w-4xl">
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>Launch opportunity is restricted</CardTitle>
             <CardDescription>
@@ -176,7 +175,7 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="max-w-6xl">
+        <div className="w-full">
           <SubmissionFormController
             cancelHref={getCancelHref(
               redirectTarget,

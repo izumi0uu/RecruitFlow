@@ -1,6 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-
 import type { CandidateDetailResponse } from "@recruitflow/contracts";
+import { notFound, redirect } from "next/navigation";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -13,11 +12,8 @@ import {
 } from "@/components/ui/Card";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
-
-import {
-  buildCandidateFormValues,
-} from "../../components/candidateFormValues";
 import { CandidateFormController } from "../../components/CandidateFormController";
+import { buildCandidateFormValues } from "../../components/candidateFormValues";
 
 type PageProps = {
   params: Promise<{
@@ -84,7 +80,7 @@ const EditCandidatePage = async ({ params, searchParams }: PageProps) => {
         </p>
       ) : null}
 
-      <Card className="max-w-5xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Candidate profile baseline</CardTitle>
           <CardDescription>

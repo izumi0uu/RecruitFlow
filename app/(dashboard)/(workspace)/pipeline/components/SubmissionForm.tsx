@@ -1,7 +1,11 @@
 "use client";
 
-import type { ChangeEvent, FormEvent, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import type {
+  ApiJobStatus,
+  ApiRiskFlag,
+  ApiSubmissionStage,
+  ApiUserReference,
+} from "@recruitflow/contracts";
 import {
   AlertTriangle,
   ArrowRight,
@@ -11,16 +15,12 @@ import {
   ShieldAlert,
   UserRound,
 } from "lucide-react";
-
-import {
-  type ApiJobStatus,
-  type ApiRiskFlag,
-  type ApiSubmissionStage,
-  type ApiUserReference,
-} from "@recruitflow/contracts";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils";
 
@@ -91,11 +91,12 @@ const stageLabelMap: Record<ApiSubmissionStage, string> = {
   submitted: "Submitted",
 };
 
-const stageDescriptionMap: Record<(typeof launchStageValues)[number], string> = {
-  screening: "Recruiter is qualifying fit before client handoff.",
-  sourced: "Opportunity has been identified and needs first action.",
-  submitted: "Candidate is ready to be sent to the client.",
-};
+const stageDescriptionMap: Record<(typeof launchStageValues)[number], string> =
+  {
+    screening: "Recruiter is qualifying fit before client handoff.",
+    sourced: "Opportunity has been identified and needs first action.",
+    submitted: "Candidate is ready to be sent to the client.",
+  };
 
 const riskOptions = [
   {
@@ -136,9 +137,11 @@ const riskOptions = [
 }[];
 
 const readinessToneClassMap: Record<ReadinessTone, string> = {
-  attention: "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
+  attention:
+    "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
   blocked: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  ready: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  ready:
+    "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
 };
 
 export const emptySubmissionFormValues: SubmissionFormValues = {
@@ -160,15 +163,26 @@ export const buildSubmissionFormValues = (
 const isLaunchableJobStatus = (status: ApiJobStatus) =>
   !["closed", "filled"].includes(status);
 
+const getJobSelectLabel = (job: SubmissionJobOption) =>
+  `${job.title}${job.clientName ? ` - ${job.clientName}` : ""}${
+    isLaunchableJobStatus(job.status) ? "" : ` (${job.status})`
+  }`;
+
+const getCandidateSelectLabel = (candidate: SubmissionCandidateOption) =>
+  `${candidate.name}${candidate.headline ? ` - ${candidate.headline}` : ""}`;
+
 const getCandidateFocus = (candidate: SubmissionCandidateOption) =>
-  [candidate.currentTitle, candidate.currentCompany].filter(Boolean).join(" at ") ||
+  [candidate.currentTitle, candidate.currentCompany]
+    .filter(Boolean)
+    .join(" at ") ||
   candidate.headline ||
   "Candidate context pending";
 
 const getOwnerLabel = (owner: ApiUserReference | null | undefined) =>
-  owner ? owner.name ?? owner.email : "Owner not selected";
+  owner ? (owner.name ?? owner.email) : "Owner not selected";
 
-const getCandidateFirstName = (name: string) => name.trim().split(/\s+/)[0] ?? "";
+const getCandidateFirstName = (name: string) =>
+  name.trim().split(/\s+/)[0] ?? "";
 
 const getLaunchButtonLabel = (
   candidate: SubmissionCandidateOption | undefined,
@@ -223,8 +237,12 @@ const OpportunityPreviewPanel = ({
         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           {label}
         </p>
-        <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-        <div className="text-xs leading-5 text-muted-foreground">{children}</div>
+        <p className="truncate text-sm font-semibold text-foreground">
+          {title}
+        </p>
+        <div className="text-xs leading-5 text-muted-foreground">
+          {children}
+        </div>
       </div>
     </div>
   </div>
@@ -277,6 +295,31 @@ export const SubmissionForm = ({
     () => ownerOptions.find((owner) => owner.id === values.ownerUserId),
     [ownerOptions, values.ownerUserId],
   );
+  const jobSelectOptions = useMemo(
+    () =>
+      jobOptions.map((job) => ({
+        disabled: !isLaunchableJobStatus(job.status),
+        label: getJobSelectLabel(job),
+        value: job.id,
+      })),
+    [jobOptions],
+  );
+  const candidateSelectOptions = useMemo(
+    () =>
+      candidateOptions.map((candidate) => ({
+        label: getCandidateSelectLabel(candidate),
+        value: candidate.id,
+      })),
+    [candidateOptions],
+  );
+  const ownerSelectOptions = useMemo(
+    () =>
+      ownerOptions.map((owner) => ({
+        label: owner.name ?? owner.email,
+        value: owner.id,
+      })),
+    [ownerOptions],
+  );
   const duplicateSubmission = useMemo(
     () =>
       existingSubmissions.find(
@@ -292,7 +335,9 @@ export const SubmissionForm = ({
   const selectedJobLaunchable = selectedJob
     ? isLaunchableJobStatus(selectedJob.status)
     : false;
-  const hasContact = Boolean(selectedCandidate?.email || selectedCandidate?.phone);
+  const hasContact = Boolean(
+    selectedCandidate?.email || selectedCandidate?.phone,
+  );
   const canSubmit = Boolean(
     hasCandidates &&
       hasJobs &&
@@ -321,6 +366,13 @@ export const SubmissionForm = ({
       setValues((currentValues) => ({
         ...currentValues,
         [field]: event.target.value,
+      }));
+    };
+  const updateSelectValue =
+    (field: keyof SubmissionFormValues) => (value: string) => {
+      setValues((currentValues) => ({
+        ...currentValues,
+        [field]: value,
       }));
     };
 
@@ -364,9 +416,13 @@ export const SubmissionForm = ({
           >
             {selectedCandidate ? (
               <>
-                <p className="truncate">{getCandidateFocus(selectedCandidate)}</p>
+                <p className="truncate">
+                  {getCandidateFocus(selectedCandidate)}
+                </p>
                 <p className="mt-1">
-                  {selectedCandidate.hasResume ? "Resume ready" : "Resume missing"}
+                  {selectedCandidate.hasResume
+                    ? "Resume ready"
+                    : "Resume missing"}
                   {" / "}
                   {hasContact ? "Contact ready" : "Contact missing"}
                 </p>
@@ -421,81 +477,46 @@ export const SubmissionForm = ({
               description="Choose the client role this opportunity belongs to."
               label="Role"
             >
-              <select
-                id="jobId"
-                className="input"
+              <FilterSelect
                 name="jobId"
-                onChange={updateValue("jobId")}
+                options={jobSelectOptions}
+                placeholder={hasJobs ? "Select role" : "Create a job first"}
                 value={values.jobId}
                 disabled={!hasJobs}
-                required
-              >
-                <option value="" disabled>
-                  {hasJobs ? "Select role" : "Create a job first"}
-                </option>
-                {jobOptions.map((job) => (
-                  <option
-                    key={job.id}
-                    value={job.id}
-                    disabled={!isLaunchableJobStatus(job.status)}
-                  >
-                    {job.title}
-                    {job.clientName ? ` - ${job.clientName}` : ""}
-                    {!isLaunchableJobStatus(job.status)
-                      ? ` (${job.status})`
-                      : ""}
-                  </option>
-                ))}
-              </select>
+                onValueChange={updateSelectValue("jobId")}
+              />
             </SelectShell>
 
             <SelectShell
               description="Choose the candidate to activate for this role."
               label="Candidate"
             >
-              <select
-                id="candidateId"
-                className="input"
+              <FilterSelect
                 name="candidateId"
-                onChange={updateValue("candidateId")}
+                options={candidateSelectOptions}
+                placeholder={
+                  hasCandidates
+                    ? "Select candidate"
+                    : "Create a candidate first"
+                }
                 value={values.candidateId}
                 disabled={!hasCandidates}
-                required
-              >
-                <option value="" disabled>
-                  {hasCandidates ? "Select candidate" : "Create a candidate first"}
-                </option>
-                {candidateOptions.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.name}
-                    {candidate.headline ? ` - ${candidate.headline}` : ""}
-                  </option>
-                ))}
-              </select>
+                onValueChange={updateSelectValue("candidateId")}
+              />
             </SelectShell>
 
             <SelectShell
               description="Owns the next step after launch."
               label="Opportunity owner"
             >
-              <select
-                id="ownerUserId"
-                className="input"
+              <FilterSelect
                 name="ownerUserId"
-                onChange={updateValue("ownerUserId")}
+                options={ownerSelectOptions}
+                placeholder="Select owner"
                 value={values.ownerUserId}
                 disabled={!hasOwners}
-                required
-              >
-                <option value="" disabled>
-                  Select owner
-                </option>
-                {ownerOptions.map((owner) => (
-                  <option key={owner.id} value={owner.id}>
-                    {owner.name ?? owner.email}
-                  </option>
-                ))}
-              </select>
+                onValueChange={updateSelectValue("ownerUserId")}
+              />
             </SelectShell>
 
             <SelectShell
@@ -522,7 +543,9 @@ export const SubmissionForm = ({
                       onChange={updateValue("stage")}
                       required
                     />
-                    <span className="font-semibold">{stageLabelMap[stage]}</span>
+                    <span className="font-semibold">
+                      {stageLabelMap[stage]}
+                    </span>
                     <span
                       className={cn(
                         "text-xs leading-5",
@@ -636,7 +659,13 @@ export const SubmissionForm = ({
                 : "Select a candidate."}
             </ReadinessItem>
             <ReadinessItem
-              tone={selectedCandidate ? (hasContact ? "ready" : "attention") : "attention"}
+              tone={
+                selectedCandidate
+                  ? hasContact
+                    ? "ready"
+                    : "attention"
+                  : "attention"
+              }
             >
               {selectedCandidate
                 ? hasContact
@@ -644,7 +673,9 @@ export const SubmissionForm = ({
                   : "Candidate contact is missing."
                 : "Contact readiness appears after candidate selection."}
             </ReadinessItem>
-            <ReadinessItem tone={selectedJob?.clientName ? "ready" : "attention"}>
+            <ReadinessItem
+              tone={selectedJob?.clientName ? "ready" : "attention"}
+            >
               {selectedJob?.clientName
                 ? "Client context is attached."
                 : "Client context is missing or pending."}
@@ -708,7 +739,12 @@ export const SubmissionForm = ({
             getLaunchButtonLabel(selectedCandidate, selectedJob)
           )}
         </Button>
-        <Button asChild type="button" variant="outline" className="rounded-full">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          className="rounded-full"
+        >
           <TrackedLink href={cancelHref}>Cancel</TrackedLink>
         </Button>
       </div>

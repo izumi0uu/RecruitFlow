@@ -1,12 +1,11 @@
 "use client";
 
-import * as React from "react";
+import { clientContactMutationRequestSchema } from "@recruitflow/contracts";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-
-import { clientContactMutationRequestSchema } from "@recruitflow/contracts";
-
+import * as React from "react";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -15,10 +14,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
-import { clientDetailQueryOptions } from "@/lib/query/options";
 import { isApiRequestError } from "@/lib/api/errors";
+import { clientDetailQueryOptions } from "@/lib/query/options";
 
 import { ContactForm, type ContactFormValues } from "./ContactForm";
 import { useClientContactUpdateMutation } from "./hooks/useClientMutations";
@@ -35,7 +33,7 @@ const ClientContactEditLoadingState = () => (
       title="Loading contact"
       description="The contact baseline is loading through the client query cache."
     />
-    <Card className="max-w-4xl">
+    <Card className="w-full">
       <CardContent className="flex min-h-64 flex-col items-center justify-center gap-3 py-14 text-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
         <p className="text-sm font-medium text-foreground">Loading contact</p>
@@ -69,7 +67,7 @@ const ClientContactEditErrorState = ({
             : "The contact detail request returned an error."
         }
       />
-      <Card className="max-w-4xl">
+      <Card className="w-full">
         <CardContent className="space-y-4 pt-6">
           {!isNotFound ? (
             <p className="status-message status-error">
@@ -185,7 +183,7 @@ const ClientContactEditSurface = ({
         description={`Keep ${clientDetail.client.name}'s relationship map current without leaving the client workspace boundary.`}
       />
 
-      <Card className="max-w-4xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Contact baseline</CardTitle>
           <CardDescription>

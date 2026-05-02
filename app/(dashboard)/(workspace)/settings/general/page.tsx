@@ -1,8 +1,8 @@
 "use client";
 
-import { type FormEvent, Suspense } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { type FormEvent, Suspense } from "react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -62,8 +62,7 @@ const AccountForm = ({
 
 const AccountSettingsForm = () => {
   const { data: user } = useSuspenseQuery(currentUserQueryOptions());
-  const { error, isPending, saveAccount, success } =
-    useAccountUpdateMutation();
+  const { error, isPending, saveAccount, success } = useAccountUpdateMutation();
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -112,7 +111,7 @@ const GeneralPage = () => {
         description="Keep your workspace identity current so collaborators always know who owns the next decision."
       />
 
-      <Card className="w-full max-w-3xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Account information</CardTitle>
           <CardDescription>

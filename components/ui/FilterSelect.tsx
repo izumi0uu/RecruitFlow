@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { Check, ChevronDown } from "lucide-react";
+import * as React from "react";
 
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type FilterSelectOption = {
+  disabled?: boolean;
   label: string;
   value: string;
 };
@@ -64,7 +65,12 @@ const FilterSelect = ({
               className,
             )}
           >
-            <span className={cn(!selectedOption && "text-muted-foreground")}>
+            <span
+              className={cn(
+                "min-w-0 truncate",
+                !selectedOption && "text-muted-foreground",
+              )}
+            >
               {selectedOption?.label ?? placeholder}
             </span>
             <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180" />
@@ -80,6 +86,7 @@ const FilterSelect = ({
             return (
               <DropdownMenuItem
                 key={option.value || "__all__"}
+                disabled={option.disabled}
                 className={cn(
                   "cursor-pointer gap-2.5 px-3 py-2.5 text-sm",
                   isSelected &&
@@ -99,7 +106,7 @@ const FilterSelect = ({
                     isSelected && "opacity-100",
                   )}
                 />
-                <span>{option.label}</span>
+                <span className="min-w-0 truncate">{option.label}</span>
               </DropdownMenuItem>
             );
           })}

@@ -1,8 +1,8 @@
 import {
-  apiDocumentEntityTypeValues,
-  apiDocumentTypeValues,
   type ApiDocumentEntityType,
   type ApiDocumentType,
+  apiDocumentEntityTypeValues,
+  apiDocumentTypeValues,
 } from "@recruitflow/contracts";
 
 import {
@@ -13,11 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
-
-import {
-  buildDocumentMetadataFormValues,
-} from "../components/documentMetadataFormValues";
 import { DocumentMetadataFormController } from "../components/DocumentMetadataFormController";
+import { buildDocumentMetadataFormValues } from "../components/documentMetadataFormValues";
 
 type PageProps = {
   searchParams?:
@@ -90,7 +87,7 @@ const NewDocumentPage = async ({ searchParams }: PageProps) => {
         description="Register a resume, JD, call note, or interview note against a workspace entity without taking ownership of binary upload transport yet."
       />
 
-      <Card className="max-w-5xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Metadata-only upload checkpoint</CardTitle>
           <CardDescription>
