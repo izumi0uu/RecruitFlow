@@ -23,6 +23,8 @@ import { Button } from "@/components/ui/Button";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { cn } from "@/lib/utils";
 
+import { PipelineStageActions } from "./PipelineStageActions";
+
 export type PipelineView = "board" | "list";
 
 export type PipelineActiveFilter = {
@@ -372,8 +374,10 @@ const PipelineFocusPanel = ({
 };
 
 const PipelineOpportunityCard = ({
+  canChangeStage,
   submission,
 }: {
+  canChangeStage: boolean;
   submission: SubmissionRecord;
 }) => (
   <article
@@ -430,10 +434,24 @@ const PipelineOpportunityCard = ({
         {formatDate(getTouchValue(submission))}
       </span>
     </div>
+
+    <PipelineStageActions
+      canChangeStage={canChangeStage}
+      className="mt-3 pl-1.5"
+      compact
+      currentStage={submission.stage}
+      submissionId={submission.id}
+    />
   </article>
 );
 
-const PipelineBoardView = ({ groups }: { groups: PipelineStageGroup[] }) => (
+const PipelineBoardView = ({
+  canChangeStage,
+  groups,
+}: {
+  canChangeStage: boolean;
+  groups: PipelineStageGroup[];
+}) => (
   <div className="overflow-x-auto pb-2">
     <div className="grid min-w-[80rem] grid-cols-7 gap-3">
       {groups.map((stage) => (
@@ -468,6 +486,7 @@ const PipelineBoardView = ({ groups }: { groups: PipelineStageGroup[] }) => (
               stage.items.map((submission) => (
                 <PipelineOpportunityCard
                   key={submission.id}
+                  canChangeStage={canChangeStage}
                   submission={submission}
                 />
               ))
@@ -497,21 +516,28 @@ const StagePill = ({ stage }: { stage: ApiSubmissionStage }) => (
   </PipelineBadge>
 );
 
-const PipelineListView = ({ items }: { items: SubmissionRecord[] }) => (
+const PipelineListView = ({
+  canChangeStage,
+  items,
+}: {
+  canChangeStage: boolean;
+  items: SubmissionRecord[];
+}) => (
   <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-background/48">
-    <div className="hidden grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)] gap-4 bg-workspace-muted-surface/62 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+    <div className="hidden grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)_14rem] gap-4 bg-workspace-muted-surface/62 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
       <span>Candidate</span>
       <span>Role</span>
       <span>Stage</span>
       <span>Owner</span>
       <span>Next step</span>
+      <span>Action</span>
     </div>
 
     <div className="divide-y divide-border/60">
       {items.map((submission) => (
         <article
           key={submission.id}
-          className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)] lg:items-center"
+          className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)_14rem] lg:items-center"
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">
@@ -550,6 +576,13 @@ const PipelineListView = ({ items }: { items: SubmissionRecord[] }) => (
               {submission.nextStep ?? "No next step captured yet."}
             </p>
           </div>
+
+          <PipelineStageActions
+            canChangeStage={canChangeStage}
+            compact
+            currentStage={submission.stage}
+            submissionId={submission.id}
+          />
         </article>
       ))}
     </div>
@@ -661,7 +694,8 @@ export const PipelineSurface = ({
       .sort((left, right) => right.items.length - left.items.length)[0] ??
     stageGroups[0];
   const hasFilters = activeFilters.length > 0;
-  const canLaunch = submissions.context.role !== "coordinator";
+  const canChangeStage = submissions.context.role !== "coordinator";
+  const canLaunch = canChangeStage;
   const metrics: PipelineMetric[] = [
     {
       detail: "Open tracks before placed or lost.",
@@ -792,16 +826,23 @@ export const PipelineSurface = ({
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5" />
-            <span>Workspace-scoped records</span>
+            <span>
+              {canChangeStage
+                ? "Stage changes update the API"
+                : "Coordinators inspect only"}
+            </span>
           </div>
         </div>
 
         <div className="mt-3">
           {items.length > 0 ? (
             view === "board" ? (
-              <PipelineBoardView groups={stageGroups} />
+              <PipelineBoardView
+                canChangeStage={canChangeStage}
+                groups={stageGroups}
+              />
             ) : (
-              <PipelineListView items={items} />
+              <PipelineListView canChangeStage={canChangeStage} items={items} />
             )
           ) : (
             <PipelineEmptyState hasFilters={hasFilters} resetHref={resetHref} />

@@ -3,23 +3,27 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  Patch,
   Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
 
 import {
-  submissionMutationRequestSchema,
-  submissionsListQuerySchema,
   type SubmissionMutationResponse,
   type SubmissionsListResponse,
+  submissionMutationRequestSchema,
+  submissionParamsSchema,
+  submissionStageTransitionRequestSchema,
+  submissionsListQuerySchema,
 } from "@recruitflow/contracts";
 
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentWorkspaceContext } from "../workspace/current-workspace-context.decorator";
 import { RequireWorkspaceRole } from "../workspace/require-workspace-role.decorator";
-import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceContextGuard } from "../workspace/workspace.guard";
+import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
 
 import { SubmissionsService } from "./submissions.service";
@@ -60,5 +64,35 @@ export class SubmissionsController {
     }
 
     return this.submissionsService.createSubmission(context, parsedBody.data);
+  }
+
+  @Patch(":submissionId/stage")
+  updateSubmissionStage(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ): Promise<SubmissionMutationResponse> {
+    const parsedParams = submissionParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid submission params",
+      );
+    }
+
+    const parsedBody = submissionStageTransitionRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(
+        parsedBody.error.issues[0]?.message ??
+          "Invalid stage transition payload",
+      );
+    }
+
+    return this.submissionsService.updateSubmissionStage(
+      context,
+      parsedParams.data.submissionId,
+      parsedBody.data,
+    );
   }
 }

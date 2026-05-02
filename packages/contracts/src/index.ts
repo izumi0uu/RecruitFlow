@@ -908,6 +908,14 @@ export type SubmissionMutationRequest = z.infer<
   typeof submissionMutationRequestSchema
 >;
 
+export const submissionStageTransitionRequestSchema = z.object({
+  stage: z.enum(apiSubmissionStageValues),
+});
+
+export type SubmissionStageTransitionRequest = z.infer<
+  typeof submissionStageTransitionRequestSchema
+>;
+
 export interface SubmissionJobReference {
   client: JobsListClientOption | null;
   clientId: string;
