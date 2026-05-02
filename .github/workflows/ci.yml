@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    env:
+      API_BASE_URL: http://127.0.0.1:4001
+      AUTH_SECRET: recruitflow-local-build-secret
+      BASE_URL: http://localhost:3001
+      POSTGRES_URL: postgres://user:pass@localhost:5432/recruitflow
+      STRIPE_SECRET_KEY: sk_test_recruitflow
+      STRIPE_WEBHOOK_SECRET: whsec_recruitflow
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify
+        run: pnpm verify
