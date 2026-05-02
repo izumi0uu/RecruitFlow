@@ -876,8 +876,11 @@ export interface DocumentsListResponse {
 
 export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
   candidateId: optionalUuidSchema,
+  clientId: optionalUuidSchema,
   jobId: optionalUuidSchema,
+  owner: optionalUuidSchema,
   ownerUserId: optionalUuidSchema,
+  q: z.string().trim().max(200).optional(),
   riskFlag: z.enum(apiRiskFlagValues).optional(),
   stage: z.enum(apiSubmissionStageValues).optional(),
 });
@@ -885,6 +888,95 @@ export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
 export type SubmissionsListQuery = z.infer<
   typeof submissionsListQuerySchema
 >;
+
+export const submissionParamsSchema = z.object({
+  submissionId: z.string().uuid(),
+});
+
+export type SubmissionParams = z.infer<typeof submissionParamsSchema>;
+
+export const submissionMutationRequestSchema = z.object({
+  candidateId: z.string().uuid("Candidate is required"),
+  jobId: z.string().uuid("Job is required"),
+  nextStep: z.string().trim().min(1, "Next step is required").max(500),
+  ownerUserId: z.string().uuid("Submission owner is required"),
+  riskFlag: z.enum(apiRiskFlagValues).default("none"),
+  stage: z.enum(apiSubmissionStageValues).default("sourced"),
+});
+
+export type SubmissionMutationRequest = z.infer<
+  typeof submissionMutationRequestSchema
+>;
+
+export interface SubmissionJobReference {
+  client: JobsListClientOption | null;
+  clientId: string;
+  id: string;
+  status: ApiJobStatus;
+  title: string;
+}
+
+export interface SubmissionCandidateReference {
+  currentCompany: string | null;
+  currentTitle: string | null;
+  fullName: string;
+  headline: string | null;
+  id: string;
+  source: string | null;
+}
+
+export interface SubmissionRecord {
+  candidate: SubmissionCandidateReference | null;
+  candidateId: string;
+  createdAt: string;
+  currency: string | null;
+  id: string;
+  job: SubmissionJobReference | null;
+  jobId: string;
+  lastTouchAt: string | null;
+  latestFeedbackAt: string | null;
+  lostReason: string | null;
+  nextStep: string | null;
+  offerAmount: number | null;
+  owner: ApiUserReference | null;
+  ownerUserId: string | null;
+  riskFlag: ApiRiskFlag;
+  stage: ApiSubmissionStage;
+  submittedAt: string | null;
+  updatedAt: string;
+}
+
+export interface SubmissionsListResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    candidateId: string | null;
+    clientId: string | null;
+    includeArchived: boolean;
+    jobId: string | null;
+    owner: string | null;
+    q: string | null;
+    riskFlag: ApiRiskFlag | null;
+    stage: ApiSubmissionStage | null;
+  };
+  items: SubmissionRecord[];
+  ownerOptions: ApiUserReference[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  workspaceScoped: true;
+}
+
+export interface SubmissionMutationResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  message: string;
+  submission: SubmissionRecord;
+  workspaceScoped: true;
+}
 
 export interface ApiCrmReservedRoute {
   method: "DELETE" | "GET" | "PATCH" | "POST";

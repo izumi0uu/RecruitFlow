@@ -286,28 +286,36 @@ export const candidates = pgTable("candidates", {
   archivedAt: timestamp("archived_at"),
 });
 
-export const submissions = pgTable("submissions", {
-  id: idColumn(),
-  workspaceId: workspaceIdColumn(),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => jobs.id),
-  candidateId: uuid("candidate_id")
-    .notNull()
-    .references(() => candidates.id),
-  ownerUserId: userIdColumn("owner_user_id"),
-  stage: submissionStageEnum("stage").notNull().default("sourced"),
-  riskFlag: riskFlagEnum("risk_flag").notNull().default("none"),
-  nextStep: text("next_step"),
-  submittedAt: timestamp("submitted_at"),
-  lastTouchAt: timestamp("last_touch_at"),
-  latestFeedbackAt: timestamp("latest_feedback_at"),
-  lostReason: text("lost_reason"),
-  offerAmount: integer("offer_amount"),
-  currency: varchar("currency", { length: 8 }),
-  createdByUserId: userIdColumn("created_by_user_id"),
-  ...timestamps(),
-});
+export const submissions = pgTable(
+  "submissions",
+  {
+    id: idColumn(),
+    workspaceId: workspaceIdColumn(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id),
+    ownerUserId: userIdColumn("owner_user_id"),
+    stage: submissionStageEnum("stage").notNull().default("sourced"),
+    riskFlag: riskFlagEnum("risk_flag").notNull().default("none"),
+    nextStep: text("next_step"),
+    submittedAt: timestamp("submitted_at"),
+    lastTouchAt: timestamp("last_touch_at"),
+    latestFeedbackAt: timestamp("latest_feedback_at"),
+    lostReason: text("lost_reason"),
+    offerAmount: integer("offer_amount"),
+    currency: varchar("currency", { length: 8 }),
+    createdByUserId: userIdColumn("created_by_user_id"),
+    ...timestamps(),
+  },
+  (table) => ({
+    submissionsWorkspaceJobCandidateUnique: uniqueIndex(
+      "submissions_workspace_job_candidate_unique",
+    ).on(table.workspaceId, table.jobId, table.candidateId),
+  }),
+);
 
 export const tasks = pgTable("tasks", {
   id: idColumn(),
@@ -535,6 +543,10 @@ export enum AuditAction {
   JOB_UPDATED = "JOB_UPDATED",
   JOB_STATUS_CHANGED = "JOB_STATUS_CHANGED",
   JOB_STAGE_TEMPLATE_INITIALIZED = "JOB_STAGE_TEMPLATE_INITIALIZED",
+  SUBMISSION_CREATED = "SUBMISSION_CREATED",
+  SUBMISSION_STAGE_CHANGED = "SUBMISSION_STAGE_CHANGED",
+  SUBMISSION_RISK_UPDATED = "SUBMISSION_RISK_UPDATED",
+  SUBMISSION_NEXT_STEP_UPDATED = "SUBMISSION_NEXT_STEP_UPDATED",
   ACCOUNT_UPDATED = "ACCOUNT_UPDATED",
   PASSWORD_UPDATED = "PASSWORD_UPDATED",
   ACCOUNT_DELETED = "ACCOUNT_DELETED",

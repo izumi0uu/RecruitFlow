@@ -9,6 +9,7 @@ import {
   Layers3,
   MapPin,
   Pencil,
+  Send,
   UserRound,
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
@@ -59,6 +60,16 @@ const hasRestrictedFlag = (
   return Array.isArray(restricted)
     ? restricted[0] === "1"
     : restricted === "1";
+};
+
+const hasSubmissionCreatedFlag = (
+  params: Record<string, string | string[] | undefined>,
+) => {
+  const submissionCreated = params.submissionCreated;
+
+  return Array.isArray(submissionCreated)
+    ? submissionCreated[0] === "1"
+    : submissionCreated === "1";
 };
 
 const getJobDetail = async (jobId: string) => {
@@ -265,6 +276,12 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
         </p>
       ) : null}
 
+      {hasSubmissionCreatedFlag(urlParams) ? (
+        <p className="status-message status-success">
+          Opportunity launched and linked to this job.
+        </p>
+      ) : null}
+
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <Card className="overflow-hidden">
@@ -422,23 +439,31 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="size-4" />
-                Pipeline handoff
+                Opportunity launch
               </CardTitle>
               <CardDescription>
-                Read-only boundary marker for future submission work.
+                Start a candidate-role track from this job context.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-[1.35rem] border border-dashed border-border bg-surface-1/60 p-5">
                 <p className="text-sm font-medium text-foreground">
-                  Submission board stays downstream.
+                  Launch from role context.
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   This detail page confirms the job, owner, client, and stage
-                  template are ready. Candidate submissions and stage movement
-                  remain owned by the submission-pipeline branch.
+                  template are ready before a candidate is moved into the
+                  pipeline.
                 </p>
               </div>
+              {canEdit ? (
+                <Button asChild className="mt-4 w-full rounded-full">
+                  <TrackedLink href={`/pipeline/new?jobId=${job.id}&returnTo=job`}>
+                    <Send className="size-4" />
+                    Launch candidate
+                  </TrackedLink>
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         </aside>

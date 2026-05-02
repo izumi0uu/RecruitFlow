@@ -317,28 +317,43 @@ const DocumentsSection = ({
   </Card>
 );
 
-const FutureSubmissionsSlot = () => (
+const FutureSubmissionsSlot = ({
+  canCreate,
+  candidateId,
+}: {
+  canCreate: boolean;
+  candidateId: string;
+}) => (
   <Card>
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
         <Send className="size-4" />
-        Future submissions
+        Opportunity launch
       </CardTitle>
       <CardDescription>
-        Boundary marker for the submission-pipeline branch.
+        Start a role track from this candidate context.
       </CardDescription>
     </CardHeader>
     <CardContent>
       <div className="rounded-[1.35rem] border border-dashed border-border bg-surface-1/60 p-5">
         <p className="text-sm font-medium text-foreground">
-          Submission history stays downstream.
+          Launch from candidate context.
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          This candidate profile is now a stable upstream target. Candidate-job
-          submission records, stages, risk flags, and next steps remain owned by
-          the submission-pipeline stories.
+          This candidate profile is now a stable upstream target for
+          candidate-role opportunities, stages, risk flags, and next steps.
         </p>
       </div>
+      {canCreate ? (
+        <Button asChild className="mt-4 w-full rounded-full">
+          <TrackedLink
+            href={`/pipeline/new?candidateId=${candidateId}&returnTo=candidate`}
+          >
+            <Send className="size-4" />
+            Launch for role
+          </TrackedLink>
+        </Button>
+      ) : null}
     </CardContent>
   </Card>
 );
@@ -351,6 +366,16 @@ const hasDocumentCreatedFlag = (
   return Array.isArray(documentCreated)
     ? documentCreated[0] === "1"
     : documentCreated === "1";
+};
+
+const hasSubmissionCreatedFlag = (
+  params: Record<string, string | string[] | undefined>,
+) => {
+  const submissionCreated = params.submissionCreated;
+
+  return Array.isArray(submissionCreated)
+    ? submissionCreated[0] === "1"
+    : submissionCreated === "1";
 };
 
 const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
@@ -393,6 +418,12 @@ const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
       {hasDocumentCreatedFlag(urlParams) ? (
         <p className="status-message status-success">
           Document metadata created and linked to this candidate.
+        </p>
+      ) : null}
+
+      {hasSubmissionCreatedFlag(urlParams) ? (
+        <p className="status-message status-success">
+          Opportunity launched and linked to this candidate.
         </p>
       ) : null}
 
@@ -480,7 +511,10 @@ const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
             candidate={candidate}
             documents={documentsList.items}
           />
-          <FutureSubmissionsSlot />
+          <FutureSubmissionsSlot
+            canCreate={context.role !== "coordinator"}
+            candidateId={candidate.id}
+          />
         </div>
 
         <aside className="space-y-5">

@@ -7,6 +7,7 @@ import type {
   DocumentsListResponse,
   JobDetailResponse,
   JobsListResponse,
+  SubmissionsListResponse,
 } from "@recruitflow/contracts";
 
 import {
@@ -144,4 +145,12 @@ export const documentsListQueryOptions = (filters: DocumentListFilters) =>
         `/api/documents${queryString ? `?${queryString}` : ""}`,
       );
     },
+  });
+
+export const submissionsListRootQueryKey = ["submissions", "list"] as const;
+
+export const submissionsListQueryOptions = () =>
+  queryOptions({
+    queryKey: submissionsListRootQueryKey,
+    queryFn: () => fetchJson<SubmissionsListResponse>("/api/submissions"),
   });
