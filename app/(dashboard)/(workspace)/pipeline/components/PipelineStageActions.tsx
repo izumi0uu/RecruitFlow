@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/DropdownMenu";
 import { cn } from "@/lib/utils";
 
-import { requestSubmissionStageTransition } from "./pipelineStageTransition";
+import { requestSubmissionStageTransition } from "./utils/pipelineStageTransition";
 
 type PipelineStageActionsProps = {
   canChangeStage: boolean;

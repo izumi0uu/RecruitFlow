@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 import { PipelineStageActions } from "./PipelineStageActions";
 import type { PipelineStageGroup } from "./PipelineSurface";
-import { requestSubmissionStageTransition } from "./pipelineStageTransition";
+import { requestSubmissionStageTransition } from "./utils/pipelineStageTransition";
 
 const stageAccentClassMap: Record<ApiSubmissionStage, string> = {
   client_interview: "bg-sky-500",
