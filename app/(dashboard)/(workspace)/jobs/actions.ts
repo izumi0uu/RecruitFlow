@@ -13,6 +13,7 @@ import {
 } from "@recruitflow/contracts";
 
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
+import { emptyStringToUndefined, getFormString } from "@/lib/form-data";
 
 export type JobFormValues = {
   clientId: string;
@@ -38,32 +39,23 @@ export type JobFormState = {
   values?: JobFormValues;
 };
 
-const getString = (value: FormDataEntryValue | null) =>
-  typeof value === "string" ? value : "";
-
-const emptyToUndefined = (value: string) => {
-  const trimmedValue = value.trim();
-
-  return trimmedValue.length > 0 ? trimmedValue : undefined;
-};
-
 const getJobFormValues = (formData: FormData): JobFormValues => ({
-  clientId: getString(formData.get("clientId")),
-  currency: getString(formData.get("currency")),
-  department: getString(formData.get("department")),
-  description: getString(formData.get("description")),
-  employmentType: getString(formData.get("employmentType")),
-  headcount: getString(formData.get("headcount")),
-  intakeSummary: getString(formData.get("intakeSummary")),
-  location: getString(formData.get("location")),
-  ownerUserId: getString(formData.get("ownerUserId")),
-  placementFeePercent: getString(formData.get("placementFeePercent")),
-  priority: getString(formData.get("priority")) as ApiJobPriority | "",
-  salaryMax: getString(formData.get("salaryMax")),
-  salaryMin: getString(formData.get("salaryMin")),
-  status: getString(formData.get("status")) as ApiJobStatus | "",
-  targetFillDate: getString(formData.get("targetFillDate")),
-  title: getString(formData.get("title")),
+  clientId: getFormString(formData, "clientId"),
+  currency: getFormString(formData, "currency"),
+  department: getFormString(formData, "department"),
+  description: getFormString(formData, "description"),
+  employmentType: getFormString(formData, "employmentType"),
+  headcount: getFormString(formData, "headcount"),
+  intakeSummary: getFormString(formData, "intakeSummary"),
+  location: getFormString(formData, "location"),
+  ownerUserId: getFormString(formData, "ownerUserId"),
+  placementFeePercent: getFormString(formData, "placementFeePercent"),
+  priority: getFormString(formData, "priority") as ApiJobPriority | "",
+  salaryMax: getFormString(formData, "salaryMax"),
+  salaryMin: getFormString(formData, "salaryMin"),
+  status: getFormString(formData, "status") as ApiJobStatus | "",
+  targetFillDate: getFormString(formData, "targetFillDate"),
+  title: getFormString(formData, "title"),
 });
 
 const getJobPayload = (values: JobFormValues) => ({
@@ -72,16 +64,16 @@ const getJobPayload = (values: JobFormValues) => ({
   department: values.department,
   description: values.description,
   employmentType: values.employmentType,
-  headcount: emptyToUndefined(values.headcount),
+  headcount: emptyStringToUndefined(values.headcount),
   intakeSummary: values.intakeSummary,
   location: values.location,
   ownerUserId: values.ownerUserId,
-  placementFeePercent: emptyToUndefined(values.placementFeePercent),
-  priority: emptyToUndefined(values.priority),
-  salaryMax: emptyToUndefined(values.salaryMax),
-  salaryMin: emptyToUndefined(values.salaryMin),
-  status: emptyToUndefined(values.status),
-  targetFillDate: emptyToUndefined(values.targetFillDate),
+  placementFeePercent: emptyStringToUndefined(values.placementFeePercent),
+  priority: emptyStringToUndefined(values.priority),
+  salaryMax: emptyStringToUndefined(values.salaryMax),
+  salaryMin: emptyStringToUndefined(values.salaryMin),
+  status: emptyStringToUndefined(values.status),
+  targetFillDate: emptyStringToUndefined(values.targetFillDate),
   title: values.title,
 });
 
@@ -157,7 +149,7 @@ export const updateJobAction = async (
 ): Promise<JobFormState> => {
   const values = getJobFormValues(formData);
   const parsedParams = jobParamsSchema.safeParse({
-    jobId: getString(formData.get("jobId")),
+    jobId: getFormString(formData, "jobId"),
   });
 
   if (!parsedParams.success) {
@@ -192,7 +184,7 @@ export const updateJobAction = async (
 
 export const updateJobControlsAction = async (formData: FormData) => {
   const parsedParams = jobParamsSchema.safeParse({
-    jobId: getString(formData.get("jobId")),
+    jobId: getFormString(formData, "jobId"),
   });
 
   if (!parsedParams.success) {
@@ -229,7 +221,7 @@ export const updateJobControlsAction = async (formData: FormData) => {
 
 export const repairJobStageTemplateAction = async (formData: FormData) => {
   const parsedParams = jobParamsSchema.safeParse({
-    jobId: getString(formData.get("jobId")),
+    jobId: getFormString(formData, "jobId"),
   });
 
   if (!parsedParams.success) {

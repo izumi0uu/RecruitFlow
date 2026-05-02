@@ -17,9 +17,6 @@ import {
 } from "lucide-react";
 
 import type {
-  ApiClientPriority,
-  ApiClientSort,
-  ApiClientStatus,
   ClientsListItem,
 } from "@recruitflow/contracts";
 
@@ -35,29 +32,20 @@ import { cn } from "@/lib/utils";
 import { ClientCreateDialog } from "./ClientCreateDialog";
 import { ClientEditDialog } from "./ClientEditDialog";
 import { useClientsListSurface } from "./hooks/useClientsListSurface";
+import {
+  archivedClientTagTone,
+  clientListPriorityToneMap,
+  clientPriorityOptions,
+  clientSortOptions,
+  clientStatusOptions,
+  clientStatusToneMap,
+  formatClientLabel,
+  formatClientShortDate,
+} from "../utils";
 
 type ClientsListSurfaceProps = {
   initialFilters: ClientListFilters;
 };
-
-const clientStatusOptions: Array<{
-  label: string;
-  value: ApiClientStatus;
-}> = [
-  { label: "Active", value: "active" },
-  { label: "Prospect", value: "prospect" },
-  { label: "Paused", value: "paused" },
-  { label: "Archived", value: "archived" },
-];
-
-const clientPriorityOptions: Array<{
-  label: string;
-  value: ApiClientPriority;
-}> = [
-  { label: "High", value: "high" },
-  { label: "Medium", value: "medium" },
-  { label: "Low", value: "low" },
-];
 
 const clientStatusFilterOptions = [
   { label: "All statuses", value: "" },
@@ -68,53 +56,6 @@ const clientPriorityFilterOptions = [
   { label: "All priorities", value: "" },
   ...clientPriorityOptions,
 ];
-
-const clientSortOptions: Array<{
-  label: string;
-  value: ApiClientSort;
-}> = [
-  { label: "Name A-Z", value: "name_asc" },
-  { label: "Name Z-A", value: "name_desc" },
-  { label: "Recently updated", value: "updated_desc" },
-  { label: "Highest priority", value: "priority_desc" },
-  { label: "Last touched", value: "last_contacted_desc" },
-];
-
-const statusToneMap: Record<ApiClientStatus, string> = {
-  active:
-    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  archived: "border-border/70 bg-surface-1 text-muted-foreground",
-  paused:
-    "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  prospect: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-};
-
-const priorityToneMap: Record<ApiClientPriority, string> = {
-  high: "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  low: "border-border/70 bg-surface-1 text-muted-foreground",
-  medium:
-    "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-};
-
-const archivedTagTone =
-  "border-border/80 bg-background/72 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]";
-
-const toTitleCase = (value: string) =>
-  value
-    .split("_")
-    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-    .join(" ");
-
-const formatDate = (value: string | null) => {
-  if (!value) {
-    return "No touch yet";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "short",
-  }).format(new Date(value));
-};
 
 const getClientInitial = (client: ClientsListItem) => {
   return client.name.trim().charAt(0).toUpperCase() || "C";
@@ -220,14 +161,16 @@ const ClientRow = ({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {isArchived ? (
-              <ClientBadge className={archivedTagTone}>Archived</ClientBadge>
+              <ClientBadge className={archivedClientTagTone}>
+                Archived
+              </ClientBadge>
             ) : (
-              <ClientBadge className={statusToneMap[client.status]}>
-                {toTitleCase(client.status)}
+              <ClientBadge className={clientStatusToneMap[client.status]}>
+                {formatClientLabel(client.status)}
               </ClientBadge>
             )}
-            <ClientBadge className={priorityToneMap[client.priority]}>
-              {toTitleCase(client.priority)} priority
+            <ClientBadge className={clientListPriorityToneMap[client.priority]}>
+              {formatClientLabel(client.priority)} priority
             </ClientBadge>
           </div>
           <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
@@ -253,7 +196,7 @@ const ClientRow = ({
             {client.owner?.name ?? client.owner?.email ?? "Unassigned"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Last touch {formatDate(client.lastContactedAt)}
+            Last touch {formatClientShortDate(client.lastContactedAt)}
           </p>
         </div>
         <UserRound className="size-5 text-muted-foreground lg:mt-5" />

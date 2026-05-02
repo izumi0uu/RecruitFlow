@@ -7,7 +7,7 @@ import {
   getApiErrorMessage,
   isApiRequestError,
   readApiResponseBody,
-} from "@/utils/apiErrors";
+} from "@/lib/api/errors";
 
 const toApiUrl = (pathname: string) => {
   loadRootEnv();

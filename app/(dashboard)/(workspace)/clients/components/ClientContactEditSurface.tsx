@@ -18,7 +18,7 @@ import {
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { clientDetailQueryOptions } from "@/lib/query/options";
-import { isApiRequestError } from "@/utils/apiErrors";
+import { isApiRequestError } from "@/lib/api/errors";
 
 import { ContactForm, type ContactFormValues } from "./ContactForm";
 import { useClientContactUpdateMutation } from "./hooks/useClientMutations";

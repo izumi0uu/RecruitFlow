@@ -15,11 +15,6 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
-import type {
-  ApiClientPriority,
-  ApiClientStatus,
-} from "@recruitflow/contracts";
-
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -32,48 +27,21 @@ import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { clientDetailQueryOptions } from "@/lib/query/options";
 import { cn } from "@/lib/utils";
-import { isApiRequestError } from "@/utils/apiErrors";
+import { isApiRequestError } from "@/lib/api/errors";
 
 import { ArchiveClientControl } from "./ArchiveClientControl";
 import { ClientContactCreateAction } from "./ClientContactCreateAction";
 import { ClientDetailEditAction } from "./ClientDetailEditAction";
 import { RestoreClientControl } from "./RestoreClientControl";
+import {
+  clientDetailPriorityToneMap,
+  clientStatusToneMap,
+  formatClientDate,
+  formatClientLabel,
+} from "../utils";
 
 type ClientDetailSurfaceProps = {
   clientId: string;
-};
-
-const statusToneMap: Record<ApiClientStatus, string> = {
-  active:
-    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  archived: "border-border/70 bg-surface-1 text-muted-foreground",
-  paused:
-    "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  prospect: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-};
-
-const priorityToneMap: Record<ApiClientPriority, string> = {
-  high: "bg-foreground text-background",
-  low: "bg-surface-1 text-muted-foreground",
-  medium: "bg-muted text-foreground",
-};
-
-const toTitleCase = (value: string) =>
-  value
-    .split("_")
-    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-    .join(" ");
-
-const formatDate = (value: string | null) => {
-  if (!value) {
-    return "Not recorded";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
 };
 
 const ClientDetailLoadingState = () => (
@@ -217,19 +185,19 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
                   className={cn(
                     "rounded-full border px-3 py-1 text-xs font-semibold",
                     isArchived
-                      ? statusToneMap.archived
-                      : statusToneMap[client.status],
+                      ? clientStatusToneMap.archived
+                      : clientStatusToneMap[client.status],
                   )}
                 >
-                  {isArchived ? "Archived" : toTitleCase(client.status)}
+                  {isArchived ? "Archived" : formatClientLabel(client.status)}
                 </span>
                 <span
                   className={cn(
                     "rounded-full px-3 py-1 text-xs font-semibold",
-                    priorityToneMap[client.priority],
+                    clientDetailPriorityToneMap[client.priority],
                   )}
                 >
-                  {toTitleCase(client.priority)} priority
+                  {formatClientLabel(client.priority)} priority
                 </span>
               </div>
               <CardTitle className="text-2xl">Account baseline</CardTitle>
@@ -465,7 +433,7 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
                   Last contacted
                 </p>
                 <p className="mt-3 text-sm font-medium text-foreground">
-                  {formatDate(client.lastContactedAt)}
+                  {formatClientDate(client.lastContactedAt)}
                 </p>
               </div>
               <div className="rounded-[1.25rem] border border-border/70 bg-surface-1/70 p-4">
@@ -473,7 +441,7 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
                   Last updated
                 </p>
                 <p className="mt-3 text-sm font-medium text-foreground">
-                  {formatDate(client.updatedAt)}
+                  {formatClientDate(client.updatedAt)}
                 </p>
               </div>
             </CardContent>
@@ -505,7 +473,7 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
                       </p>
                       <p className="mt-3 text-sm font-medium text-foreground">
                         {client.archivedAt
-                          ? `Archived on ${formatDate(client.archivedAt)}`
+                          ? `Archived on ${formatClientDate(client.archivedAt)}`
                           : "Archived date not recorded"}
                       </p>
                     </div>
@@ -542,7 +510,7 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
                   </span>
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Latest account update: {formatDate(client.updatedAt)}
+                      Latest account update: {formatClientDate(client.updatedAt)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       CRM create, update, archive, and contact events are

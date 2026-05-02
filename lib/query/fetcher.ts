@@ -2,7 +2,7 @@ import {
   ApiRequestError,
   getApiErrorMessage,
   readApiResponseBody,
-} from "@/utils/apiErrors";
+} from "@/lib/api/errors";
 
 export const fetchJson = async <T>(
   input: RequestInfo | URL,

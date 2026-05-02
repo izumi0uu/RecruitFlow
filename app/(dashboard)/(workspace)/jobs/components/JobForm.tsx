@@ -4,10 +4,6 @@ import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
-  apiJobPriorityValues,
-  apiJobStatusValues,
-  type ApiJobPriority,
-  type ApiJobStatus,
   type JobsListClientOption,
   type JobsListOwnerOption,
 } from "@recruitflow/contracts";
@@ -21,6 +17,7 @@ import type {
   JobFormState,
   JobFormValues,
 } from "../actions";
+import { jobPriorityOptions, jobStatusOptions } from "../utils";
 export {
   buildJobFormValues,
   emptyJobFormValues,
@@ -40,21 +37,6 @@ type JobFormProps = {
   jobId?: string;
   mode: "create" | "edit";
   ownerOptions: JobsListOwnerOption[];
-};
-
-const statusLabelMap: Record<ApiJobStatus, string> = {
-  closed: "Closed",
-  filled: "Filled",
-  intake: "Intake",
-  on_hold: "On hold",
-  open: "Open",
-};
-
-const priorityLabelMap: Record<ApiJobPriority, string> = {
-  high: "High",
-  low: "Low",
-  medium: "Medium",
-  urgent: "Urgent",
 };
 
 export const JobForm = ({
@@ -145,9 +127,9 @@ export const JobForm = ({
             defaultValue={values.status}
             required
           >
-            {apiJobStatusValues.map((status) => (
-              <option key={status} value={status}>
-                {statusLabelMap[status]}
+            {jobStatusOptions.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
               </option>
             ))}
           </select>
@@ -162,9 +144,9 @@ export const JobForm = ({
             defaultValue={values.priority}
             required
           >
-            {apiJobPriorityValues.map((priority) => (
-              <option key={priority} value={priority}>
-                {priorityLabelMap[priority]}
+            {jobPriorityOptions.map((priority) => (
+              <option key={priority.value} value={priority.value}>
+                {priority.label}
               </option>
             ))}
           </select>

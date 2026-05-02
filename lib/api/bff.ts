@@ -1,4 +1,4 @@
-import { isApiRequestError } from "@/utils/apiErrors";
+import { isApiRequestError } from "@/lib/api/errors";
 
 const toBffErrorResponse = (error: unknown) => {
   if (isApiRequestError(error)) {

@@ -4,8 +4,6 @@ import * as React from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import {
-  apiClientEditableStatusValues,
-  apiClientPriorityValues,
   clientMutationRequestSchema,
   type ApiClientEditableStatus,
   type ApiClientPriority,
@@ -15,8 +13,13 @@ import {
   type ClientsListOwnerOption,
 } from "@recruitflow/contracts";
 
-import { getApiErrorMessage } from "@/utils/apiErrors";
+import { emptyStringToUndefined } from "@/lib/form-data";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
+import {
+  clientEditablePriorityOptions,
+  clientEditableStatusOptions,
+} from "../../utils";
 import { useClientsCacheActions } from "./useClientMutations";
 
 type UseClientEditDialogOptions = {
@@ -36,34 +39,6 @@ export type ClientEditValues = {
   priority: ApiClientPriority;
   status: ApiClientEditableStatus;
   website: string;
-};
-
-const statusLabelMap: Record<ApiClientEditableStatus, string> = {
-  active: "Active",
-  paused: "Paused",
-  prospect: "Prospect",
-};
-
-const priorityLabelMap: Record<ApiClientPriority, string> = {
-  high: "High",
-  low: "Low",
-  medium: "Medium",
-};
-
-const statusOptions = apiClientEditableStatusValues.map((status) => ({
-  label: statusLabelMap[status],
-  value: status,
-}));
-
-const priorityOptions = apiClientPriorityValues.map((priority) => ({
-  label: priorityLabelMap[priority],
-  value: priority,
-}));
-
-const emptyToUndefined = (value: string) => {
-  const trimmedValue = value.trim();
-
-  return trimmedValue.length > 0 ? trimmedValue : undefined;
 };
 
 const getEditableStatus = (client: ClientRecord): ApiClientEditableStatus => {
@@ -96,7 +71,7 @@ const getClientPayload = (
     name: values.name,
     notesPreview: values.notesPreview,
     ownerUserId: canManageClientControls
-      ? emptyToUndefined(values.ownerUserId)
+      ? emptyStringToUndefined(values.ownerUserId)
       : client.ownerUserId ?? undefined,
     priority: canManageClientControls ? values.priority : client.priority,
     status: canManageClientControls ? values.status : getEditableStatus(client),
@@ -231,8 +206,8 @@ const useClientEditDialog = ({
     isArchived: client?.status === "archived",
     isPending,
     ownerSelectOptions,
-    priorityOptions,
-    statusOptions,
+    priorityOptions: clientEditablePriorityOptions,
+    statusOptions: clientEditableStatusOptions,
     success,
     updateValue,
     values,

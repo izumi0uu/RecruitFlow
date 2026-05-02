@@ -14,15 +14,9 @@ import {
 import { notFound, redirect } from "next/navigation";
 
 import type {
-  ApiJobPriority,
-  ApiJobStatus,
   JobDetailResponse,
   JobRecord,
   JobStageTemplateSummary,
-} from "@recruitflow/contracts";
-import {
-  apiJobPriorityValues,
-  apiJobStatusValues,
 } from "@recruitflow/contracts";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
@@ -39,82 +33,24 @@ import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 import { updateJobControlsAction } from "../actions";
+import {
+  formatDateInputValue,
+  formatJobDetailDate,
+  formatJobLabel,
+  formatJobPlacementFee,
+  formatJobSalaryRange,
+  jobDetailPriorityToneMap,
+  jobPriorityOptions,
+  jobStatusOptions,
+  jobStatusToneMap,
+  numericJobFormValue,
+} from "../utils";
 
 type PageProps = {
   params: Promise<{
     jobId: string;
   }>;
 };
-
-const statusToneMap: Record<ApiJobStatus, string> = {
-  closed: "border-border/70 bg-surface-1 text-muted-foreground",
-  filled: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  intake: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  on_hold: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  open: "border-lime-500/25 bg-lime-500/10 text-lime-700 dark:text-lime-300",
-};
-
-const priorityToneMap: Record<ApiJobPriority, string> = {
-  high: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  low: "bg-surface-1 text-muted-foreground",
-  medium: "bg-muted text-foreground",
-  urgent: "bg-foreground text-background",
-};
-
-const toTitleCase = (value: string) =>
-  value
-    .split("_")
-    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-    .join(" ");
-
-const formatDate = (value: string | null) => {
-  if (!value) {
-    return "Not set";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-};
-
-const getCurrencyCode = (value: string | null) => {
-  const currency = value?.trim().toUpperCase() || "USD";
-
-  return /^[A-Z]{3}$/.test(currency) ? currency : "USD";
-};
-
-const formatMoney = (value: number, currency: string | null) =>
-  new Intl.NumberFormat("en", {
-    currency: getCurrencyCode(currency),
-    maximumFractionDigits: 0,
-    style: "currency",
-  }).format(value);
-
-const formatSalaryRange = (job: JobRecord) => {
-  if (job.salaryMin == null && job.salaryMax == null) {
-    return "Compensation not set";
-  }
-
-  if (job.salaryMin != null && job.salaryMax != null) {
-    return `${formatMoney(job.salaryMin, job.currency)} - ${formatMoney(
-      job.salaryMax,
-      job.currency,
-    )}`;
-  }
-
-  return formatMoney(job.salaryMin ?? job.salaryMax ?? 0, job.currency);
-};
-
-const formatPlacementFee = (value: number | null) =>
-  value == null ? "Not set" : `${value}%`;
-
-const formatNumberInputValue = (value: number | null) =>
-  value == null ? "" : String(value);
-
-const formatDateInputValue = (value: string | null) =>
-  value ? value.slice(0, 10) : "";
 
 const getJobDetail = async (jobId: string) => {
   try {
@@ -182,7 +118,7 @@ const HiddenJobMutationFields = ({ job }: { job: JobRecord }) => (
     <input
       type="hidden"
       name="headcount"
-      value={formatNumberInputValue(job.headcount)}
+      value={numericJobFormValue(job.headcount)}
     />
     <input type="hidden" name="intakeSummary" value={job.intakeSummary ?? ""} />
     <input type="hidden" name="location" value={job.location ?? ""} />
@@ -190,17 +126,17 @@ const HiddenJobMutationFields = ({ job }: { job: JobRecord }) => (
     <input
       type="hidden"
       name="placementFeePercent"
-      value={formatNumberInputValue(job.placementFeePercent)}
+      value={numericJobFormValue(job.placementFeePercent)}
     />
     <input
       type="hidden"
       name="salaryMax"
-      value={formatNumberInputValue(job.salaryMax)}
+      value={numericJobFormValue(job.salaryMax)}
     />
     <input
       type="hidden"
       name="salaryMin"
-      value={formatNumberInputValue(job.salaryMin)}
+      value={numericJobFormValue(job.salaryMin)}
     />
     <input
       type="hidden"
@@ -234,9 +170,9 @@ const JobStatusPriorityControls = ({ job }: { job: JobRecord }) => (
             defaultValue={job.status}
             required
           >
-            {apiJobStatusValues.map((status) => (
-              <option key={status} value={status}>
-                {toTitleCase(status)}
+            {jobStatusOptions.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
               </option>
             ))}
           </select>
@@ -252,9 +188,9 @@ const JobStatusPriorityControls = ({ job }: { job: JobRecord }) => (
             defaultValue={job.priority}
             required
           >
-            {apiJobPriorityValues.map((priority) => (
-              <option key={priority} value={priority}>
-                {toTitleCase(priority)}
+            {jobPriorityOptions.map((priority) => (
+              <option key={priority.value} value={priority.value}>
+                {priority.label}
               </option>
             ))}
           </select>
@@ -400,11 +336,11 @@ const JobDetailPage = async ({ params }: PageProps) => {
           <Card className="overflow-hidden">
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge className={statusToneMap[job.status]}>
-                  {toTitleCase(job.status)}
+                <Badge className={jobStatusToneMap[job.status]}>
+                  {formatJobLabel(job.status)}
                 </Badge>
-                <Badge className={priorityToneMap[job.priority]}>
-                  {toTitleCase(job.priority)} priority
+                <Badge className={jobDetailPriorityToneMap[job.priority]}>
+                  {formatJobLabel(job.priority)} priority
                 </Badge>
               </div>
               <CardTitle className="text-2xl">Role baseline</CardTitle>
@@ -442,7 +378,7 @@ const JobDetailPage = async ({ params }: PageProps) => {
               <DetailTile
                 icon={<CalendarClock className="size-3.5" />}
                 label="Target fill"
-                value={formatDate(job.targetFillDate)}
+                value={formatJobDetailDate(job.targetFillDate)}
               />
             </CardContent>
           </Card>
@@ -504,7 +440,7 @@ const JobDetailPage = async ({ params }: PageProps) => {
               <DetailTile
                 icon={<DollarSign className="size-3.5" />}
                 label="Salary range"
-                value={formatSalaryRange(job)}
+                value={formatJobSalaryRange(job)}
               />
               <DetailTile
                 icon={<BriefcaseBusiness className="size-3.5" />}
@@ -514,7 +450,7 @@ const JobDetailPage = async ({ params }: PageProps) => {
               <DetailTile
                 icon={<ClipboardList className="size-3.5" />}
                 label="Placement fee"
-                value={formatPlacementFee(job.placementFeePercent)}
+                value={formatJobPlacementFee(job.placementFeePercent)}
               />
             </CardContent>
           </Card>
@@ -533,17 +469,17 @@ const JobDetailPage = async ({ params }: PageProps) => {
               <DetailTile
                 icon={<CalendarClock className="size-3.5" />}
                 label="Opened"
-                value={formatDate(job.openedAt)}
+                value={formatJobDetailDate(job.openedAt)}
               />
               <DetailTile
                 icon={<CalendarClock className="size-3.5" />}
                 label="Updated"
-                value={formatDate(job.updatedAt)}
+                value={formatJobDetailDate(job.updatedAt)}
               />
               <DetailTile
                 icon={<CalendarClock className="size-3.5" />}
                 label="Created"
-                value={formatDate(job.createdAt)}
+                value={formatJobDetailDate(job.createdAt)}
               />
             </CardContent>
           </Card>

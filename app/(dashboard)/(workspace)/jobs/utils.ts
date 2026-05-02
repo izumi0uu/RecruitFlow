@@ -2,6 +2,7 @@ import type {
   ApiJobPriority,
   ApiJobSort,
   ApiJobStatus,
+  JobRecord,
   JobsListItem,
 } from "@recruitflow/contracts";
 
@@ -59,6 +60,13 @@ export const jobPriorityToneMap: Record<ApiJobPriority, string> = {
   urgent: "border-foreground bg-foreground text-background",
 };
 
+export const jobDetailPriorityToneMap: Record<ApiJobPriority, string> = {
+  high: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  low: "bg-surface-1 text-muted-foreground",
+  medium: "bg-muted text-foreground",
+  urgent: "bg-foreground text-background",
+};
+
 export const formatJobLabel = (value: string) =>
   value
     .split("_")
@@ -76,13 +84,37 @@ export const formatJobDate = (value: string | null) => {
   }).format(new Date(value));
 };
 
+export const formatJobDetailDate = (value: string | null) => {
+  if (!value) {
+    return "Not set";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+};
+
 const getCurrencyCode = (value: string | null) => {
   const currency = value?.trim().toUpperCase() || "USD";
 
   return /^[A-Z]{3}$/.test(currency) ? currency : "USD";
 };
 
-export const formatJobSalary = (job: JobsListItem) => {
+const formatJobMoney = (value: number, currency: string | null) =>
+  new Intl.NumberFormat("en", {
+    currency: getCurrencyCode(currency),
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value);
+
+type JobCompensation = Pick<
+  JobsListItem | JobRecord,
+  "currency" | "salaryMax" | "salaryMin"
+>;
+
+export const formatJobSalary = (job: JobCompensation) => {
   if (job.salaryMin == null && job.salaryMax == null) {
     return "Compensation not set";
   }
@@ -102,6 +134,24 @@ export const formatJobSalary = (job: JobsListItem) => {
 
   return formatter.format(job.salaryMin ?? job.salaryMax ?? 0);
 };
+
+export const formatJobSalaryRange = (job: JobCompensation) => {
+  if (job.salaryMin == null && job.salaryMax == null) {
+    return "Compensation not set";
+  }
+
+  if (job.salaryMin != null && job.salaryMax != null) {
+    return `${formatJobMoney(job.salaryMin, job.currency)} - ${formatJobMoney(
+      job.salaryMax,
+      job.currency,
+    )}`;
+  }
+
+  return formatJobMoney(job.salaryMin ?? job.salaryMax ?? 0, job.currency);
+};
+
+export const formatJobPlacementFee = (value: number | null) =>
+  value == null ? "Not set" : `${value}%`;
 
 export const getJobFilterCount = (filters: JobListFilters) =>
   [
