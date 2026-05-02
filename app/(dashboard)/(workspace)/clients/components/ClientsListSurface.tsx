@@ -2,11 +2,8 @@
 
 import * as React from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
   BriefcaseBusiness,
   Building2,
-  Filter,
   Loader2,
   Pencil,
   Plus,
@@ -16,15 +13,16 @@ import {
   UserRound,
 } from "lucide-react";
 
-import type {
-  ClientsListItem,
-} from "@recruitflow/contracts";
+import type { ClientsListItem } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
+import {
+  WorkspaceListStatusBadge,
+  WorkspaceListSurfaceShell,
+} from "@/components/workspace/WorkspaceListSurfaceShell";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import type { ClientListFilters } from "@/lib/clients/filters";
 import { cn } from "@/lib/utils";
@@ -379,239 +377,209 @@ const ClientsListSurface = ({
         }
       />
 
-      <Card className="rounded-[2.15rem]">
-        <CardContent className="space-y-5 pt-1">
-          <div className="rounded-[1.65rem] border border-border/70 bg-workspace-muted-surface/48 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-            <div className="mb-3 flex flex-wrap items-center gap-2 px-1">
-              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                {filterCount ? `${filterCount} active filters` : "No filters"}
+      <WorkspaceListSurfaceShell
+        filterBadges={
+          <>
+            <WorkspaceListStatusBadge>
+              {filterCount ? `${filterCount} active filters` : "No filters"}
+            </WorkspaceListStatusBadge>
+            <WorkspaceListStatusBadge>
+              {clientsList?.workspaceScoped
+                ? "Workspace scoped"
+                : isLoading
+                  ? "Loading scope"
+                  : "Scope pending"}
+            </WorkspaceListStatusBadge>
+          </>
+        }
+        filterControlsClassName="lg:grid-cols-[minmax(0,1.18fr)_repeat(4,minmax(0,0.72fr))_auto]"
+        filterControls={
+          <>
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Search
               </span>
-              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                {clientsList?.workspaceScoped
-                  ? "Workspace scoped"
-                  : isLoading
-                    ? "Loading scope"
-                    : "Scope pending"}
+              <span className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Client, industry, or location"
+                  value={searchDraft}
+                  onChange={(event) => {
+                    setSearchDraft(event.target.value);
+                  }}
+                />
               </span>
-            </div>
+            </label>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.18fr)_repeat(4,minmax(0,0.72fr))_auto] lg:items-end">
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Search
-                </span>
-                <span className="relative block">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-9"
-                    placeholder="Client, industry, or location"
-                    value={searchDraft}
-                    onChange={(event) => {
-                      setSearchDraft(event.target.value);
-                    }}
-                  />
-                </span>
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Status
-                </span>
-                <FilterSelect
-                  value={filters.status}
-                  options={clientStatusFilterOptions}
-                  placeholder="All statuses"
-                  onValueChange={(status) => {
-                    applyFilters({
-                      page: "",
-                      status: status as ClientListFilters["status"],
-                    });
-                  }}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Owner
-                </span>
-                <FilterSelect
-                  value={filters.owner}
-                  options={ownerFilterOptions}
-                  placeholder="All owners"
-                  onValueChange={(owner) => {
-                    applyFilters({ owner, page: "" });
-                  }}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Priority
-                </span>
-                <FilterSelect
-                  value={filters.priority}
-                  options={clientPriorityFilterOptions}
-                  placeholder="All priorities"
-                  onValueChange={(priority) => {
-                    applyFilters({
-                      page: "",
-                      priority: priority as ClientListFilters["priority"],
-                    });
-                  }}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Sort
-                </span>
-                <FilterSelect
-                  value={filters.sort}
-                  options={clientSortOptions}
-                  placeholder="Name A-Z"
-                  onValueChange={(sort) => {
-                    applyFilters({
-                      page: "",
-                      sort: sort as ClientListFilters["sort"],
-                    });
-                  }}
-                />
-              </label>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  className="rounded-full"
-                  type="button"
-                  variant="outline"
-                  disabled={!hasFilters}
-                  onClick={resetFilters}
-                >
-                  <RotateCcw className="size-4" />
-                  Reset
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {isError ? (
-            <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  {error instanceof Error
-                    ? error.message
-                    : "Unable to refresh clients."}
-                </p>
-                <Button
-                  className="rounded-full"
-                  type="button"
-                  variant="outline"
-                  onClick={() => void refetch()}
-                >
-                  Retry
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {restoreClientMutation.error ? (
-            <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {restoreClientMutation.error}
-            </div>
-          ) : null}
-
-          <div className="overflow-hidden rounded-[1.85rem] border border-border/70 bg-background/42 shadow-[0_24px_70px_-54px_var(--shadow-color)]">
-            <div className="hidden grid-cols-[minmax(0,1fr)_minmax(15rem,0.34fr)_minmax(8.5rem,0.18fr)_minmax(10rem,auto)] gap-4 bg-workspace-muted-surface/62 px-5 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
-              <span>Client</span>
-              <span>Owner</span>
-              <span>Jobs</span>
-              <span className="text-right">Action</span>
-            </div>
-
-            {!clientsList ? (
-              <ClientsLoadingState />
-            ) : clientsList.items.length > 0 ? (
-              clientsList.items.map((client) => (
-                <ClientRow
-                  canRestoreClientControls={canRestoreClientControls}
-                  key={client.id}
-                  client={client}
-                  isRestorePending={
-                    restoreClientMutation.isPending &&
-                    restoreClientMutation.variables === client.id
-                  }
-                  onEditClient={(selectedClient) => {
-                    setEditingClient(selectedClient);
-                  }}
-                  onRestoreClient={(selectedClientId) => {
-                    restoreClientMutation.restoreClient(selectedClientId);
-                  }}
-                />
-              ))
-            ) : (
-              <ClientsEmptyState
-                hasFilters={hasFilters}
-                onCreateClient={() => {
-                  setIsCreateDialogOpen(true);
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Status
+              </span>
+              <FilterSelect
+                value={filters.status}
+                options={clientStatusFilterOptions}
+                placeholder="All statuses"
+                onValueChange={(status) => {
+                  applyFilters({
+                    page: "",
+                    status: status as ClientListFilters["status"],
+                  });
                 }}
-                onReset={resetFilters}
               />
-            )}
-          </div>
+            </label>
 
-          <div className="flex flex-col gap-3 rounded-[1.45rem] border border-border/70 bg-background/35 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter className="size-4" />
-              <span>
-                Page {currentPage} of {totalPages}
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Owner
               </span>
-              <span className="text-muted-foreground/60">·</span>
-              <span>{clientsList?.pagination.pageSize ?? 20} per page</span>
-              <span className="text-muted-foreground/60">·</span>
-              <span>{clientsList?.pagination.totalItems ?? 0} total</span>
-            </div>
+              <FilterSelect
+                value={filters.owner}
+                options={ownerFilterOptions}
+                placeholder="All owners"
+                onValueChange={(owner) => {
+                  applyFilters({ owner, page: "" });
+                }}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Priority
+              </span>
+              <FilterSelect
+                value={filters.priority}
+                options={clientPriorityFilterOptions}
+                placeholder="All priorities"
+                onValueChange={(priority) => {
+                  applyFilters({
+                    page: "",
+                    priority: priority as ClientListFilters["priority"],
+                  });
+                }}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Sort
+              </span>
+              <FilterSelect
+                value={filters.sort}
+                options={clientSortOptions}
+                placeholder="Name A-Z"
+                onValueChange={(sort) => {
+                  applyFilters({
+                    page: "",
+                    sort: sort as ClientListFilters["sort"],
+                  });
+                }}
+              />
+            </label>
 
             <div className="flex items-center gap-2">
               <Button
                 className="rounded-full"
                 type="button"
                 variant="outline"
-                disabled={!clientsList || currentPage <= 1}
-                onClick={() => {
-                  applyFilters({
-                    page: currentPage > 2 ? String(currentPage - 1) : "",
-                  });
-                }}
+                disabled={!hasFilters}
+                onClick={resetFilters}
               >
-                <ArrowLeft className="size-4" />
-                Previous
-              </Button>
-              <Button
-                className="rounded-full"
-                type="button"
-                variant="outline"
-                disabled={!clientsList || currentPage >= totalPages}
-                onClick={() => {
-                  applyFilters({ page: String(currentPage + 1) });
-                }}
-              >
-                Next
-                <ArrowRight className="size-4" />
+                <RotateCcw className="size-4" />
+                Reset
               </Button>
             </div>
-          </div>
+          </>
+        }
+        alerts={
+          <>
+            {isError ? (
+              <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p>
+                    {error instanceof Error
+                      ? error.message
+                      : "Unable to refresh clients."}
+                  </p>
+                  <Button
+                    className="rounded-full"
+                    type="button"
+                    variant="outline"
+                    onClick={() => void refetch()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
-          <div className="flex items-start gap-3 rounded-[1.45rem] border border-border/70 bg-workspace-muted-surface/45 px-4 py-4">
-            <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-[1rem] border border-border/70 bg-background/70">
-              <Sparkles className="size-4 text-muted-foreground" />
-            </span>
-            <p className="text-sm leading-6 text-muted-foreground">
-              This surface owns RF-020/RF-022 list browsing and filter
-              reproducibility while handing off to the client creation, detail,
-              edit, and contact flows through contract-backed routes.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            {restoreClientMutation.error ? (
+              <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {restoreClientMutation.error}
+              </div>
+            ) : null}
+          </>
+        }
+        contentHeader={
+          <>
+            <span>Client</span>
+            <span>Owner</span>
+            <span>Jobs</span>
+            <span className="text-right">Action</span>
+          </>
+        }
+        contentHeaderClassName="lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.34fr)_minmax(8.5rem,0.18fr)_minmax(10rem,auto)]"
+        pagination={{
+          currentPage,
+          disabled: !clientsList,
+          onNext: () => {
+            applyFilters({ page: String(currentPage + 1) });
+          },
+          onPrevious: () => {
+            applyFilters({
+              page: currentPage > 2 ? String(currentPage - 1) : "",
+            });
+          },
+          pageSize: clientsList?.pagination.pageSize ?? 20,
+          totalItems: clientsList?.pagination.totalItems ?? 0,
+          totalPages,
+        }}
+        footerNote={{
+          icon: <Sparkles className="size-4 text-muted-foreground" />,
+          children:
+            "This surface owns RF-020/RF-022 list browsing and filter reproducibility while handing off to the client creation, detail, edit, and contact flows through contract-backed routes.",
+        }}
+      >
+        {!clientsList ? (
+          <ClientsLoadingState />
+        ) : clientsList.items.length > 0 ? (
+          clientsList.items.map((client) => (
+            <ClientRow
+              canRestoreClientControls={canRestoreClientControls}
+              key={client.id}
+              client={client}
+              isRestorePending={
+                restoreClientMutation.isPending &&
+                restoreClientMutation.variables === client.id
+              }
+              onEditClient={(selectedClient) => {
+                setEditingClient(selectedClient);
+              }}
+              onRestoreClient={(selectedClientId) => {
+                restoreClientMutation.restoreClient(selectedClientId);
+              }}
+            />
+          ))
+        ) : (
+          <ClientsEmptyState
+            hasFilters={hasFilters}
+            onCreateClient={() => {
+              setIsCreateDialogOpen(true);
+            }}
+            onReset={resetFilters}
+          />
+        )}
+      </WorkspaceListSurfaceShell>
 
       {clientsList ? (
         <>

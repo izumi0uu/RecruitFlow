@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  DocumentMetadataForm,
-  type DocumentMetadataFormValues,
-} from "./DocumentMetadataForm";
+import { DocumentMetadataForm } from "./DocumentMetadataForm";
+import type { DocumentMetadataFormValues } from "./documentMetadataFormValues";
 import { useDocumentMetadataMutation } from "./hooks/useDocumentMutations";
 
 type DocumentMetadataFormControllerProps = {

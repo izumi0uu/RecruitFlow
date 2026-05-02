@@ -11,7 +11,7 @@ import {
 
 import { candidatesListRootQueryKey } from "@/lib/query/options";
 
-import type { CandidateFormValues } from "../CandidateForm";
+import type { CandidateFormValues } from "../candidateFormValues";
 
 type CandidateMutationMode = "create" | "edit";
 

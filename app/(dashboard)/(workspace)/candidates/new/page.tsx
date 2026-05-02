@@ -18,7 +18,7 @@ import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import {
   buildCandidateFormValues,
   emptyCandidateFormValues,
-} from "../components/CandidateForm";
+} from "../components/candidateFormValues";
 import { CandidateFormController } from "../components/CandidateFormController";
 
 const getCreateCandidateContext = async () => {

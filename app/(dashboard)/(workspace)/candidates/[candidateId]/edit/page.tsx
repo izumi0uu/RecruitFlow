@@ -16,7 +16,7 @@ import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
 import {
   buildCandidateFormValues,
-} from "../../components/CandidateForm";
+} from "../../components/candidateFormValues";
 import { CandidateFormController } from "../../components/CandidateFormController";
 
 type PageProps = {

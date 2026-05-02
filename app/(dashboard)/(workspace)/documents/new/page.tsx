@@ -16,7 +16,7 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 
 import {
   buildDocumentMetadataFormValues,
-} from "../components/DocumentMetadataForm";
+} from "../components/documentMetadataFormValues";
 import { DocumentMetadataFormController } from "../components/DocumentMetadataFormController";
 
 type PageProps = {

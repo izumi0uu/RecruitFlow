@@ -14,16 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
-export type DocumentMetadataFormValues = {
-  entityId: string;
-  entityType: ApiDocumentEntityType | "";
-  mimeType: string;
-  sizeBytes: string;
-  sourceFilename: string;
-  storageKey: string;
-  title: string;
-  type: ApiDocumentType | "";
-};
+import type { DocumentMetadataFormValues } from "./documentMetadataFormValues";
 
 type DocumentMetadataFormProps = {
   cancelHref: string;
@@ -47,24 +38,6 @@ const documentTypeLabelMap: Record<ApiDocumentType, string> = {
   jd: "Job description",
   resume: "Resume",
 };
-
-export const emptyDocumentMetadataFormValues: DocumentMetadataFormValues = {
-  entityId: "",
-  entityType: "",
-  mimeType: "application/pdf",
-  sizeBytes: "",
-  sourceFilename: "",
-  storageKey: "",
-  title: "",
-  type: "",
-};
-
-export const buildDocumentMetadataFormValues = (
-  values: Partial<DocumentMetadataFormValues>,
-): DocumentMetadataFormValues => ({
-  ...emptyDocumentMetadataFormValues,
-  ...values,
-});
 
 const getString = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value : "";

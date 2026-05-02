@@ -2,10 +2,8 @@
 
 import type { CandidatesListOwnerOption } from "@recruitflow/contracts";
 
-import {
-  CandidateForm,
-  type CandidateFormValues,
-} from "./CandidateForm";
+import { CandidateForm } from "./CandidateForm";
+import type { CandidateFormValues } from "./candidateFormValues";
 import { useCandidateMutation } from "./hooks/useCandidateMutations";
 
 type CandidateFormControllerProps = {

@@ -16,10 +16,13 @@ import {
 import type { JobsListItem, JobsListResponse } from "@recruitflow/contracts";
 
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
+import {
+  WorkspaceListStatusBadge,
+  WorkspaceListSurfaceShell,
+} from "@/components/workspace/WorkspaceListSurfaceShell";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import type { JobListFilters } from "@/lib/jobs/filters";
 import { cn } from "@/lib/utils";
@@ -273,126 +276,138 @@ const JobsListSurface = ({
         }
       />
 
-      <Card className="rounded-[2.15rem]">
-        <CardContent className="space-y-5 pt-1">
-          <div className="rounded-[1.65rem] border border-border/70 bg-workspace-muted-surface/48 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-            <div className="mb-3 flex flex-wrap items-center gap-2 px-1">
-              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                {filterCount ? `${filterCount} active filters` : "No filters"}
+      <WorkspaceListSurfaceShell
+        filterBadges={
+          <>
+            <WorkspaceListStatusBadge>
+              {filterCount ? `${filterCount} active filters` : "No filters"}
+            </WorkspaceListStatusBadge>
+            <WorkspaceListStatusBadge>
+              {jobsList.workspaceScoped ? "Workspace scoped" : "Scope pending"}
+            </WorkspaceListStatusBadge>
+          </>
+        }
+        filterControlsClassName="lg:grid-cols-[minmax(0,1.16fr)_repeat(5,minmax(0,0.72fr))_auto]"
+        filterControls={
+          <>
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Search
               </span>
-              <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-                {jobsList.workspaceScoped
-                  ? "Workspace scoped"
-                  : "Scope pending"}
+              <span className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Role, client, department, or location"
+                  value={searchDraft}
+                  onChange={(event) => {
+                    setSearchDraft(event.target.value);
+                  }}
+                />
               </span>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Client
+              </span>
+              <FilterSelect
+                value={filters.clientId}
+                options={clientOptions}
+                placeholder="All clients"
+                onValueChange={(clientId) => {
+                  applyFilters({ clientId, page: "" });
+                }}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Status
+              </span>
+              <FilterSelect
+                value={filters.status}
+                options={[
+                  { label: "All statuses", value: "" },
+                  ...jobStatusOptions,
+                ]}
+                placeholder="All statuses"
+                onValueChange={(status) => {
+                  applyFilters({
+                    page: "",
+                    status: status as JobListFilters["status"],
+                  });
+                }}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Owner
+              </span>
+              <FilterSelect
+                value={filters.owner}
+                options={ownerOptions}
+                placeholder="All owners"
+                onValueChange={(owner) => {
+                  applyFilters({ owner, page: "" });
+                }}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Priority
+              </span>
+              <FilterSelect
+                value={filters.priority}
+                options={[
+                  { label: "All priorities", value: "" },
+                  ...jobPriorityOptions,
+                ]}
+                placeholder="All priorities"
+                onValueChange={(priority) => {
+                  applyFilters({
+                    page: "",
+                    priority: priority as JobListFilters["priority"],
+                  });
+                }}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Sort
+              </span>
+              <FilterSelect
+                value={filters.sort}
+                options={jobSortOptions}
+                placeholder="Recently opened"
+                onValueChange={(sort) => {
+                  applyFilters({
+                    page: "",
+                    sort: sort as JobListFilters["sort"],
+                  });
+                }}
+              />
+            </label>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                disabled={!hasFilters}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="size-4" />
+                Reset
+              </Button>
             </div>
-
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.16fr)_repeat(5,minmax(0,0.72fr))] lg:items-end">
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Search
-                </span>
-                <span className="relative block">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-9"
-                    placeholder="Role, client, department, or location"
-                    value={searchDraft}
-                    onChange={(event) => {
-                      setSearchDraft(event.target.value);
-                    }}
-                  />
-                </span>
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Client
-                </span>
-                <FilterSelect
-                  value={filters.clientId}
-                  options={clientOptions}
-                  placeholder="All clients"
-                  onValueChange={(clientId) => {
-                    applyFilters({ clientId, page: "" });
-                  }}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Status
-                </span>
-                <FilterSelect
-                  value={filters.status}
-                  options={[
-                    { label: "All statuses", value: "" },
-                    ...jobStatusOptions,
-                  ]}
-                  placeholder="All statuses"
-                  onValueChange={(status) => {
-                    applyFilters({
-                      page: "",
-                      status: status as JobListFilters["status"],
-                    });
-                  }}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Owner
-                </span>
-                <FilterSelect
-                  value={filters.owner}
-                  options={ownerOptions}
-                  placeholder="All owners"
-                  onValueChange={(owner) => {
-                    applyFilters({ owner, page: "" });
-                  }}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Priority
-                </span>
-                <FilterSelect
-                  value={filters.priority}
-                  options={[
-                    { label: "All priorities", value: "" },
-                    ...jobPriorityOptions,
-                  ]}
-                  placeholder="All priorities"
-                  onValueChange={(priority) => {
-                    applyFilters({
-                      page: "",
-                      priority: priority as JobListFilters["priority"],
-                    });
-                  }}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Sort
-                </span>
-                <FilterSelect
-                  value={filters.sort}
-                  options={jobSortOptions}
-                  placeholder="Recently opened"
-                  onValueChange={(sort) => {
-                    applyFilters({
-                      page: "",
-                      sort: sort as JobListFilters["sort"],
-                    });
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-
-          {isError ? (
+          </>
+        }
+        alerts={
+          isError ? (
             <div className="rounded-[1.35rem] border border-destructive/30 bg-destructive/10 p-4">
               <p className="text-sm font-medium text-foreground">
                 Unable to refresh jobs.
@@ -414,83 +429,46 @@ const JobsListSurface = ({
                 Retry
               </Button>
             </div>
-          ) : null}
-
-          <div className="overflow-hidden rounded-[1.65rem] border border-border/70 bg-background/58">
-            <div className="grid gap-3 border-b border-border/70 bg-surface-1/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:px-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(10rem,0.46fr)_minmax(10rem,0.42fr)_minmax(8rem,0.32fr)]">
-              <span>Role</span>
-              <span>Client</span>
-              <span>Owner</span>
-              <span>Target</span>
-            </div>
-
-            {jobsList.items.length > 0 ? (
-              jobsList.items.map((job) => (
-                <JobRow key={job.id} canManageJobs={canManageJobs} job={job} />
-              ))
-            ) : (
-              <JobsEmptyState hasFilters={hasFilters} onReset={resetFilters} />
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.3rem] border border-border/70 bg-surface-1/70 px-4 py-3 text-sm text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-3">
-              <span>{jobsList.pagination.pageSize} per page</span>
-              <span>{jobsList.pagination.totalItems} total</span>
-              <span>
-                Page {currentPage} of {totalPages}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="rounded-full"
-                disabled={currentPage <= 1}
-                onClick={() => {
-                  applyFilters({
-                    page: currentPage - 1 > 1 ? String(currentPage - 1) : "",
-                  });
-                }}
-              >
-                Previous
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="rounded-full"
-                disabled={currentPage >= totalPages}
-                onClick={() => {
-                  applyFilters({ page: String(currentPage + 1) });
-                }}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-[1.35rem] border border-border/70 bg-surface-1/70 p-4">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-9 items-center justify-center rounded-full border border-border/70 bg-background">
-                <Filter className="size-4 text-muted-foreground" />
-              </span>
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Jobs intake boundary
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  This page owns the workspace-scoped jobs list, filter surface,
-                  create/edit entry points, and API-backed default stage
-                  initialization. Full job detail remains downstream.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          ) : null
+        }
+        contentHeader={
+          <>
+            <span>Role</span>
+            <span>Client</span>
+            <span>Owner</span>
+            <span>Target</span>
+          </>
+        }
+        contentHeaderClassName="lg:grid-cols-[minmax(0,1.35fr)_minmax(10rem,0.46fr)_minmax(10rem,0.42fr)_minmax(8rem,0.32fr)]"
+        pagination={{
+          currentPage,
+          onNext: () => {
+            applyFilters({ page: String(currentPage + 1) });
+          },
+          onPrevious: () => {
+            applyFilters({
+              page: currentPage - 1 > 1 ? String(currentPage - 1) : "",
+            });
+          },
+          pageSize: jobsList.pagination.pageSize,
+          totalItems: jobsList.pagination.totalItems,
+          totalPages,
+        }}
+        footerNote={{
+          icon: <Filter className="size-4 text-muted-foreground" />,
+          title: "Jobs intake boundary",
+          children:
+            "This page owns the workspace-scoped jobs list, filter surface, create/edit entry points, and API-backed default stage initialization. Full job detail remains downstream.",
+        }}
+      >
+        {jobsList.items.length > 0 ? (
+          jobsList.items.map((job) => (
+            <JobRow key={job.id} canManageJobs={canManageJobs} job={job} />
+          ))
+        ) : (
+          <JobsEmptyState hasFilters={hasFilters} onReset={resetFilters} />
+        )}
+      </WorkspaceListSurfaceShell>
     </section>
   );
 };

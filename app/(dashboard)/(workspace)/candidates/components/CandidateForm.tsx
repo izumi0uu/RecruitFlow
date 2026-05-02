@@ -10,22 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
-export type CandidateFormValues = {
-  currentCompany: string;
-  currentTitle: string;
-  email: string;
-  fullName: string;
-  headline: string;
-  linkedinUrl: string;
-  location: string;
-  noticePeriod: string;
-  ownerUserId: string;
-  phone: string;
-  portfolioUrl: string;
-  salaryExpectation: string;
-  skillsText: string;
-  source: string;
-};
+import type { CandidateFormValues } from "./candidateFormValues";
 
 type CandidateFormProps = {
   candidateId?: string;
@@ -36,30 +21,6 @@ type CandidateFormProps = {
   onSubmit: (values: CandidateFormValues) => void;
   ownerOptions: CandidatesListOwnerOption[];
 };
-
-export const emptyCandidateFormValues: CandidateFormValues = {
-  currentCompany: "",
-  currentTitle: "",
-  email: "",
-  fullName: "",
-  headline: "",
-  linkedinUrl: "",
-  location: "",
-  noticePeriod: "",
-  ownerUserId: "",
-  phone: "",
-  portfolioUrl: "",
-  salaryExpectation: "",
-  skillsText: "",
-  source: "",
-};
-
-export const buildCandidateFormValues = (
-  values: Partial<CandidateFormValues>,
-): CandidateFormValues => ({
-  ...emptyCandidateFormValues,
-  ...values,
-});
 
 const getString = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value : "";

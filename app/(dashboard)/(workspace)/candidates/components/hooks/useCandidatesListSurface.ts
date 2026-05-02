@@ -3,6 +3,7 @@
 import * as React from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useUrlBackedListFilters } from "@/hooks/useUrlBackedListFilters";
 import {
   areCandidateListFiltersEqual,
@@ -50,11 +51,35 @@ const useCandidatesListSurface = ({
   const [sourceDraft, setSourceDraft] = React.useState(
     normalizedInitialFilters.source,
   );
+  const debouncedLocationDraft = useDebouncedValue(locationDraft.trim(), 320);
+  const debouncedSourceDraft = useDebouncedValue(sourceDraft.trim(), 320);
 
   React.useEffect(() => {
     setLocationDraft(filters.location);
     setSourceDraft(filters.source);
   }, [filters.location, filters.source]);
+
+  React.useEffect(() => {
+    if (debouncedSourceDraft === filters.source) {
+      return;
+    }
+
+    applyFilters({
+      page: "",
+      source: debouncedSourceDraft,
+    });
+  }, [applyFilters, debouncedSourceDraft, filters.source]);
+
+  React.useEffect(() => {
+    if (debouncedLocationDraft === filters.location) {
+      return;
+    }
+
+    applyFilters({
+      location: debouncedLocationDraft,
+      page: "",
+    });
+  }, [applyFilters, debouncedLocationDraft, filters.location]);
 
   const {
     data: candidatesList,
@@ -69,6 +94,8 @@ const useCandidatesListSurface = ({
   });
   const filterCount = getCandidateFilterCount(filters);
   const hasFilters = filterCount > 0;
+  const currentPage = candidatesList?.pagination.page ?? 1;
+  const totalPages = candidatesList?.pagination.totalPages ?? 1;
 
   const resetFilters = React.useCallback(() => {
     setLocationDraft("");
@@ -82,11 +109,12 @@ const useCandidatesListSurface = ({
       q: "",
       source: "",
     });
-  }, [applyFilters, setSearchDraft]);
+  }, [applyFilters, setSearchDraft, setLocationDraft, setSourceDraft]);
 
   return {
     applyFilters,
     candidatesList,
+    currentPage,
     error,
     filterCount,
     filters,
@@ -102,6 +130,7 @@ const useCandidatesListSurface = ({
     setSearchDraft,
     setSourceDraft,
     sourceDraft,
+    totalPages,
   };
 };
 

@@ -14,7 +14,7 @@ import {
   documentsListRootQueryKey,
 } from "@/lib/query/options";
 
-import type { DocumentMetadataFormValues } from "../DocumentMetadataForm";
+import type { DocumentMetadataFormValues } from "../documentMetadataFormValues";
 
 const getDocumentMetadataPayload = (values: DocumentMetadataFormValues) => ({
   entityId: values.entityId,

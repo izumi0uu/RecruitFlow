@@ -1,10 +1,8 @@
 "use client";
 
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
-  BadgeCheck,
   FileText,
-  Filter,
   Pencil,
   Plus,
   Loader2,
@@ -18,9 +16,12 @@ import type { CandidatesListItem } from "@recruitflow/contracts";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
+import {
+  WorkspaceListStatusBadge,
+  WorkspaceListSurfaceShell,
+} from "@/components/workspace/WorkspaceListSurfaceShell";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import type { CandidateListFilters } from "@/lib/candidates/filters";
 import { cn } from "@/lib/utils";
@@ -169,12 +170,55 @@ const CandidateRowsSkeleton = () => (
   </div>
 );
 
+const CandidatesEmptyState = ({
+  hasFilters,
+  onReset,
+}: {
+  hasFilters: boolean;
+  onReset: () => void;
+}) => (
+  <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-surface-1/70 p-6 text-center">
+    <span className="mx-auto flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70">
+      <FileText className="size-5 text-foreground" />
+    </span>
+    <p className="mt-5 text-sm font-semibold text-foreground">
+      {hasFilters
+        ? "No candidates match those filters"
+        : "No candidates in this workspace yet"}
+    </p>
+    <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+      {hasFilters
+        ? "Clear a filter or search for a broader profile signal to widen the candidate pool."
+        : "Create a candidate profile to make the inventory useful for future document upload, submission, and AI summary workflows."}
+    </p>
+    {hasFilters ? (
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-4 rounded-full"
+        onClick={onReset}
+      >
+        <RotateCcw className="size-4" />
+        Reset filters
+      </Button>
+    ) : (
+      <Button asChild variant="outline" className="mt-4 rounded-full">
+        <TrackedLink href="/candidates/new">
+          <Plus className="size-4" />
+          Create candidate
+        </TrackedLink>
+      </Button>
+    )}
+  </div>
+);
+
 export const CandidatesListSurface = ({
   initialFilters,
 }: CandidatesListSurfaceProps) => {
   const {
     applyFilters,
     candidatesList,
+    currentPage,
     error,
     filterCount,
     filters,
@@ -190,22 +234,23 @@ export const CandidatesListSurface = ({
     setSearchDraft,
     setSourceDraft,
     sourceDraft,
+    totalPages,
   } = useCandidatesListSurface({
     initialFilters,
   });
   const candidateItems = candidatesList?.items ?? [];
   const ownerOptions = candidatesList?.ownerOptions ?? [];
-
-  const handleFilterSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    applyFilters({
-      location: locationDraft,
-      page: "",
-      q: searchDraft,
-      source: sourceDraft,
-    });
-  };
+  const ownerFilterOptions = [
+    { label: "All owners", value: "" },
+    ...ownerOptions.map((owner) => ({
+      label: owner.name ?? owner.email,
+      value: owner.id,
+    })),
+  ];
+  const resumeFilterOptions = [
+    { label: "Any resume", value: "" },
+    ...hasResumeOptions,
+  ];
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -243,109 +288,166 @@ export const CandidatesListSurface = ({
         }
       />
 
-      <Card>
-        <CardContent className="space-y-4 p-4 md:p-5">
-          <form
-            className="grid gap-3 xl:grid-cols-[minmax(16rem,1fr)_minmax(10rem,0.48fr)_minmax(9rem,0.36fr)_minmax(9rem,0.36fr)_auto]"
-            onSubmit={handleFilterSubmit}
-          >
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                aria-label="Search candidates"
-                className="pl-9"
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Search name, skills, title, company..."
+      <WorkspaceListSurfaceShell
+        filterBadges={
+          <>
+            <WorkspaceListStatusBadge>
+              {filterCount ? `${filterCount} active filters` : "No filters"}
+            </WorkspaceListStatusBadge>
+            <WorkspaceListStatusBadge>
+              {candidatesList?.workspaceScoped
+                ? "Workspace scoped"
+                : isPending
+                  ? "Loading scope"
+                  : "Scope pending"}
+            </WorkspaceListStatusBadge>
+            {isFetching ? (
+              <WorkspaceListStatusBadge>
+                <Loader2 className="size-3.5 animate-spin" />
+                Syncing
+              </WorkspaceListStatusBadge>
+            ) : null}
+          </>
+        }
+        filterControlsClassName="lg:grid-cols-[minmax(0,1.16fr)_repeat(4,minmax(0,0.72fr))_auto]"
+        filterControls={
+          <>
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Search
+              </span>
+              <span className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  value={searchDraft}
+                  onChange={(event) => setSearchDraft(event.target.value)}
+                  placeholder="Name, skills, title, or company"
+                />
+              </span>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Owner
+              </span>
+              <FilterSelect
+                value={filters.owner}
+                options={ownerFilterOptions}
+                placeholder="All owners"
+                onValueChange={(owner) => {
+                  applyFilters({ owner, page: "" });
+                }}
               />
-            </div>
+            </label>
 
-            <FilterSelect
-              value={filters.owner}
-              options={[
-                { label: "All owners", value: "" },
-                ...ownerOptions.map((owner) => ({
-                  label: owner.name ?? owner.email,
-                  value: owner.id,
-                })),
-              ]}
-              placeholder="All owners"
-              onValueChange={(owner) => applyFilters({ owner, page: "" })}
-            />
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Source
+              </span>
+              <Input
+                value={sourceDraft}
+                onChange={(event) => setSourceDraft(event.target.value)}
+                placeholder="Referral, LinkedIn..."
+              />
+            </label>
 
-            <Input
-              aria-label="Source"
-              value={sourceDraft}
-              onChange={(event) => setSourceDraft(event.target.value)}
-              placeholder="Source"
-            />
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Location
+              </span>
+              <Input
+                value={locationDraft}
+                onChange={(event) => setLocationDraft(event.target.value)}
+                placeholder="City, state, remote"
+              />
+            </label>
 
-            <Input
-              aria-label="Location"
-              value={locationDraft}
-              onChange={(event) => setLocationDraft(event.target.value)}
-              placeholder="Location"
-            />
-
-            <div className="flex flex-wrap gap-2 xl:justify-end">
+            <label className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Resume
+              </span>
               <FilterSelect
                 value={filters.hasResume}
-                options={[
-                  { label: "Any resume", value: "" },
-                  ...hasResumeOptions,
-                ]}
+                options={resumeFilterOptions}
                 placeholder="Any resume"
-                onValueChange={(hasResume) => applyFilters({
-                  hasResume: hasResume as CandidateListFilters["hasResume"],
-                  page: "",
-                })}
+                onValueChange={(hasResume) => {
+                  applyFilters({
+                    hasResume: hasResume as CandidateListFilters["hasResume"],
+                    page: "",
+                  });
+                }}
               />
-              <Button type="submit" className="rounded-full">
-                <Filter className="size-4" />
-                Apply
+            </label>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                disabled={!hasFilters}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="size-4" />
+                Reset
               </Button>
-              {hasFilters ? (
+            </div>
+          </>
+        }
+        alerts={
+          isError && candidatesList ? (
+            <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  {error instanceof Error
+                    ? error.message
+                    : "Unable to refresh candidates."}
+                </p>
                 <Button
+                  className="rounded-full"
                   type="button"
                   variant="outline"
-                  className="rounded-full"
-                  onClick={resetFilters}
+                  onClick={() => void refetch()}
                 >
-                  <RotateCcw className="size-4" />
-                  Reset
+                  Retry
                 </Button>
-              ) : null}
+              </div>
             </div>
-          </form>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>
-              {hasFilters
-                ? `${filterCount} filter${filterCount === 1 ? "" : "s"} active`
-                : "Showing the current workspace candidate inventory"}
-            </span>
-            {isError ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
-                Candidate sync failed
-              </span>
-            ) : isFetching ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface-1 px-3 py-1 text-xs font-semibold text-muted-foreground">
-                <Loader2 className="size-3.5 animate-spin" />
-                Syncing candidates
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                <BadgeCheck className="size-3.5" />
-                Workspace scoped
-              </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="overflow-hidden">
+          ) : null
+        }
+        contentHeader={
+          <>
+            <span>Candidate</span>
+            <span>Owner</span>
+            <span>Location</span>
+            <span className="text-right">Action</span>
+          </>
+        }
+        contentHeaderClassName="lg:grid-cols-[minmax(0,1.2fr)_minmax(10rem,0.44fr)_minmax(9rem,0.34fr)_auto]"
+        pagination={{
+          currentPage,
+          disabled: !candidatesList,
+          onNext: () => {
+            applyFilters({ page: String(currentPage + 1) });
+          },
+          onPrevious: () => {
+            applyFilters({
+              page: currentPage > 2 ? String(currentPage - 1) : "",
+            });
+          },
+          pageSize: candidatesList?.pagination.pageSize ?? 20,
+          totalItems: candidatesList?.pagination.totalItems ?? 0,
+          totalPages,
+        }}
+        footerNote={{
+          icon: <FileText className="size-4 text-muted-foreground" />,
+          title: "Candidate inventory boundary",
+          children:
+            "This surface owns candidate list browsing, URL-backed filters, resume readiness, and handoff points for document upload and submission workflows.",
+        }}
+      >
         {isError && !candidatesList ? (
-          <CardContent className="p-6">
+          <div className="p-6">
             <div className="rounded-[1.5rem] border border-dashed border-rose-500/30 bg-rose-500/10 p-6">
               <p className="text-sm font-semibold text-foreground">
                 Could not load candidates
@@ -367,7 +469,7 @@ export const CandidatesListSurface = ({
                 Retry
               </Button>
             </div>
-          </CardContent>
+          </div>
         ) : (isPending || isFetching) && candidateItems.length === 0 ? (
           <CandidateRowsSkeleton />
         ) : candidateItems.length > 0 ? (
@@ -377,28 +479,14 @@ export const CandidatesListSurface = ({
             ))}
           </div>
         ) : (
-          <CardContent className="p-6">
-            <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-surface-1/70 p-6">
-              <p className="text-sm font-semibold text-foreground">
-                {hasFilters
-                  ? "No candidates match those filters"
-                  : "No candidates in this workspace yet"}
-              </p>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {hasFilters
-                  ? "Clear a filter or search for a broader profile signal to widen the candidate pool."
-                  : "Create a candidate profile to make the inventory useful for future document upload, submission, and AI summary workflows."}
-              </p>
-              <Button asChild variant="outline" className="mt-4 rounded-full">
-                <TrackedLink href="/candidates/new">
-                  <Plus className="size-4" />
-                  Create candidate
-                </TrackedLink>
-              </Button>
-            </div>
-          </CardContent>
+          <div className="p-6">
+            <CandidatesEmptyState
+              hasFilters={hasFilters}
+              onReset={resetFilters}
+            />
+          </div>
         )}
-      </Card>
+      </WorkspaceListSurfaceShell>
     </section>
   );
 };
