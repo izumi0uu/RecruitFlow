@@ -7,14 +7,12 @@ import {
 } from "@recruitflow/contracts";
 import {
   ArrowRight,
-  CalendarClock,
   Gauge,
   KanbanSquare,
   ListChecks,
   Plus,
   RotateCcw,
   ShieldCheck,
-  UserRound,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -23,6 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { cn } from "@/lib/utils";
 
+import { PipelineBoardView } from "./PipelineBoardView";
 import { PipelineStageActions } from "./PipelineStageActions";
 
 export type PipelineView = "board" | "list";
@@ -49,7 +48,7 @@ type PipelineMetric = {
   value: ReactNode;
 };
 
-type PipelineStageGroup = {
+export type PipelineStageGroup = {
   description: string;
   isClosedStage: boolean;
   items: SubmissionRecord[];
@@ -372,140 +371,6 @@ const PipelineFocusPanel = ({
     </aside>
   );
 };
-
-const PipelineOpportunityCard = ({
-  canChangeStage,
-  submission,
-}: {
-  canChangeStage: boolean;
-  submission: SubmissionRecord;
-}) => (
-  <article
-    className={cn(
-      "group relative overflow-hidden rounded-[1.1rem] border bg-background/76 p-3.5 shadow-[0_20px_48px_-42px_var(--shadow-color)]",
-      stageBorderClassMap[submission.stage],
-    )}
-  >
-    <div
-      className={cn(
-        "absolute bottom-0 left-0 top-0 w-1",
-        stageAccentClassMap[submission.stage],
-      )}
-    />
-    <div className="flex items-start justify-between gap-3 pl-1.5">
-      <div className="min-w-0">
-        <h3 className="truncate text-sm font-semibold text-foreground">
-          {getCandidateTitle(submission)}
-        </h3>
-        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-          {getCandidateSubtitle(submission)}
-        </p>
-      </div>
-      <PipelineBadge className={riskToneClassMap[submission.riskFlag]}>
-        {riskLabelMap[submission.riskFlag]}
-      </PipelineBadge>
-    </div>
-
-    <div className="mt-3 rounded-[0.9rem] border border-border/60 bg-surface-1/62 px-3 py-2.5">
-      <p className="truncate text-sm font-medium text-foreground">
-        {getRoleTitle(submission)}
-      </p>
-      <p className="mt-1 truncate text-xs text-muted-foreground">
-        {getClientName(submission)}
-      </p>
-    </div>
-
-    <div className="mt-3 min-h-20 rounded-[0.95rem] bg-workspace-muted-surface/48 px-3 py-3">
-      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Next step
-      </p>
-      <p className="mt-2 line-clamp-2 text-sm leading-5 text-foreground/88">
-        {submission.nextStep ?? "No next step captured yet."}
-      </p>
-    </div>
-
-    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-        <UserRound className="size-3.5 shrink-0" />
-        <span className="truncate">{getOwnerLabel(submission)}</span>
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <CalendarClock className="size-3.5" />
-        {formatDate(getTouchValue(submission))}
-      </span>
-    </div>
-
-    <PipelineStageActions
-      canChangeStage={canChangeStage}
-      className="mt-3 pl-1.5"
-      compact
-      currentStage={submission.stage}
-      submissionId={submission.id}
-    />
-  </article>
-);
-
-const PipelineBoardView = ({
-  canChangeStage,
-  groups,
-}: {
-  canChangeStage: boolean;
-  groups: PipelineStageGroup[];
-}) => (
-  <div className="overflow-x-auto pb-2">
-    <div className="grid min-w-[80rem] grid-cols-7 gap-3">
-      {groups.map((stage) => (
-        <section
-          key={stage.key}
-          className="flex min-h-[26rem] flex-col rounded-[1.25rem] border border-border/70 bg-workspace-muted-surface/45 p-3"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "size-2.5 rounded-full",
-                    stageAccentClassMap[stage.key],
-                  )}
-                />
-                <h2 className="truncate text-sm font-semibold text-foreground">
-                  {stage.label}
-                </h2>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {stage.description}
-              </p>
-            </div>
-            <span className="rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-              {stage.items.length}
-            </span>
-          </div>
-
-          <div className="mt-3 space-y-3">
-            {stage.items.length > 0 ? (
-              stage.items.map((submission) => (
-                <PipelineOpportunityCard
-                  key={submission.id}
-                  canChangeStage={canChangeStage}
-                  submission={submission}
-                />
-              ))
-            ) : (
-              <div className="rounded-[1rem] border border-dashed border-border/70 bg-background/42 px-3 py-8 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Clear lane
-                </p>
-                <p className="mt-2 text-sm leading-5 text-muted-foreground">
-                  No opportunities are parked here.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-      ))}
-    </div>
-  </div>
-);
 
 const StagePill = ({ stage }: { stage: ApiSubmissionStage }) => (
   <PipelineBadge className="border-border/70 bg-surface-1 text-muted-foreground">
