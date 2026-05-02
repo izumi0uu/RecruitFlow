@@ -22,7 +22,6 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { cn } from "@/lib/utils";
 
 import { PipelineBoardView } from "./PipelineBoardView";
-import { PipelineStageActions } from "./PipelineStageActions";
 
 export type PipelineView = "board" | "list";
 
@@ -381,28 +380,21 @@ const StagePill = ({ stage }: { stage: ApiSubmissionStage }) => (
   </PipelineBadge>
 );
 
-const PipelineListView = ({
-  canChangeStage,
-  items,
-}: {
-  canChangeStage: boolean;
-  items: SubmissionRecord[];
-}) => (
+const PipelineListView = ({ items }: { items: SubmissionRecord[] }) => (
   <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-background/48">
-    <div className="hidden grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)_14rem] gap-4 bg-workspace-muted-surface/62 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
+    <div className="hidden grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(14rem,0.9fr)] gap-4 bg-workspace-muted-surface/62 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground lg:grid">
       <span>Candidate</span>
       <span>Role</span>
       <span>Stage</span>
       <span>Owner</span>
       <span>Next step</span>
-      <span>Action</span>
     </div>
 
     <div className="divide-y divide-border/60">
       {items.map((submission) => (
         <article
           key={submission.id}
-          className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(12rem,0.8fr)_14rem] lg:items-center"
+          className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(13rem,0.75fr)_10rem_minmax(12rem,0.7fr)_minmax(14rem,0.9fr)] lg:items-center"
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">
@@ -441,13 +433,6 @@ const PipelineListView = ({
               {submission.nextStep ?? "No next step captured yet."}
             </p>
           </div>
-
-          <PipelineStageActions
-            canChangeStage={canChangeStage}
-            compact
-            currentStage={submission.stage}
-            submissionId={submission.id}
-          />
         </article>
       ))}
     </div>
@@ -707,7 +692,7 @@ export const PipelineSurface = ({
                 groups={stageGroups}
               />
             ) : (
-              <PipelineListView canChangeStage={canChangeStage} items={items} />
+              <PipelineListView items={items} />
             )
           ) : (
             <PipelineEmptyState hasFilters={hasFilters} resetHref={resetHref} />

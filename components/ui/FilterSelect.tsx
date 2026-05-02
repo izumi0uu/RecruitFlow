@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown } from "lucide-react";
 import * as React from "react";
-
+import { Button } from "@/components/ui/Button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +59,7 @@ const FilterSelect = ({
       {name ? <input name={name} type="hidden" value={value} /> : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
+          <Button
             id={id}
             type="button"
             disabled={disabled}
@@ -67,6 +67,7 @@ const FilterSelect = ({
               "group input cursor-pointer items-center justify-between gap-3 pr-3 text-left disabled:cursor-not-allowed disabled:opacity-60",
               className,
             )}
+            variant="outline"
           >
             <span
               className={cn(
@@ -77,7 +78,7 @@ const FilterSelect = ({
               {selectedOption?.label ?? placeholder}
             </span>
             <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"

@@ -4,17 +4,11 @@ import {
   type ApiSubmissionStage,
   apiDefaultJobStageTemplate,
 } from "@recruitflow/contracts";
-import { ArrowRight, Check, Loader2, Lock, MoveRight } from "lucide-react";
+import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/DropdownMenu";
 import { cn } from "@/lib/utils";
 
 import { requestSubmissionStageTransition } from "./utils/pipelineStageTransition";
@@ -55,6 +49,7 @@ export const PipelineStageActions = ({
   const [isRefreshing, startRefresh] = useTransition();
   const nextStage = getNextStage(currentStage);
   const isPending = Boolean(pendingStage) || isRefreshing;
+  const shouldHideAdvance = currentStage === "lost";
 
   const updateStage = async (stage: ApiSubmissionStage) => {
     if (!canChangeStage || stage === currentStage || pendingStage) {
@@ -102,6 +97,10 @@ export const PipelineStageActions = ({
     );
   }
 
+  if (shouldHideAdvance) {
+    return null;
+  }
+
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       <Button
@@ -126,46 +125,6 @@ export const PipelineStageActions = ({
             ? `Advance to ${nextStage.label}`
             : "Closed"}
       </Button>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            className="rounded-full"
-            disabled={isPending}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <MoveRight className="size-3.5" />
-            Move stage
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          {stageOptions.map((stage) => {
-            const isCurrentStage = stage.key === currentStage;
-            const isPendingStage = stage.key === pendingStage;
-
-            return (
-              <DropdownMenuItem
-                key={stage.key}
-                disabled={isCurrentStage || isPending}
-                className="cursor-pointer justify-between"
-                onSelect={(event) => {
-                  event.preventDefault();
-                  void updateStage(stage.key);
-                }}
-              >
-                <span>{stage.label}</span>
-                {isCurrentStage ? (
-                  <Check className="size-3.5" />
-                ) : isPendingStage ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : null}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
 
       {error ? (
         <p className="basis-full text-xs leading-5 text-destructive">{error}</p>
