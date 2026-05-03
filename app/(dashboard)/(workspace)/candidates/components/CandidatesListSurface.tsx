@@ -279,15 +279,12 @@ export const CandidatesListSurface = ({
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Search
               </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  value={searchDraft}
-                  onChange={(event) => setSearchDraft(event.target.value)}
-                  placeholder="Name, skills, title, or company"
-                />
-              </span>
+              <Input
+                leadingIcon={<Search className="size-4" />}
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Name, skills, title, or company"
+              />
             </label>
 
             <label className="space-y-2">

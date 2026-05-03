@@ -243,17 +243,14 @@ const JobsListSurface = ({
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Search
               </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Role, client, department, or location"
-                  value={searchDraft}
-                  onChange={(event) => {
-                    setSearchDraft(event.target.value);
-                  }}
-                />
-              </span>
+              <Input
+                leadingIcon={<Search className="size-4" />}
+                placeholder="Role, client, department, or location"
+                value={searchDraft}
+                onChange={(event) => {
+                  setSearchDraft(event.target.value);
+                }}
+              />
             </label>
 
             <label className="space-y-2">
