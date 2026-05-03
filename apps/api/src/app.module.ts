@@ -10,6 +10,7 @@ import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { MembersModule } from "./members/members.module";
 import { SubmissionsModule } from "./submissions/submissions.module";
+import { TasksModule } from "./tasks/tasks.module";
 import { WorkspaceModule } from "./workspace/workspace.module";
 
 @Module({
@@ -24,6 +25,7 @@ import { WorkspaceModule } from "./workspace/workspace.module";
     JobsModule,
     MembersModule,
     SubmissionsModule,
+    TasksModule,
     WorkspaceModule,
   ],
 })

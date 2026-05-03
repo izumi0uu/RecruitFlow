@@ -1,33 +1,37 @@
-import { queryOptions } from "@tanstack/react-query";
-
 import type {
-  ClientDetailResponse,
   CandidatesListResponse,
+  ClientDetailResponse,
   ClientsListResponse,
   DocumentsListResponse,
   JobDetailResponse,
   JobsListResponse,
   SubmissionsListResponse,
+  TasksListResponse,
 } from "@recruitflow/contracts";
+import { queryOptions } from "@tanstack/react-query";
 
 import {
-  candidateListFiltersToSearchParams,
   type CandidateListFilters,
+  candidateListFiltersToSearchParams,
 } from "@/lib/candidates/filters";
 import {
-  clientListFiltersToSearchParams,
   type ClientListFilters,
+  clientListFiltersToSearchParams,
 } from "@/lib/clients/filters";
 import {
-  documentListFiltersToSearchParams,
   type DocumentListFilters,
+  documentListFiltersToSearchParams,
 } from "@/lib/documents/filters";
 import {
-  jobListFiltersToSearchParams,
   type JobListFilters,
+  jobListFiltersToSearchParams,
 } from "@/lib/jobs/filters";
 import { fetchJson } from "@/lib/query/fetcher";
 import type { CurrentUserDto, CurrentWorkspaceDto } from "@/lib/query/types";
+import {
+  type TaskListFilters,
+  taskListFiltersToSearchParams,
+} from "@/lib/tasks/filters";
 
 export const userQueryKey = ["user"] as const;
 export const workspaceQueryKey = ["workspace"] as const;
@@ -153,4 +157,24 @@ export const submissionsListQueryOptions = () =>
   queryOptions({
     queryKey: submissionsListRootQueryKey,
     queryFn: () => fetchJson<SubmissionsListResponse>("/api/submissions"),
+  });
+
+export const tasksListRootQueryKey = ["tasks", "list"] as const;
+
+export const tasksListQueryKey = (filters: TaskListFilters) =>
+  [...tasksListRootQueryKey, filters] as const;
+
+export const tasksListQueryOptions = (filters: TaskListFilters) =>
+  queryOptions({
+    queryKey: tasksListQueryKey(filters),
+    queryFn: () => {
+      const params = taskListFiltersToSearchParams(filters, {
+        includePageSize: true,
+      });
+      const queryString = params.toString();
+
+      return fetchJson<TasksListResponse>(
+        `/api/tasks${queryString ? `?${queryString}` : ""}`,
+      );
+    },
   });

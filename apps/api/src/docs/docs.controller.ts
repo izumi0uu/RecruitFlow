@@ -1,64 +1,69 @@
 import { Controller, Get } from "@nestjs/common";
 
-import {
-  DEFAULT_WEB_PORT,
-  getApiRuntimeConfig,
-} from "@recruitflow/config";
+import { DEFAULT_WEB_PORT, getApiRuntimeConfig } from "@recruitflow/config";
 import type { ApiDocsEndpoint, ApiDocsResponse } from "@recruitflow/contracts";
 
 const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   {
     auth: "public",
-    description: "API liveness check for local orchestration and deployment probes.",
+    description:
+      "API liveness check for local orchestration and deployment probes.",
     method: "GET",
     owner: "api",
     path: "/health",
   },
   {
     auth: "public",
-    description: "Human-readable JSON contract catalogue for the Phase 1.5 API split.",
+    description:
+      "Human-readable JSON contract catalogue for the Phase 1.5 API split.",
     method: "GET",
     owner: "api",
     path: "/docs",
   },
   {
     auth: "session",
-    description: "Validate the shared session cookie and return the current user id.",
+    description:
+      "Validate the shared session cookie and return the current user id.",
     method: "GET",
     owner: "api",
     path: "/auth/session",
   },
   {
     auth: "public",
-    description: "Create a user, workspace or invitation-backed membership, and session token.",
+    description:
+      "Create a user, workspace or invitation-backed membership, and session token.",
     method: "POST",
     owner: "api",
     path: "/auth/sign-up",
   },
   {
     auth: "public",
-    description: "Validate credentials and return a session token using the shared cookie contract.",
+    description:
+      "Validate credentials and return a session token using the shared cookie contract.",
     method: "POST",
     owner: "api",
     path: "/auth/sign-in",
   },
   {
     auth: "session",
-    description: "Record sign-out activity for the current authenticated session.",
+    description:
+      "Record sign-out activity for the current authenticated session.",
     method: "POST",
     owner: "api",
     path: "/auth/sign-out",
   },
   {
     auth: "session",
-    description: "Update the current user's password through the API-owned auth service.",
+    description:
+      "Update the current user's password through the API-owned auth service.",
     method: "PATCH",
     owner: "api",
     path: "/auth/password",
   },
   {
     auth: "session",
-    description: "Update the current user's account identity through the API-owned auth service.",
+    description:
+      "Update the current user's account identity through the API-owned auth service.",
     method: "PATCH",
     owner: "api",
     path: "/auth/account",
@@ -86,14 +91,16 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "owner",
-    description: "Create a pending workspace invitation and audit the member invite.",
+    description:
+      "Create a pending workspace invitation and audit the member invite.",
     method: "POST",
     owner: "api",
     path: "/members/invitations",
   },
   {
     auth: "owner",
-    description: "Remove a workspace member while preserving owner safety checks.",
+    description:
+      "Remove a workspace member while preserving owner safety checks.",
     method: "DELETE",
     owner: "api",
     path: "/members/:memberId",
@@ -107,21 +114,24 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "owner",
-    description: "Create a Stripe billing portal session and audit the portal handoff.",
+    description:
+      "Create a Stripe billing portal session and audit the portal handoff.",
     method: "POST",
     owner: "api",
     path: "/billing/portal",
   },
   {
     auth: "public",
-    description: "Verify Stripe webhook signatures and sync subscription state.",
+    description:
+      "Verify Stripe webhook signatures and sync subscription state.",
     method: "POST",
     owner: "api",
     path: "/billing/webhooks/stripe",
   },
   {
     auth: "session",
-    description: "Workspace-scoped clients list with filters, sorting, owners, and active job counts.",
+    description:
+      "Workspace-scoped clients list with filters, sorting, owners, and active job counts.",
     method: "GET",
     owner: "api",
     path: "/clients",
@@ -135,56 +145,64 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
-    description: "Load one workspace-scoped client baseline record for detail and edit flows.",
+    description:
+      "Load one workspace-scoped client baseline record for detail and edit flows.",
     method: "GET",
     owner: "api",
     path: "/clients/:clientId",
   },
   {
     auth: "session",
-    description: "Update one workspace-scoped client baseline record and audit the CRM mutation.",
+    description:
+      "Update one workspace-scoped client baseline record and audit the CRM mutation.",
     method: "PATCH",
     owner: "api",
     path: "/clients/:clientId",
   },
   {
     auth: "session",
-    description: "Archive a workspace-scoped client and audit the destructive CRM mutation.",
+    description:
+      "Archive a workspace-scoped client and audit the destructive CRM mutation.",
     method: "PATCH",
     owner: "api",
     path: "/clients/:clientId/archive",
   },
   {
     auth: "session",
-    description: "Restore an archived workspace-scoped client to active status and audit the CRM mutation.",
+    description:
+      "Restore an archived workspace-scoped client to active status and audit the CRM mutation.",
     method: "PATCH",
     owner: "api",
     path: "/clients/:clientId/restore",
   },
   {
     auth: "session",
-    description: "Create a workspace-scoped contact under a client and audit the CRM mutation.",
+    description:
+      "Create a workspace-scoped contact under a client and audit the CRM mutation.",
     method: "POST",
     owner: "api",
     path: "/clients/:clientId/contacts",
   },
   {
     auth: "session",
-    description: "Update a workspace-scoped client contact and audit the CRM mutation.",
+    description:
+      "Update a workspace-scoped client contact and audit the CRM mutation.",
     method: "PATCH",
     owner: "api",
     path: "/clients/:clientId/contacts/:contactId",
   },
   {
     auth: "session",
-    description: "Workspace-scoped jobs list with client, owner, status, and priority filters.",
+    description:
+      "Workspace-scoped jobs list with client, owner, status, and priority filters.",
     method: "GET",
     owner: "api",
     path: "/jobs",
   },
   {
     auth: "session",
-    description: "Create a workspace-scoped job intake record and audit the mutation.",
+    description:
+      "Create a workspace-scoped job intake record and audit the mutation.",
     method: "POST",
     owner: "api",
     path: "/jobs",
@@ -198,87 +216,107 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
-    description: "Update one workspace-scoped job intake record and audit the mutation.",
+    description:
+      "Update one workspace-scoped job intake record and audit the mutation.",
     method: "PATCH",
     owner: "api",
     path: "/jobs/:jobId",
   },
   {
     auth: "session",
-    description: "Repair missing default stage rows for one workspace-scoped job.",
+    description:
+      "Repair missing default stage rows for one workspace-scoped job.",
     method: "POST",
     owner: "api",
     path: "/jobs/:jobId/stages/repair",
   },
   {
     auth: "session",
-    description: "Return a workspace-scoped candidate list for the Candidate CRM.",
+    description:
+      "Return a workspace-scoped candidate list for the Candidate CRM.",
     method: "GET",
     owner: "api",
     path: "/candidates",
   },
   {
     auth: "session",
-    description: "Create a workspace-scoped candidate profile and audit the mutation.",
+    description:
+      "Create a workspace-scoped candidate profile and audit the mutation.",
     method: "POST",
     owner: "api",
     path: "/candidates",
   },
   {
     auth: "session",
-    description: "Load one workspace-scoped candidate profile for detail and edit flows.",
+    description:
+      "Load one workspace-scoped candidate profile for detail and edit flows.",
     method: "GET",
     owner: "api",
     path: "/candidates/:candidateId",
   },
   {
     auth: "session",
-    description: "Update one workspace-scoped candidate profile and audit the mutation.",
+    description:
+      "Update one workspace-scoped candidate profile and audit the mutation.",
     method: "PATCH",
     owner: "api",
     path: "/candidates/:candidateId",
   },
   {
     auth: "session",
-    description: "Return workspace-scoped document metadata with type and linked entity filters.",
+    description:
+      "Return workspace-scoped document metadata with type and linked entity filters.",
     method: "GET",
     owner: "api",
     path: "/documents",
   },
   {
     auth: "session",
-    description: "Create workspace-scoped document metadata linked to a candidate, job, or submission.",
+    description:
+      "Create workspace-scoped document metadata linked to a candidate, job, or submission.",
     method: "POST",
     owner: "api",
     path: "/documents",
   },
   {
     auth: "session",
-    description: "Return workspace-scoped submissions with job, candidate, owner, stage, risk, and next-step filters.",
+    description:
+      "Return workspace-scoped submissions with job, candidate, owner, stage, risk, and next-step filters.",
     method: "GET",
     owner: "api",
     path: "/submissions",
   },
   {
     auth: "session",
-    description: "Create a workspace-scoped candidate-to-job submission and audit the mutation.",
+    description:
+      "Create a workspace-scoped candidate-to-job submission and audit the mutation.",
     method: "POST",
     owner: "api",
     path: "/submissions",
   },
   {
     auth: "session",
-    description: "Move a workspace-scoped submission to another stage and audit the transition.",
+    description:
+      "Move a workspace-scoped submission to another stage and audit the transition.",
     method: "PATCH",
     owner: "api",
     path: "/submissions/:submissionId/stage",
   },
   {
     auth: "session",
-    description: "Update a submission risk flag or next step and audit changed fields.",
+    description:
+      "Update a submission risk flag or next step and audit changed fields.",
     method: "PATCH",
     owner: "api",
     path: "/submissions/:submissionId/follow-up",
+  },
+  {
+    auth: "session",
+    description:
+      "Return workspace-scoped tasks with owner, entity, status, overdue, snoozed, and done views.",
+    method: "GET",
+    owner: "api",
+    path: "/tasks",
   },
 ];
 

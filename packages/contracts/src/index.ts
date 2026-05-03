@@ -211,6 +211,29 @@ export const apiRiskFlagValues = [
 
 export type ApiRiskFlag = (typeof apiRiskFlagValues)[number];
 
+export const apiTaskStatusValues = ["open", "snoozed", "done"] as const;
+
+export type ApiTaskStatus = (typeof apiTaskStatusValues)[number];
+
+export const apiTaskEntityTypeValues = [
+  "client",
+  "job",
+  "candidate",
+  "submission",
+] as const;
+
+export type ApiTaskEntityType = (typeof apiTaskEntityTypeValues)[number];
+
+export const apiTaskViewValues = [
+  "mine",
+  "workspace",
+  "overdue",
+  "snoozed",
+  "done",
+] as const;
+
+export type ApiTaskView = (typeof apiTaskViewValues)[number];
+
 export const apiDocumentTypeValues = [
   "jd",
   "resume",
@@ -236,8 +259,7 @@ export const apiAutomationStatusValues = [
   "failed",
 ] as const;
 
-export type ApiAutomationStatus =
-  (typeof apiAutomationStatusValues)[number];
+export type ApiAutomationStatus = (typeof apiAutomationStatusValues)[number];
 
 export const apiCrmDomainValues = [
   "clients",
@@ -253,36 +275,30 @@ const listPageSizeSchema = z.coerce.number().int().min(1).max(100);
 const optionalUuidSchema = z.string().uuid().optional();
 
 const optionalTrimmedTextSchema = (maxLength: number) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value !== "string") {
-        return value;
-      }
+  z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
 
-      const trimmedValue = value.trim();
+    const trimmedValue = value.trim();
 
-      return trimmedValue.length > 0 ? trimmedValue : null;
-    },
-    z.string().max(maxLength).nullable().optional(),
-  );
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  }, z.string().max(maxLength).nullable().optional());
 
 const optionalIntegerSchema = (message: string) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value === "string") {
-        const trimmedValue = value.trim();
+  z.preprocess((value) => {
+    if (typeof value === "string") {
+      const trimmedValue = value.trim();
 
-        if (!trimmedValue) {
-          return null;
-        }
-
-        return Number(trimmedValue);
+      if (!trimmedValue) {
+        return null;
       }
 
-      return value ?? null;
-    },
-    z.number().int(message).min(0, message).nullable().optional(),
-  );
+      return Number(trimmedValue);
+    }
+
+    return value ?? null;
+  }, z.number().int(message).min(0, message).nullable().optional());
 
 const optionalCurrencyCodeSchema = z.preprocess(
   (value) => {
@@ -330,8 +346,31 @@ const optionalQueryBooleanSchema = z.preprocess((value) => {
   return undefined;
 }, z.boolean().optional());
 
-const optionalWebsiteSchema = z.preprocess(
-  (value) => {
+const optionalWebsiteSchema = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  return `https://${trimmedValue}`;
+}, z
+  .string()
+  .url("Website must be a valid URL")
+  .max(2048)
+  .nullable()
+  .optional());
+
+const optionalUrlSchema = (message: string) =>
+  z.preprocess((value) => {
     if (typeof value !== "string") {
       return value;
     }
@@ -347,31 +386,7 @@ const optionalWebsiteSchema = z.preprocess(
     }
 
     return `https://${trimmedValue}`;
-  },
-  z.string().url("Website must be a valid URL").max(2048).nullable().optional(),
-);
-
-const optionalUrlSchema = (message: string) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value !== "string") {
-        return value;
-      }
-
-      const trimmedValue = value.trim();
-
-      if (!trimmedValue) {
-        return null;
-      }
-
-      if (/^https?:\/\//i.test(trimmedValue)) {
-        return trimmedValue;
-      }
-
-      return `https://${trimmedValue}`;
-    },
-    z.string().url(message).max(2048).nullable().optional(),
-  );
+  }, z.string().url(message).max(2048).nullable().optional());
 
 export const apiCollectionQuerySchema = z.object({
   includeArchived: z.coerce.boolean().default(false),
@@ -466,9 +481,7 @@ export const clientContactParamsSchema = clientParamsSchema.extend({
   contactId: z.string().uuid(),
 });
 
-export type ClientContactParams = z.infer<
-  typeof clientContactParamsSchema
->;
+export type ClientContactParams = z.infer<typeof clientContactParamsSchema>;
 
 export const clientMutationRequestSchema = z.object({
   hqLocation: optionalTrimmedTextSchema(160),
@@ -481,9 +494,7 @@ export const clientMutationRequestSchema = z.object({
   website: optionalWebsiteSchema,
 });
 
-export type ClientMutationRequest = z.infer<
-  typeof clientMutationRequestSchema
->;
+export type ClientMutationRequest = z.infer<typeof clientMutationRequestSchema>;
 
 export interface ClientDetailResponse {
   client: ClientRecord;
@@ -874,6 +885,85 @@ export interface DocumentsListResponse {
   workspaceScoped: true;
 }
 
+export const tasksListQuerySchema = apiCollectionQuerySchema.extend({
+  assignedToUserId: optionalUuidSchema,
+  entityId: optionalUuidSchema,
+  entityType: z.enum(apiTaskEntityTypeValues).optional(),
+  owner: optionalUuidSchema,
+  q: z.string().trim().max(200).optional(),
+  status: z.enum(apiTaskStatusValues).optional(),
+  view: z.enum(apiTaskViewValues).default("mine"),
+});
+
+export type TasksListQuery = z.infer<typeof tasksListQuerySchema>;
+
+export interface TaskEntityReference {
+  id: string;
+  label: string;
+  secondaryLabel: string | null;
+  trail: string[];
+  type: ApiTaskEntityType;
+}
+
+export interface TaskSubmissionReference {
+  candidateId: string;
+  candidateName: string;
+  clientName: string | null;
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  stage: ApiSubmissionStage;
+}
+
+export interface TaskRecord {
+  assignedTo: ApiUserReference | null;
+  assignedToUserId: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  description: string | null;
+  dueAt: string | null;
+  entityId: string | null;
+  entityType: ApiTaskEntityType | null;
+  id: string;
+  isOverdue: boolean;
+  linkedEntity: TaskEntityReference | null;
+  snoozedUntil: string | null;
+  status: ApiTaskStatus;
+  submission: TaskSubmissionReference | null;
+  title: string;
+  updatedAt: string;
+}
+
+export interface TasksListResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    assignedToUserId: string | null;
+    entityId: string | null;
+    entityType: ApiTaskEntityType | null;
+    q: string | null;
+    status: ApiTaskStatus | null;
+    view: ApiTaskView;
+  };
+  items: TaskRecord[];
+  ownerOptions: ApiUserReference[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  summary: {
+    doneCount: number;
+    mineCount: number;
+    openCount: number;
+    overdueCount: number;
+    snoozedCount: number;
+    workspaceActiveCount: number;
+  };
+  workspaceScoped: true;
+}
+
 export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
   candidateId: optionalUuidSchema,
   clientId: optionalUuidSchema,
@@ -885,9 +975,7 @@ export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
   stage: z.enum(apiSubmissionStageValues).optional(),
 });
 
-export type SubmissionsListQuery = z.infer<
-  typeof submissionsListQuerySchema
->;
+export type SubmissionsListQuery = z.infer<typeof submissionsListQuerySchema>;
 
 export const submissionParamsSchema = z.object({
   submissionId: z.string().uuid(),
