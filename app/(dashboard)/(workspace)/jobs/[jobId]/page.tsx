@@ -548,7 +548,7 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
         description="The upstream role detail page for intake context, default stages, and future submission handoff."
         rightSlot={
           canEdit ? (
-            <Button asChild className="rounded-full">
+            <Button asChild className="rounded-full" variant="outline">
               <TrackedLink href={`/jobs/${job.id}/edit`}>
                 <Pencil className="size-4" />
                 Edit job

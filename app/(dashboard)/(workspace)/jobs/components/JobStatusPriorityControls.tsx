@@ -141,6 +141,7 @@ export const JobStatusPriorityControls = ({
         type="submit"
         className="w-full rounded-full"
         disabled={isPending}
+        variant="outline"
       >
         {isPending ? (
           <>

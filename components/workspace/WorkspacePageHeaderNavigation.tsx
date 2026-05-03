@@ -80,7 +80,7 @@ const WorkspacePageHeaderNavigation = ({
           className="h-9 rounded-full px-3.5 text-xs"
           disabled={backDisabled}
           type="button"
-          variant="ghost"
+          variant="outline"
           onClick={handleBack}
         >
           <ArrowLeft className="size-4" />
