@@ -113,7 +113,12 @@ const ClientRow = ({
             </ClientBadge>
           </div>
           <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
-            {client.name}
+            <TrackedLink
+              className="underline decoration-2 underline-offset-[0.14em] hover:decoration-foreground/70"
+              href={`/clients/${client.id}`}
+            >
+              {client.name}
+            </TrackedLink>
           </h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {[client.industry, client.hqLocation].filter(Boolean).join(" · ") ||
@@ -154,14 +159,6 @@ const ClientRow = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-self-end lg:self-center">
-        <Button
-          asChild
-          size="sm"
-          variant="outline"
-          className="rounded-full px-4"
-        >
-          <TrackedLink href={`/clients/${client.id}`}>Detail</TrackedLink>
-        </Button>
         {isArchived ? (
           canRestoreClientControls ? (
             <Button

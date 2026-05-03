@@ -45,7 +45,9 @@ export type PipelineActiveFilter = {
 type PipelineSurfaceProps = {
   activeFilters: PipelineActiveFilter[];
   boardHref: string;
+  clientFilterOptionItems: SubmissionRecord[];
   filterValues: PipelineFilterValues;
+  jobFilterOptionItems: SubmissionRecord[];
   listHref: string;
   resetHref: string;
   submissions: SubmissionsListResponse;
@@ -543,7 +545,9 @@ const PipelineFilterStrip = ({
 export const PipelineSurface = ({
   activeFilters,
   boardHref,
+  clientFilterOptionItems,
   filterValues,
+  jobFilterOptionItems,
   listHref,
   resetHref,
   submissions,
@@ -662,7 +666,9 @@ export const PipelineSurface = ({
 
       <PipelineFilterControls
         activeFilters={activeFilters}
+        clientFilterOptionItems={clientFilterOptionItems}
         filters={filterValues}
+        jobFilterOptionItems={jobFilterOptionItems}
         resetHref={resetHref}
         submissions={submissions}
       />

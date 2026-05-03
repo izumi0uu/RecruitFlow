@@ -30,7 +30,9 @@ export type PipelineFilterValues = {
 
 type PipelineFilterControlsProps = {
   activeFilters: PipelineActiveFilter[];
+  clientFilterOptionItems: SubmissionRecord[];
   filters: PipelineFilterValues;
+  jobFilterOptionItems: SubmissionRecord[];
   resetHref: string;
   submissions: SubmissionsListResponse;
 };
@@ -171,7 +173,9 @@ const PipelineFilterBadge = ({
 
 export const PipelineFilterControls = ({
   activeFilters,
+  clientFilterOptionItems,
   filters,
+  jobFilterOptionItems,
   resetHref,
   submissions,
 }: PipelineFilterControlsProps) => {
@@ -181,12 +185,12 @@ export const PipelineFilterControls = ({
   const normalizedSearchDraft = searchDraft.trim();
   const debouncedSearchDraft = useDebouncedValue(normalizedSearchDraft, 320);
   const jobOptions = React.useMemo(
-    () => buildJobOptions(submissions.items, filters.jobId),
-    [filters.jobId, submissions.items],
+    () => buildJobOptions(jobFilterOptionItems, filters.jobId),
+    [filters.jobId, jobFilterOptionItems],
   );
   const clientOptions = React.useMemo(
-    () => buildClientOptions(submissions.items, filters.clientId),
-    [filters.clientId, submissions.items],
+    () => buildClientOptions(clientFilterOptionItems, filters.clientId),
+    [clientFilterOptionItems, filters.clientId],
   );
   const ownerOptions = React.useMemo(
     () => buildOwnerOptions(submissions),

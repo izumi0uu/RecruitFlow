@@ -91,7 +91,7 @@ const CandidateRow = ({ candidate }: { candidate: CandidatesListItem }) => {
 
         <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
           <TrackedLink
-            className="transition hover:text-primary"
+            className="underline decoration-2 underline-offset-[0.14em] hover:decoration-foreground/70"
             href={`/candidates/${candidate.id}`}
           >
             {candidate.fullName}

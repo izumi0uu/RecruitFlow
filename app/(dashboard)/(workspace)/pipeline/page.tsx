@@ -73,6 +73,8 @@ const getUuidParam = (params: SearchParamsRecord, key: string) => {
   return value && isUuid(value) ? value : "";
 };
 
+const getUuidValue = (value: string) => (value && isUuid(value) ? value : "");
+
 const isSubmissionStage = (value: string): value is ApiSubmissionStage =>
   apiSubmissionStageValues.includes(value as ApiSubmissionStage);
 
@@ -157,17 +159,35 @@ const buildPipelineHref = (
   return `/pipeline${queryString ? `?${queryString}` : ""}`;
 };
 
-const buildSubmissionsApiPath = (params: SearchParamsRecord) => {
+const getApiFilterValue = (
+  params: SearchParamsRecord,
+  overrides: Partial<Record<PipelineFilterKey, string | null>>,
+  key: PipelineFilterKey,
+) =>
+  Object.hasOwn(overrides, key)
+    ? (overrides[key] ?? "")
+    : getParam(params, key);
+
+const buildSubmissionsApiPath = (
+  params: SearchParamsRecord,
+  overrides: Partial<Record<PipelineFilterKey, string | null>> = {},
+) => {
   const query = new URLSearchParams({
     pageSize: "100",
   });
-  const q = getParam(params, "q");
-  const jobId = getUuidParam(params, "jobId");
-  const candidateId = getUuidParam(params, "candidateId");
-  const clientId = getUuidParam(params, "clientId");
-  const owner = getUuidParam(params, "owner");
-  const stage = getParam(params, "stage");
-  const risk = getRiskParam(params);
+  const q = getApiFilterValue(params, overrides, "q");
+  const jobId = getUuidValue(getApiFilterValue(params, overrides, "jobId"));
+  const candidateId = getUuidValue(
+    getApiFilterValue(params, overrides, "candidateId"),
+  );
+  const clientId = getUuidValue(
+    getApiFilterValue(params, overrides, "clientId"),
+  );
+  const owner = getUuidValue(getApiFilterValue(params, overrides, "owner"));
+  const stage = getApiFilterValue(params, overrides, "stage");
+  const risk = Object.hasOwn(overrides, "risk")
+    ? (overrides.risk ?? "")
+    : getRiskParam(params);
 
   if (q) {
     query.set("q", q);
@@ -200,10 +220,13 @@ const buildSubmissionsApiPath = (params: SearchParamsRecord) => {
   return `/submissions?${query.toString()}`;
 };
 
-const getSubmissionsList = async (params: SearchParamsRecord) => {
+const getSubmissionsList = async (
+  params: SearchParamsRecord,
+  overrides?: Partial<Record<PipelineFilterKey, string | null>>,
+) => {
   try {
     return await requestApiJson<SubmissionsListResponse>(
-      buildSubmissionsApiPath(params),
+      buildSubmissionsApiPath(params, overrides),
     );
   } catch (error) {
     if (isApiRequestError(error) && error.status === 401) {
@@ -217,6 +240,7 @@ const getSubmissionsList = async (params: SearchParamsRecord) => {
 const buildActiveFilters = (
   params: SearchParamsRecord,
   submissions: SubmissionsListResponse,
+  labelSourceItems: SubmissionsListResponse["items"] = submissions.items,
 ): PipelineActiveFilter[] => {
   const filters: PipelineActiveFilter[] = [];
   const jobId = getUuidParam(params, "jobId");
@@ -228,7 +252,7 @@ const buildActiveFilters = (
   const q = getParam(params, "q");
 
   if (jobId) {
-    const jobSubmission = submissions.items.find(
+    const jobSubmission = labelSourceItems.find(
       (submission) => submission.jobId === jobId,
     );
 
@@ -239,7 +263,7 @@ const buildActiveFilters = (
   }
 
   if (candidateId) {
-    const candidateSubmission = submissions.items.find(
+    const candidateSubmission = labelSourceItems.find(
       (submission) => submission.candidateId === candidateId,
     );
 
@@ -252,7 +276,7 @@ const buildActiveFilters = (
   }
 
   if (clientId) {
-    const clientSubmission = submissions.items.find(
+    const clientSubmission = labelSourceItems.find(
       (submission) => submission.job?.client?.id === clientId,
     );
 
@@ -308,15 +332,42 @@ const buildPipelineFilterValues = (params: SearchParamsRecord) => {
 const PipelinePage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
   const view = parsePipelineView(params);
-  const submissions = await getSubmissionsList(params);
-  const activeFilters = buildActiveFilters(params, submissions);
   const filterValues = buildPipelineFilterValues(params);
+  const [
+    submissions,
+    jobFilterOptionSubmissions,
+    clientFilterOptionSubmissions,
+  ] = await Promise.all([
+    getSubmissionsList(params),
+    filterValues.jobId
+      ? getSubmissionsList(params, { jobId: null })
+      : Promise.resolve(null),
+    filterValues.clientId
+      ? getSubmissionsList(params, { clientId: null })
+      : Promise.resolve(null),
+  ]);
+  const jobFilterOptionItems =
+    jobFilterOptionSubmissions?.items ?? submissions.items;
+  const clientFilterOptionItems =
+    clientFilterOptionSubmissions?.items ?? submissions.items;
+  const labelSourceItems = [
+    ...submissions.items,
+    ...jobFilterOptionItems,
+    ...clientFilterOptionItems,
+  ];
+  const activeFilters = buildActiveFilters(
+    params,
+    submissions,
+    labelSourceItems,
+  );
 
   return (
     <PipelineSurface
       activeFilters={activeFilters}
       boardHref={buildPipelineHref(params, { view: "board" })}
+      clientFilterOptionItems={clientFilterOptionItems}
       filterValues={filterValues}
+      jobFilterOptionItems={jobFilterOptionItems}
       listHref={buildPipelineHref(params, { view: "list" })}
       resetHref={buildPipelineHref(params, {
         candidateId: null,
