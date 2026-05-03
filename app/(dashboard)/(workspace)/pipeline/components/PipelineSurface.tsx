@@ -26,6 +26,10 @@ import { cn } from "@/lib/utils";
 
 import { PipelineBoardView } from "./PipelineBoardView";
 import {
+  PipelineFilterControls,
+  type PipelineFilterValues,
+} from "./PipelineFilterControls";
+import {
   PipelineNextStepControl,
   PipelineRiskControl,
 } from "./PipelineFollowUpControls";
@@ -41,6 +45,7 @@ export type PipelineActiveFilter = {
 type PipelineSurfaceProps = {
   activeFilters: PipelineActiveFilter[];
   boardHref: string;
+  filterValues: PipelineFilterValues;
   listHref: string;
   resetHref: string;
   submissions: SubmissionsListResponse;
@@ -538,6 +543,7 @@ const PipelineFilterStrip = ({
 export const PipelineSurface = ({
   activeFilters,
   boardHref,
+  filterValues,
   listHref,
   resetHref,
   submissions,
@@ -653,6 +659,13 @@ export const PipelineSurface = ({
           </div>
         </div>
       ) : null}
+
+      <PipelineFilterControls
+        activeFilters={activeFilters}
+        filters={filterValues}
+        resetHref={resetHref}
+        submissions={submissions}
+      />
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
