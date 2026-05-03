@@ -23,6 +23,7 @@ type PageProps = {
 };
 
 type PipelineFilterKey =
+  | "candidateId"
   | "clientId"
   | "jobId"
   | "owner"
@@ -32,6 +33,7 @@ type PipelineFilterKey =
 
 const pipelineFilterKeys: PipelineFilterKey[] = [
   "jobId",
+  "candidateId",
   "clientId",
   "owner",
   "stage",
@@ -131,7 +133,10 @@ const buildPipelineHref = (
     }
 
     if (
-      (key === "clientId" || key === "jobId" || key === "owner") &&
+      (key === "candidateId" ||
+        key === "clientId" ||
+        key === "jobId" ||
+        key === "owner") &&
       value &&
       !isUuid(value)
     ) {
@@ -158,6 +163,7 @@ const buildSubmissionsApiPath = (params: SearchParamsRecord) => {
   });
   const q = getParam(params, "q");
   const jobId = getUuidParam(params, "jobId");
+  const candidateId = getUuidParam(params, "candidateId");
   const clientId = getUuidParam(params, "clientId");
   const owner = getUuidParam(params, "owner");
   const stage = getParam(params, "stage");
@@ -169,6 +175,10 @@ const buildSubmissionsApiPath = (params: SearchParamsRecord) => {
 
   if (jobId) {
     query.set("jobId", jobId);
+  }
+
+  if (candidateId) {
+    query.set("candidateId", candidateId);
   }
 
   if (clientId) {
@@ -210,6 +220,7 @@ const buildActiveFilters = (
 ): PipelineActiveFilter[] => {
   const filters: PipelineActiveFilter[] = [];
   const jobId = getUuidParam(params, "jobId");
+  const candidateId = getUuidParam(params, "candidateId");
   const clientId = getUuidParam(params, "clientId");
   const owner = getUuidParam(params, "owner");
   const stage = getParam(params, "stage");
@@ -217,11 +228,39 @@ const buildActiveFilters = (
   const q = getParam(params, "q");
 
   if (jobId) {
-    filters.push({ label: "Job", value: formatOpaqueFilter(jobId) });
+    const jobSubmission = submissions.items.find(
+      (submission) => submission.jobId === jobId,
+    );
+
+    filters.push({
+      label: "Job",
+      value: jobSubmission?.job?.title ?? formatOpaqueFilter(jobId),
+    });
+  }
+
+  if (candidateId) {
+    const candidateSubmission = submissions.items.find(
+      (submission) => submission.candidateId === candidateId,
+    );
+
+    filters.push({
+      label: "Candidate",
+      value:
+        candidateSubmission?.candidate?.fullName ??
+        formatOpaqueFilter(candidateId),
+    });
   }
 
   if (clientId) {
-    filters.push({ label: "Client", value: formatOpaqueFilter(clientId) });
+    const clientSubmission = submissions.items.find(
+      (submission) => submission.job?.client?.id === clientId,
+    );
+
+    filters.push({
+      label: "Client",
+      value:
+        clientSubmission?.job?.client?.name ?? formatOpaqueFilter(clientId),
+    });
   }
 
   if (owner) {
@@ -251,18 +290,36 @@ const buildActiveFilters = (
   return filters;
 };
 
+const buildPipelineFilterValues = (params: SearchParamsRecord) => {
+  const stage = getParam(params, "stage");
+  const risk = getRiskParam(params);
+
+  return {
+    candidateId: getUuidParam(params, "candidateId"),
+    clientId: getUuidParam(params, "clientId"),
+    jobId: getUuidParam(params, "jobId"),
+    owner: getUuidParam(params, "owner"),
+    q: getParam(params, "q"),
+    risk: risk && isRiskFlag(risk) ? risk : "",
+    stage: stage && isSubmissionStage(stage) ? stage : "",
+  };
+};
+
 const PipelinePage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
   const view = parsePipelineView(params);
   const submissions = await getSubmissionsList(params);
   const activeFilters = buildActiveFilters(params, submissions);
+  const filterValues = buildPipelineFilterValues(params);
 
   return (
     <PipelineSurface
       activeFilters={activeFilters}
       boardHref={buildPipelineHref(params, { view: "board" })}
+      filterValues={filterValues}
       listHref={buildPipelineHref(params, { view: "list" })}
       resetHref={buildPipelineHref(params, {
+        candidateId: null,
         clientId: null,
         jobId: null,
         owner: null,
