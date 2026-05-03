@@ -178,7 +178,7 @@ export const PipelineSubmissionDetailPanel = ({
             <DialogHeader>
               <DialogTitle>Opportunity not visible</DialogTitle>
               <DialogDescription>
-                The selected submission is outside the current pipeline result
+                The selected opportunity is outside the current pipeline result
                 set.
               </DialogDescription>
             </DialogHeader>

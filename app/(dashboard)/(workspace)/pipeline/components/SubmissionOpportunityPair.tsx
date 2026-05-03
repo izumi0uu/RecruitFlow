@@ -188,8 +188,8 @@ export const SubmissionOpportunityPair = ({
             {opportunityTitle}
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Launch creates the trackable candidate-role opportunity that the
-            pipeline, follow-up, risk, and stage movement will operate on.
+            Candidate + role becomes one trackable opportunity for pipeline
+            stages, follow-up, risk, and owner movement.
           </p>
         </div>
         <motion.div
@@ -241,7 +241,7 @@ export const SubmissionOpportunityPair = ({
               <p className="mt-1">
                 {selectedJobLaunchable
                   ? "Launchable role"
-                  : "Closed and filled roles cannot receive new submissions"}
+                  : "Closed and filled roles cannot receive new opportunities"}
               </p>
             </>
           ) : (

@@ -366,11 +366,11 @@ const RolePipelineSummary = ({
           <div>
             <CardTitle className="flex items-center gap-2">
               <Gauge className="size-4" />
-              Role pipeline
+              Opportunity pipeline
             </CardTitle>
             <CardDescription>
-              A lightweight submission cockpit for this job before tasks, notes,
-              and activity aggregation land.
+              Track every opportunity for this role. Each opportunity is one
+              candidate matched to this job.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -385,7 +385,7 @@ const RolePipelineSummary = ({
                   href={`/pipeline/new?jobId=${job.id}&returnTo=job`}
                 >
                   <Send className="size-4" />
-                  Launch candidate
+                  Launch opportunity
                 </TrackedLink>
               </Button>
             ) : null}
@@ -395,7 +395,7 @@ const RolePipelineSummary = ({
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <PipelineSummaryMetric
-            label="Total tracks"
+            label="Total opportunities"
             value={submissions.pagination.totalItems}
           />
           <PipelineSummaryMetric label="Active" value={activeCount} />
@@ -422,11 +422,11 @@ const RolePipelineSummary = ({
           <div className="rounded-[1.35rem] border border-dashed border-border bg-surface-1/60 p-5">
             <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <ShieldCheck className="size-4 text-muted-foreground" />
-              No candidates are moving on this role yet.
+              No opportunities are moving on this role yet.
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Launch the first candidate-role track when the intake, owner, and
-              stage template are ready.
+              Launch the first opportunity when the intake, owner, and stage
+              template are ready.
             </p>
           </div>
         )}
@@ -742,7 +742,7 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
                 Opportunity launch
               </CardTitle>
               <CardDescription>
-                Start a candidate-role track from this job context.
+                Start an opportunity from this job context.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -752,8 +752,7 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   This detail page confirms the job, owner, client, and stage
-                  template are ready before a candidate is moved into the
-                  pipeline.
+                  template are ready before a candidate is matched to this role.
                 </p>
               </div>
               {canEdit ? (
@@ -762,7 +761,7 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
                     href={`/pipeline/new?jobId=${job.id}&returnTo=job`}
                   >
                     <Send className="size-4" />
-                    Launch candidate
+                    Launch opportunity
                   </TrackedLink>
                 </Button>
               ) : null}
