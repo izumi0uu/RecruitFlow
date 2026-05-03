@@ -1,6 +1,12 @@
-import type { ReactNode } from "react";
+import type {
+  ApiAutomationStatus,
+  ApiDocumentType,
+  CandidateDetailResponse,
+  CandidateRecord,
+  DocumentRecord,
+  DocumentsListResponse,
+} from "@recruitflow/contracts";
 import {
-  ArrowLeft,
   BadgeCheck,
   BriefcaseBusiness,
   Building2,
@@ -16,15 +22,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
-
-import type {
-  ApiAutomationStatus,
-  ApiDocumentType,
-  CandidateDetailResponse,
-  CandidateRecord,
-  DocumentRecord,
-  DocumentsListResponse,
-} from "@recruitflow/contracts";
+import type { ReactNode } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -69,10 +67,9 @@ const normalizeExternalHref = (value: string | null) => {
 };
 
 const formatCandidateFocus = (candidate: CandidateRecord) => {
-  const roleParts = [
-    candidate.currentTitle,
-    candidate.currentCompany,
-  ].filter(Boolean);
+  const roleParts = [candidate.currentTitle, candidate.currentCompany].filter(
+    Boolean,
+  );
   const roleLabel = roleParts.join(" at ");
 
   return roleLabel || candidate.headline || "Profile baseline pending";
@@ -392,16 +389,12 @@ const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild variant="ghost" className="rounded-full">
-          <TrackedLink href="/candidates">
-            <ArrowLeft className="size-4" />
-            Back to candidates
-          </TrackedLink>
-        </Button>
-      </div>
-
       <WorkspacePageHeader
+        backHref="/candidates"
+        breadcrumbItems={[
+          { label: "Candidates", href: "/candidates" },
+          { label: candidate.fullName },
+        ]}
         kicker="Candidate overview"
         title={candidate.fullName}
         description={formatCandidateFocus(candidate)}

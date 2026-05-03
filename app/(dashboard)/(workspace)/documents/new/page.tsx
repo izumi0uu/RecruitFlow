@@ -78,10 +78,16 @@ const NewDocumentPage = async ({ searchParams }: PageProps) => {
   const entityType = parseEntityType(params.entityType);
   const entityId = getSingleParamValue(params.entityId) ?? "";
   const type = parseDocumentType(params.type, entityType);
+  const cancelHref = getCancelHref(entityType, entityId);
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={cancelHref}
+        breadcrumbItems={[
+          { label: "Documents", href: "/documents" },
+          { label: "Add metadata" },
+        ]}
         kicker="Document metadata"
         title="Add document metadata"
         description="Register a resume, JD, call note, or interview note against a workspace entity without taking ownership of binary upload transport yet."
@@ -97,7 +103,7 @@ const NewDocumentPage = async ({ searchParams }: PageProps) => {
         </CardHeader>
         <CardContent>
           <DocumentMetadataFormController
-            cancelHref={getCancelHref(entityType, entityId)}
+            cancelHref={cancelHref}
             initialValues={buildDocumentMetadataFormValues({
               entityId,
               entityType,

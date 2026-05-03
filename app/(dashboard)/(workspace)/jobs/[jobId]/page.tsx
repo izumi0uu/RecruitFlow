@@ -1,5 +1,9 @@
+import type {
+  JobDetailResponse,
+  JobRecord,
+  JobStageTemplateSummary,
+} from "@recruitflow/contracts";
 import {
-  ArrowLeft,
   BriefcaseBusiness,
   Building2,
   CalendarClock,
@@ -13,12 +17,6 @@ import {
   UserRound,
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
-
-import type {
-  JobDetailResponse,
-  JobRecord,
-  JobStageTemplateSummary,
-} from "@recruitflow/contracts";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -57,9 +55,7 @@ const hasRestrictedFlag = (
 ) => {
   const restricted = params.restricted;
 
-  return Array.isArray(restricted)
-    ? restricted[0] === "1"
-    : restricted === "1";
+  return Array.isArray(restricted) ? restricted[0] === "1" : restricted === "1";
 };
 
 const hasSubmissionCreatedFlag = (
@@ -241,16 +237,12 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild variant="ghost" className="rounded-full">
-          <TrackedLink href="/jobs">
-            <ArrowLeft className="size-4" />
-            Back to jobs
-          </TrackedLink>
-        </Button>
-      </div>
-
       <WorkspacePageHeader
+        backHref="/jobs"
+        breadcrumbItems={[
+          { label: "Jobs", href: "/jobs" },
+          { label: job.title },
+        ]}
         kicker="Job overview"
         title={job.title}
         description="The upstream role detail page for intake context, default stages, and future submission handoff."
@@ -296,8 +288,8 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
               </div>
               <CardTitle className="text-2xl">Role baseline</CardTitle>
               <CardDescription>
-                Structured requisition facts that downstream submissions,
-                tasks, and dashboard metrics can reuse.
+                Structured requisition facts that downstream submissions, tasks,
+                and dashboard metrics can reuse.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
@@ -396,7 +388,9 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
               <DetailTile
                 icon={<BriefcaseBusiness className="size-3.5" />}
                 label="Headcount"
-                value={job.headcount == null ? "Not set" : String(job.headcount)}
+                value={
+                  job.headcount == null ? "Not set" : String(job.headcount)
+                }
               />
               <DetailTile
                 icon={<ClipboardList className="size-3.5" />}
@@ -458,7 +452,9 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
               </div>
               {canEdit ? (
                 <Button asChild className="mt-4 w-full rounded-full">
-                  <TrackedLink href={`/pipeline/new?jobId=${job.id}&returnTo=job`}>
+                  <TrackedLink
+                    href={`/pipeline/new?jobId=${job.id}&returnTo=job`}
+                  >
                     <Send className="size-4" />
                     Launch candidate
                   </TrackedLink>

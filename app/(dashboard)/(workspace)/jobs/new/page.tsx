@@ -62,6 +62,11 @@ const NewJobPage = async ({ searchParams }: PageProps) => {
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref="/jobs"
+        breadcrumbItems={[
+          { label: "Jobs", href: "/jobs" },
+          { label: "Create job" },
+        ]}
         kicker="New requisition"
         title="Create job"
         description="Capture the structured role intake fields and automatically prepare the default submission-stage container."

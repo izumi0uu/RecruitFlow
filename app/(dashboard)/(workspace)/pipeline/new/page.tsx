@@ -149,10 +149,20 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
     riskFlag: "none",
     stage: "sourced",
   };
+  const cancelHref = getCancelHref(
+    redirectTarget,
+    initialJobId,
+    initialCandidateId,
+  );
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={cancelHref}
+        breadcrumbItems={[
+          { label: "Pipeline", href: "/pipeline" },
+          { label: "Launch opportunity" },
+        ]}
         kicker="Pipeline launch"
         title="Launch opportunity"
         description="Start a trackable candidate-role opportunity with owner, risk, stage, and next action already in place."
@@ -177,11 +187,7 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
       ) : (
         <div className="w-full">
           <SubmissionFormController
-            cancelHref={getCancelHref(
-              redirectTarget,
-              initialJobId,
-              initialCandidateId,
-            )}
+            cancelHref={cancelHref}
             candidateOptions={candidateOptions}
             existingSubmissions={existingSubmissions}
             initialValues={initialValues}

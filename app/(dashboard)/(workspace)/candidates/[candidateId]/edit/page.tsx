@@ -60,6 +60,12 @@ const EditCandidatePage = async ({ params, searchParams }: PageProps) => {
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={`/candidates/${candidate.id}`}
+        breadcrumbItems={[
+          { label: "Candidates", href: "/candidates" },
+          { label: candidate.fullName, href: `/candidates/${candidate.id}` },
+          { label: "Edit" },
+        ]}
         kicker="Candidate maintenance"
         title={`Edit ${candidate.fullName}`}
         description="Keep owner, source, contact details, skills, and location current before downstream submissions and documents attach to this profile."
@@ -75,7 +81,7 @@ const EditCandidatePage = async ({ params, searchParams }: PageProps) => {
             variant="outline"
             className="ml-2 rounded-full"
           >
-            <TrackedLink href="/candidates">Back to candidates</TrackedLink>
+            <TrackedLink href="/candidates">Open candidates</TrackedLink>
           </Button>
         </p>
       ) : null}

@@ -26,9 +26,15 @@ type ClientContactEditSurfaceProps = {
   contactId: string;
 };
 
-const ClientContactEditLoadingState = () => (
+const ClientContactEditLoadingState = ({ clientId }: { clientId: string }) => (
   <section className="space-y-6 px-0 py-1 lg:py-2">
     <WorkspacePageHeader
+      backHref={`/clients/${clientId}`}
+      breadcrumbItems={[
+        { label: "Clients", href: "/clients" },
+        { label: "Client", href: `/clients/${clientId}` },
+        { label: "Loading contact" },
+      ]}
       kicker="Contact maintenance"
       title="Loading contact"
       description="The contact baseline is loading through the client query cache."
@@ -44,21 +50,32 @@ const ClientContactEditLoadingState = () => (
 
 const ClientContactEditErrorState = ({
   clientId,
+  clientName,
   error,
   isNotFound: isLocalNotFound,
   onRetry,
 }: {
   clientId: string;
+  clientName?: string;
   error: unknown;
   isNotFound?: boolean;
   onRetry: () => void;
 }) => {
   const isNotFound =
     isLocalNotFound || (isApiRequestError(error) && error.status === 404);
+  const clientLabel = clientName ?? "Client";
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={`/clients/${clientId}`}
+        breadcrumbItems={[
+          { label: "Clients", href: "/clients" },
+          { label: clientLabel, href: `/clients/${clientId}` },
+          {
+            label: isNotFound ? "Contact not found" : "Unable to load contact",
+          },
+        ]}
         kicker="Contact maintenance"
         title={isNotFound ? "Contact not found" : "Unable to load contact"}
         description={
@@ -90,7 +107,7 @@ const ClientContactEditErrorState = ({
             ) : null}
             <Button asChild className="rounded-full" variant="outline">
               <TrackedLink href={`/clients/${clientId}`}>
-                Back to client
+                Open client
               </TrackedLink>
             </Button>
           </div>
@@ -147,7 +164,7 @@ const ClientContactEditSurface = ({
   );
 
   if (isLoading) {
-    return <ClientContactEditLoadingState />;
+    return <ClientContactEditLoadingState clientId={clientId} />;
   }
 
   if (isError || !clientDetail) {
@@ -167,6 +184,7 @@ const ClientContactEditSurface = ({
       <ClientContactEditErrorState
         clientId={clientId}
         error={new Error("Client contact not found.")}
+        clientName={clientDetail.client.name}
         isNotFound
         onRetry={() => {
           void refetch();
@@ -178,6 +196,12 @@ const ClientContactEditSurface = ({
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={`/clients/${clientId}`}
+        breadcrumbItems={[
+          { label: "Clients", href: "/clients" },
+          { label: clientDetail.client.name, href: `/clients/${clientId}` },
+          { label: "Edit contact" },
+        ]}
         kicker="Contact maintenance"
         title={`Edit ${contact.fullName}`}
         description={`Keep ${clientDetail.client.name}'s relationship map current without leaving the client workspace boundary.`}

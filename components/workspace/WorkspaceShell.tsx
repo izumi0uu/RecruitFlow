@@ -1,7 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BriefcaseBusiness,
   Building2,
@@ -16,7 +15,8 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { signOut } from "@/app/(login)/actions";
 import { BrandLockup, BrandMark } from "@/components/Brand";
@@ -24,6 +24,7 @@ import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
+import { appendWorkspaceRouteHistory } from "@/components/workspace/workspaceRouteHistory";
 import { userQueryKey, workspaceQueryKey } from "@/lib/query/options";
 import { startRouteLoading } from "@/lib/route-loading";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,15 @@ const isRouteActive = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
+const getCurrentWorkspaceHref = (
+  pathname: string,
+  searchParams: { toString: () => string },
+) => {
+  const query = searchParams.toString();
+
+  return query ? `${pathname}?${query}` : pathname;
+};
+
 type WorkspaceShellProps = {
   children: React.ReactNode;
   contextPanel?: React.ReactNode;
@@ -66,11 +76,17 @@ const WorkspaceShell = ({
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const currentHref = getCurrentWorkspaceHref(pathname, searchParams);
 
   const activeItem =
     allNavItems.find((item) => isRouteActive(pathname, item.href)) ||
     navItems[0];
+
+  useEffect(() => {
+    appendWorkspaceRouteHistory(currentHref);
+  }, [currentHref]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -235,7 +251,7 @@ const WorkspaceShell = ({
                   className={cn(
                     "group flex size-12 items-center justify-center rounded-[1rem] text-white/62 transition-all hover:bg-white/10 hover:text-white",
                     isActive &&
-                      "bg-[oklch(0.91_0.04_205)] text-slate-950 shadow-[0_18px_34px_-26px_rgba(180,230,240,0.8)] hover:bg-[oklch(0.91_0.04_205)] hover:text-slate-950"
+                      "bg-[oklch(0.91_0.04_205)] text-slate-950 shadow-[0_18px_34px_-26px_rgba(180,230,240,0.8)] hover:bg-[oklch(0.91_0.04_205)] hover:text-slate-950",
                   )}
                   href={item.href}
                   title={item.label}
@@ -258,7 +274,7 @@ const WorkspaceShell = ({
                   className={cn(
                     "flex size-12 items-center justify-center rounded-[1rem] text-white/62 transition-all hover:bg-white/10 hover:text-white",
                     isActive &&
-                      "bg-white/13 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                      "bg-white/13 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
                   )}
                   href={item.href}
                   title={item.label}

@@ -50,6 +50,11 @@ const NewCandidatePage = async () => {
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref="/candidates"
+        breadcrumbItems={[
+          { label: "Candidates", href: "/candidates" },
+          { label: "Create candidate" },
+        ]}
         kicker="New candidate"
         title="Create candidate"
         description="Capture the candidate profile baseline that submissions, resume metadata, and future AI summaries will reuse."

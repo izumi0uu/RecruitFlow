@@ -106,6 +106,11 @@ const GeneralPage = () => {
   return (
     <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
       <WorkspacePageHeader
+        backHref="/settings"
+        breadcrumbItems={[
+          { label: "Settings", href: "/settings" },
+          { label: "General" },
+        ]}
         kicker="Account details"
         title="General settings"
         description="Keep your workspace identity current so collaborators always know who owns the next decision."
