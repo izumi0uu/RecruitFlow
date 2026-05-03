@@ -144,7 +144,9 @@ const getLinkedEntityReference = (
   row: TaskRecordRow,
   submission: TaskSubmissionReference | null,
 ): TaskEntityReference | null => {
-  if (submission) {
+  const entityType = isTaskEntityType(row.entityType) ? row.entityType : null;
+
+  if (entityType === "submission" && submission) {
     return {
       id: submission.id,
       label: submission.candidateName,
@@ -159,7 +161,7 @@ const getLinkedEntityReference = (
     };
   }
 
-  if (row.directClientId && row.directClientName) {
+  if (entityType === "client" && row.directClientId && row.directClientName) {
     return {
       id: row.directClientId,
       label: row.directClientName,
@@ -169,7 +171,7 @@ const getLinkedEntityReference = (
     };
   }
 
-  if (row.directJobId && row.directJobTitle) {
+  if (entityType === "job" && row.directJobId && row.directJobTitle) {
     return {
       id: row.directJobId,
       label: row.directJobTitle,
@@ -179,7 +181,11 @@ const getLinkedEntityReference = (
     };
   }
 
-  if (row.directCandidateId && row.directCandidateFullName) {
+  if (
+    entityType === "candidate" &&
+    row.directCandidateId &&
+    row.directCandidateFullName
+  ) {
     const roleContext = compactTrail([
       row.directCandidateTitle,
       row.directCandidateCompany,
@@ -191,6 +197,21 @@ const getLinkedEntityReference = (
       secondaryLabel: roleContext || null,
       trail: compactTrail(["Candidate", row.directCandidateFullName]),
       type: "candidate",
+    };
+  }
+
+  if (submission) {
+    return {
+      id: submission.id,
+      label: submission.candidateName,
+      secondaryLabel: submission.jobTitle,
+      trail: compactTrail([
+        "Submission",
+        submission.clientName,
+        submission.jobTitle,
+        submission.candidateName,
+      ]),
+      type: "submission",
     };
   }
 
