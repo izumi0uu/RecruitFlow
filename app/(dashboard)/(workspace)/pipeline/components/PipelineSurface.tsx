@@ -1,3 +1,5 @@
+"use client";
+
 import {
   type ApiSubmissionStage,
   apiDefaultJobStageTemplate,
@@ -9,11 +11,13 @@ import {
   Gauge,
   KanbanSquare,
   ListChecks,
+  PanelRightOpen,
   Plus,
   RotateCcw,
   ShieldCheck,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useState } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -37,13 +41,10 @@ export type PipelineActiveFilter = {
 type PipelineSurfaceProps = {
   activeFilters: PipelineActiveFilter[];
   boardHref: string;
-  detailCloseHref: string;
   listHref: string;
   resetHref: string;
-  selectedSubmissionId: string | null;
   submissions: SubmissionsListResponse;
   submissionCreated: boolean;
-  submissionDetailHrefs: Record<string, string>;
   view: PipelineView;
 };
 
@@ -369,13 +370,13 @@ const StagePill = ({ stage }: { stage: ApiSubmissionStage }) => (
 
 const PipelineListView = ({
   canChangeStage,
-  detailHrefs,
   items,
+  onOpenSubmission,
   selectedSubmissionId,
 }: {
   canChangeStage: boolean;
-  detailHrefs: Record<string, string>;
   items: SubmissionRecord[];
+  onOpenSubmission: (submissionId: string) => void;
   selectedSubmissionId: string | null;
 }) => (
   <div className="overflow-hidden rounded-[1.25rem] border border-border/70 bg-background/48">
@@ -398,15 +399,6 @@ const PipelineListView = ({
               : "hover:bg-workspace-muted-surface/36",
           )}
         >
-          <TrackedLink
-            aria-label={`Open ${getCandidateTitle(submission)} detail panel`}
-            className="absolute inset-0 z-10 rounded-[1rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            href={detailHrefs[submission.id] ?? "/pipeline"}
-          >
-            <span className="sr-only">
-              Open {getCandidateTitle(submission)} detail panel
-            </span>
-          </TrackedLink>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">
               {getCandidateTitle(submission)}
@@ -436,7 +428,7 @@ const PipelineListView = ({
             </p>
           </div>
 
-          <div className="relative z-20 min-w-0">
+          <div className="min-w-0">
             <PipelineRiskControl
               canUpdate={canChangeStage}
               riskFlag={submission.riskFlag}
@@ -449,6 +441,18 @@ const PipelineListView = ({
               nextStep={submission.nextStep}
               submissionId={submission.id}
             />
+            <Button
+              className="mt-2 rounded-full"
+              size="sm"
+              type="button"
+              variant="outline"
+              onClick={() => {
+                onOpenSubmission(submission.id);
+              }}
+            >
+              <PanelRightOpen className="size-3.5" />
+              Details
+            </Button>
           </div>
         </article>
       ))}
@@ -534,16 +538,16 @@ const PipelineFilterStrip = ({
 export const PipelineSurface = ({
   activeFilters,
   boardHref,
-  detailCloseHref,
   listHref,
   resetHref,
-  selectedSubmissionId,
   submissions,
   submissionCreated,
-  submissionDetailHrefs,
   view,
 }: PipelineSurfaceProps) => {
   const items = submissions.items;
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<
+    string | null
+  >(null);
   const selectedSubmission =
     items.find((submission) => submission.id === selectedSubmissionId) ?? null;
   const stageGroups = buildStageGroups(items);
@@ -711,15 +715,15 @@ export const PipelineSurface = ({
             view === "board" ? (
               <PipelineBoardView
                 canChangeStage={canChangeStage}
-                detailHrefs={submissionDetailHrefs}
                 groups={stageGroups}
+                onOpenSubmission={setSelectedSubmissionId}
                 selectedSubmissionId={selectedSubmissionId}
               />
             ) : (
               <PipelineListView
                 canChangeStage={canChangeStage}
-                detailHrefs={submissionDetailHrefs}
                 items={items}
+                onOpenSubmission={setSelectedSubmissionId}
                 selectedSubmissionId={selectedSubmissionId}
               />
             )
@@ -731,8 +735,12 @@ export const PipelineSurface = ({
 
       <PipelineSubmissionDetailPanel
         canChangeStage={canChangeStage}
-        closeHref={detailCloseHref}
         open={Boolean(selectedSubmissionId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedSubmissionId(null);
+          }
+        }}
         submission={selectedSubmission}
       />
     </section>

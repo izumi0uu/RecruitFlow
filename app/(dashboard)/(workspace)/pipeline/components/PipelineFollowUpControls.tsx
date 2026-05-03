@@ -7,6 +7,14 @@ import { useEffect, useId, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/Dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -236,126 +244,132 @@ export const PipelineNextStepControl = ({
     setDraftNextStep(nextStep ?? "");
   }, [nextStep]);
 
-  if (!isEditing) {
-    return (
-      <div
-        className={cn(
-          compact
-            ? "min-w-0"
-            : "min-h-20 rounded-[0.95rem] bg-workspace-muted-surface/48 px-3 py-3",
-          className,
-        )}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Next step
-          </p>
-          {canUpdate ? (
-            <Button
-              aria-label="Edit next step"
-              className="size-7 border-border/70 bg-background/72 text-muted-foreground hover:bg-surface-2 hover:text-foreground"
-              size="icon"
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setDraftNextStep(currentNextStep);
-                setIsEditing(true);
-              }}
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-          ) : null}
-        </div>
-        <p
-          className={cn(
-            "mt-2 text-sm leading-5 text-foreground/88",
-            compact ? "line-clamp-2" : "line-clamp-3",
-          )}
-        >
-          {currentNextStep || "No next step captured yet."}
-        </p>
-        {error ? (
-          <p className="mt-1 text-xs leading-5 text-destructive">{error}</p>
-        ) : null}
-      </div>
-    );
-  }
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setDraftNextStep(currentNextStep);
+    } else if (!isSaving) {
+      setDraftNextStep(currentNextStep);
+    }
+
+    setIsEditing(nextOpen);
+  };
 
   return (
     <div
       className={cn(
         compact
           ? "min-w-0"
-          : "rounded-[0.95rem] border border-border/60 bg-workspace-muted-surface/48 px-3 py-3",
+          : "min-h-20 rounded-[0.95rem] bg-workspace-muted-surface/48 px-3 py-3",
         className,
       )}
     >
-      <label
-        className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-        htmlFor={textareaId}
-      >
-        Next step
-      </label>
-      <textarea
-        className="mt-2 min-h-20 w-full resize-none rounded-[0.85rem] border border-border/70 bg-background/80 px-3 py-2 text-sm leading-5 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/25 focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={isPending}
-        id={textareaId}
-        maxLength={500}
-        value={draftNextStep}
-        onChange={(event) => {
-          setDraftNextStep(event.target.value);
-        }}
-      />
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">
-          {normalizedDraft.length}/500
-        </span>
-        <div className="flex items-center gap-1.5">
-          <Button
-            className="rounded-full"
-            disabled={isPending}
-            size="sm"
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setDraftNextStep(currentNextStep);
-              setIsEditing(false);
-            }}
-          >
-            <X className="size-3.5" />
-            Cancel
-          </Button>
-          <Button
-            className="rounded-full"
-            disabled={!canSave || isPending}
-            size="sm"
-            type="button"
-            onClick={() => {
-              setIsSaving(true);
-              void updateFollowUp({
-                nextStep: normalizedDraft.length > 0 ? normalizedDraft : null,
-              })
-                .then((submission) => {
-                  if (submission) {
-                    setCurrentNextStep(submission.nextStep ?? "");
-                    setDraftNextStep(submission.nextStep ?? "");
-                    setIsEditing(false);
-                  }
-                })
-                .finally(() => {
-                  setIsSaving(false);
-                });
-            }}
-          >
-            {isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Save className="size-3.5" />
-            )}
-            Save
-          </Button>
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Next step
+        </p>
+        {canUpdate ? (
+          <Dialog open={isEditing} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>
+              <Button
+                aria-label="Edit next step"
+                className="size-7 border-border/70 bg-background/72 text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+                disabled={isPending}
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md gap-4 rounded-[1.35rem] p-5">
+              <div className="space-y-3">
+                <DialogHeader className="pr-10">
+                  <DialogTitle className="text-xl">Edit next step</DialogTitle>
+                  <DialogDescription className="text-xs leading-5">
+                    Keep it short and action-oriented for the next recruiting
+                    move.
+                  </DialogDescription>
+                </DialogHeader>
+                <label className="sr-only" htmlFor={textareaId}>
+                  Next step
+                </label>
+                <textarea
+                  className="min-h-28 w-full resize-none rounded-[0.85rem] border border-border/70 bg-background/80 px-3 py-2 text-sm leading-5 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/25 focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isPending}
+                  id={textareaId}
+                  maxLength={500}
+                  value={draftNextStep}
+                  onChange={(event) => {
+                    setDraftNextStep(event.target.value);
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {normalizedDraft.length}/500
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      className="rounded-full"
+                      disabled={isPending}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setDraftNextStep(currentNextStep);
+                        setIsEditing(false);
+                      }}
+                    >
+                      <X className="size-3.5" />
+                      Cancel
+                    </Button>
+                    <Button
+                      className="rounded-full"
+                      disabled={!canSave || isPending}
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setIsSaving(true);
+                        void updateFollowUp({
+                          nextStep:
+                            normalizedDraft.length > 0 ? normalizedDraft : null,
+                        })
+                          .then((submission) => {
+                            if (submission) {
+                              setCurrentNextStep(submission.nextStep ?? "");
+                              setDraftNextStep(submission.nextStep ?? "");
+                              setIsEditing(false);
+                            }
+                          })
+                          .finally(() => {
+                            setIsSaving(false);
+                          });
+                      }}
+                    >
+                      {isPending ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Save className="size-3.5" />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                </div>
+                {error ? (
+                  <p className="text-xs leading-5 text-destructive">{error}</p>
+                ) : null}
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : null}
       </div>
+      <p
+        className={cn(
+          "mt-2 text-sm leading-5 text-foreground/88",
+          compact ? "line-clamp-2" : "line-clamp-3",
+        )}
+      >
+        {currentNextStep || "No next step captured yet."}
+      </p>
       {error ? (
         <p className="mt-1 text-xs leading-5 text-destructive">{error}</p>
       ) : null}

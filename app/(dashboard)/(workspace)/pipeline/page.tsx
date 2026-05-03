@@ -98,10 +98,7 @@ const getOverrideValue = <TKey extends string>(
 const buildPipelineHref = (
   params: SearchParamsRecord,
   overrides: Partial<
-    Record<
-      PipelineFilterKey | "submissionCreated" | "submissionId" | "view",
-      string | null
-    >
+    Record<PipelineFilterKey | "submissionCreated" | "view", string | null>
   >,
 ) => {
   const query = new URLSearchParams();
@@ -110,11 +107,6 @@ const buildPipelineHref = (
     overrides,
     "submissionCreated",
     getParam(params, "submissionCreated"),
-  );
-  const submissionId = getOverrideValue(
-    overrides,
-    "submissionId",
-    getParam(params, "submissionId"),
   );
   const risk = getOverrideValue(overrides, "risk", getRiskParam(params));
 
@@ -153,10 +145,6 @@ const buildPipelineHref = (
 
   if (submissionCreated) {
     query.set("submissionCreated", submissionCreated);
-  }
-
-  if (submissionId && isUuid(submissionId)) {
-    query.set("submissionId", submissionId);
   }
 
   const queryString = query.toString();
@@ -268,18 +256,11 @@ const PipelinePage = async ({ searchParams }: PageProps) => {
   const view = parsePipelineView(params);
   const submissions = await getSubmissionsList(params);
   const activeFilters = buildActiveFilters(params, submissions);
-  const submissionDetailHrefs = Object.fromEntries(
-    submissions.items.map((submission) => [
-      submission.id,
-      buildPipelineHref(params, { submissionId: submission.id }),
-    ]),
-  );
 
   return (
     <PipelineSurface
       activeFilters={activeFilters}
       boardHref={buildPipelineHref(params, { view: "board" })}
-      detailCloseHref={buildPipelineHref(params, { submissionId: null })}
       listHref={buildPipelineHref(params, { view: "list" })}
       resetHref={buildPipelineHref(params, {
         clientId: null,
@@ -288,13 +269,10 @@ const PipelinePage = async ({ searchParams }: PageProps) => {
         q: null,
         risk: null,
         stage: null,
-        submissionId: null,
         submissionCreated: null,
         view,
       })}
-      selectedSubmissionId={getUuidParam(params, "submissionId") || null}
       submissionCreated={getParam(params, "submissionCreated") === "1"}
-      submissionDetailHrefs={submissionDetailHrefs}
       submissions={submissions}
       view={view}
     />

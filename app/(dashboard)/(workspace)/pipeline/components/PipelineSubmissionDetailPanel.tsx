@@ -17,13 +17,13 @@ import {
   Link2,
   UserRound,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -39,7 +39,7 @@ import { PipelineStageActions } from "./PipelineStageActions";
 
 type PipelineSubmissionDetailPanelProps = {
   canChangeStage: boolean;
-  closeHref: string;
+  onOpenChange: (open: boolean) => void;
   open: boolean;
   submission: SubmissionRecord | null;
 };
@@ -166,21 +166,12 @@ const FactRow = ({ label, value }: { label: string; value: ReactNode }) => (
 
 export const PipelineSubmissionDetailPanel = ({
   canChangeStage,
-  closeHref,
+  onOpenChange,
   open,
   submission,
 }: PipelineSubmissionDetailPanelProps) => {
-  const router = useRouter();
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          router.push(closeHref, { scroll: false });
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bottom-0 left-auto right-0 top-0 h-dvh max-h-dvh w-[min(100vw,52rem)] max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none border-y-0 border-r-0 p-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:rounded-l-[1.35rem]">
         {!submission ? (
           <div className="flex min-h-dvh flex-col justify-center px-6 py-12 sm:px-8">
@@ -192,9 +183,9 @@ export const PipelineSubmissionDetailPanel = ({
               </DialogDescription>
             </DialogHeader>
             <div className="mt-6">
-              <Button asChild className="rounded-full">
-                <TrackedLink href={closeHref}>Return to pipeline</TrackedLink>
-              </Button>
+              <DialogClose asChild>
+                <Button className="rounded-full">Return to pipeline</Button>
+              </DialogClose>
             </div>
           </div>
         ) : (

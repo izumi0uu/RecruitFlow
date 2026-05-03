@@ -26,12 +26,17 @@ import type {
   ApiSubmissionStage,
   SubmissionRecord,
 } from "@recruitflow/contracts";
-import { CalendarClock, GripVertical, Loader2, UserRound } from "lucide-react";
+import {
+  CalendarClock,
+  GripVertical,
+  Loader2,
+  PanelRightOpen,
+  UserRound,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
-import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -242,22 +247,22 @@ const dragHandleButtonClassName =
 
 const OpportunityCard = ({
   canChangeStage,
-  detailHref,
   dragHandle,
   isDragging = false,
   isOverlay = false,
   isSelected = false,
   isPending = false,
+  onOpenDetail,
   showDragHandlePreview = false,
   submission,
 }: {
   canChangeStage: boolean;
-  detailHref?: string;
   dragHandle?: DragHandleProps;
   isDragging?: boolean;
   isOverlay?: boolean;
   isSelected?: boolean;
   isPending?: boolean;
+  onOpenDetail?: () => void;
   showDragHandlePreview?: boolean;
   submission: SubmissionRecord;
 }) => (
@@ -265,25 +270,11 @@ const OpportunityCard = ({
     className={cn(
       "group relative w-full overflow-hidden rounded-[1.1rem] border bg-background/76 p-3.5 shadow-[0_20px_48px_-42px_var(--shadow-color)] transition-[box-shadow,opacity,transform]",
       stageBorderClassMap[submission.stage],
-      detailHref &&
-        !isOverlay &&
-        "hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-44px_var(--shadow-color)]",
       isDragging && "opacity-45",
       isSelected && "ring-2 ring-ring/45",
       isOverlay && "w-[18rem]",
     )}
   >
-    {detailHref && !isOverlay ? (
-      <TrackedLink
-        aria-label={`Open ${getCandidateTitle(submission)} detail panel`}
-        className="absolute inset-0 z-10 rounded-[1.1rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        href={detailHref}
-      >
-        <span className="sr-only">
-          Open {getCandidateTitle(submission)} detail panel
-        </span>
-      </TrackedLink>
-    ) : null}
     <div
       className={cn(
         "absolute bottom-0 left-0 top-0 w-1",
@@ -365,27 +356,42 @@ const OpportunityCard = ({
       </span>
     </div>
 
-    <PipelineStageActions
-      canChangeStage={canChangeStage}
-      className="relative z-20 mt-3 pl-1.5"
-      compact
-      currentStage={submission.stage}
-      submissionId={submission.id}
-    />
+    {!isOverlay ? (
+      <div className="relative z-20 mt-3 flex flex-wrap items-center gap-2 pl-1.5">
+        <PipelineStageActions
+          canChangeStage={canChangeStage}
+          compact
+          currentStage={submission.stage}
+          submissionId={submission.id}
+        />
+        {onOpenDetail ? (
+          <Button
+            className="rounded-full"
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={onOpenDetail}
+          >
+            <PanelRightOpen className="size-3.5" />
+            Details
+          </Button>
+        ) : null}
+      </div>
+    ) : null}
   </article>
 );
 
 const SortableOpportunityCard = ({
   canChangeStage,
-  detailHref,
   isPending,
   isSelected,
+  onOpenDetail,
   submission,
 }: {
   canChangeStage: boolean;
-  detailHref?: string;
   isPending: boolean;
   isSelected: boolean;
+  onOpenDetail: () => void;
   submission: SubmissionRecord;
 }) => {
   const {
@@ -409,7 +415,6 @@ const SortableOpportunityCard = ({
     <div ref={setNodeRef} style={style}>
       <OpportunityCard
         canChangeStage={canChangeStage}
-        detailHref={detailHref}
         dragHandle={
           canChangeStage
             ? {
@@ -423,6 +428,7 @@ const SortableOpportunityCard = ({
         isDragging={isDragging}
         isPending={isPending}
         isSelected={isSelected}
+        onOpenDetail={onOpenDetail}
         submission={submission}
       />
     </div>
@@ -491,13 +497,13 @@ const PipelineStageColumn = ({
 
 export const PipelineBoardView = ({
   canChangeStage,
-  detailHrefs,
   groups,
+  onOpenSubmission,
   selectedSubmissionId,
 }: {
   canChangeStage: boolean;
-  detailHrefs: Record<string, string>;
   groups: PipelineStageGroup[];
+  onOpenSubmission: (submissionId: string) => void;
   selectedSubmissionId: string | null;
 }) => {
   const router = useRouter();
@@ -643,9 +649,11 @@ export const PipelineBoardView = ({
                       <SortableOpportunityCard
                         key={submission.id}
                         canChangeStage={canChangeStage}
-                        detailHref={detailHrefs[submission.id]}
                         isPending={pendingSubmissionId === submission.id}
                         isSelected={selectedSubmissionId === submission.id}
+                        onOpenDetail={() => {
+                          onOpenSubmission(submission.id);
+                        }}
                         submission={submission}
                       />
                     ))
