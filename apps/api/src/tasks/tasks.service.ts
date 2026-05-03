@@ -1,9 +1,16 @@
-import { Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type {
   ApiTaskEntityType,
   ApiTaskStatus,
   ApiUserReference,
   TaskEntityReference,
+  TaskFormEntityOption,
+  TaskMutationRequest,
+  TaskMutationResponse,
   TaskRecord,
   TaskSubmissionReference,
   TasksListQuery,
@@ -16,6 +23,7 @@ import {
   desc,
   eq,
   ilike,
+  isNull,
   lt,
   ne,
   or,
@@ -23,7 +31,9 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { writeAuditLog } from "@/lib/db/audit";
 import {
+  AuditAction,
   candidates,
   clients,
   jobs,
@@ -81,6 +91,10 @@ type TaskRecordRow = {
 };
 
 const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
+
+const toDateInputValue = (date: string | null) => date?.slice(0, 10) ?? null;
+
+const toTaskDueAt = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 const normalizeTextFilter = (value: string | undefined) => {
   const normalizedValue = value?.trim();
@@ -253,6 +267,304 @@ const getTaskOrderBy = (view: TasksListQuery["view"]) => {
 
 @Injectable()
 export class TasksService {
+  private getOwnerOptions(context: ApiWorkspaceContext): ApiUserReference[] {
+    return getOwnerOptions(context);
+  }
+
+  private resolveAssigneeUserId(
+    context: ApiWorkspaceContext,
+    assignedToUserId: string,
+  ) {
+    const assigneeBelongsToWorkspace = context.workspace.memberships.some(
+      (membership) => membership.userId === assignedToUserId,
+    );
+
+    if (!assigneeBelongsToWorkspace) {
+      throw new BadRequestException(
+        "Task assignee must be a member of the current workspace",
+      );
+    }
+
+    return assignedToUserId;
+  }
+
+  private async resolveLinkedEntity(
+    context: ApiWorkspaceContext,
+    input: Pick<TaskMutationRequest, "entityId" | "entityType">,
+  ) {
+    const workspaceId = context.workspace.id;
+
+    if (input.entityType === "client") {
+      const [client] = await db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(
+          and(
+            eq(clients.id, input.entityId),
+            eq(clients.workspaceId, workspaceId),
+            isNull(clients.archivedAt),
+          ),
+        )
+        .limit(1);
+
+      if (client) {
+        return {
+          entityId: client.id,
+          entityType: input.entityType,
+          submissionId: null,
+        };
+      }
+    }
+
+    if (input.entityType === "job") {
+      const [job] = await db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, input.entityId),
+            eq(jobs.workspaceId, workspaceId),
+            isNull(jobs.archivedAt),
+          ),
+        )
+        .limit(1);
+
+      if (job) {
+        return {
+          entityId: job.id,
+          entityType: input.entityType,
+          submissionId: null,
+        };
+      }
+    }
+
+    if (input.entityType === "candidate") {
+      const [candidate] = await db
+        .select({ id: candidates.id })
+        .from(candidates)
+        .where(
+          and(
+            eq(candidates.id, input.entityId),
+            eq(candidates.workspaceId, workspaceId),
+            isNull(candidates.archivedAt),
+          ),
+        )
+        .limit(1);
+
+      if (candidate) {
+        return {
+          entityId: candidate.id,
+          entityType: input.entityType,
+          submissionId: null,
+        };
+      }
+    }
+
+    if (input.entityType === "submission") {
+      const [submission] = await db
+        .select({ id: submissions.id })
+        .from(submissions)
+        .where(
+          and(
+            eq(submissions.id, input.entityId),
+            eq(submissions.workspaceId, workspaceId),
+          ),
+        )
+        .limit(1);
+
+      if (submission) {
+        return {
+          entityId: submission.id,
+          entityType: input.entityType,
+          submissionId: submission.id,
+        };
+      }
+    }
+
+    throw new BadRequestException(
+      "Task linked entity must belong to the current workspace",
+    );
+  }
+
+  private async getEntityOptions(
+    context: ApiWorkspaceContext,
+  ): Promise<TaskFormEntityOption[]> {
+    const workspaceId = context.workspace.id;
+    const [clientRows, submissionRows] = await Promise.all([
+      db
+        .select({
+          id: clients.id,
+          industry: clients.industry,
+          name: clients.name,
+        })
+        .from(clients)
+        .where(
+          and(eq(clients.workspaceId, workspaceId), isNull(clients.archivedAt)),
+        )
+        .orderBy(asc(clients.name), asc(clients.id))
+        .limit(100),
+      db
+        .select({
+          candidateName: candidates.fullName,
+          clientName: clients.name,
+          id: submissions.id,
+          jobTitle: jobs.title,
+          stage: submissions.stage,
+        })
+        .from(submissions)
+        .innerJoin(jobs, eq(submissions.jobId, jobs.id))
+        .innerJoin(candidates, eq(submissions.candidateId, candidates.id))
+        .leftJoin(clients, eq(jobs.clientId, clients.id))
+        .where(eq(submissions.workspaceId, workspaceId))
+        .orderBy(asc(candidates.fullName), asc(jobs.title), asc(submissions.id))
+        .limit(100),
+    ]);
+
+    return [
+      ...clientRows.map(
+        (client): TaskFormEntityOption => ({
+          entityId: client.id,
+          entityType: "client",
+          label: client.name,
+          secondaryLabel: client.industry,
+          trail: compactTrail(["Client", client.name]),
+        }),
+      ),
+      ...submissionRows.map(
+        (submission): TaskFormEntityOption => ({
+          entityId: submission.id,
+          entityType: "submission",
+          label: submission.candidateName,
+          secondaryLabel: compactTrail([
+            submission.clientName,
+            submission.jobTitle,
+            submission.stage,
+          ]).join(" / "),
+          trail: compactTrail([
+            "Submission",
+            submission.clientName,
+            submission.jobTitle,
+            submission.candidateName,
+          ]),
+        }),
+      ),
+    ];
+  }
+
+  private async selectTaskRecord(
+    context: ApiWorkspaceContext,
+    taskId: string,
+  ): Promise<TaskRecord> {
+    const [row] = await db
+      .select({
+        assignedToEmail: assignedUsers.email,
+        assignedToName: assignedUsers.name,
+        assignedToUserId: tasks.assignedToUserId,
+        completedAt: tasks.completedAt,
+        createdAt: tasks.createdAt,
+        description: tasks.description,
+        directCandidateCompany: directCandidates.currentCompany,
+        directCandidateFullName: directCandidates.fullName,
+        directCandidateId: directCandidates.id,
+        directCandidateTitle: directCandidates.currentTitle,
+        directClientId: directClients.id,
+        directClientIndustry: directClients.industry,
+        directClientName: directClients.name,
+        directJobClientName: directJobClients.name,
+        directJobId: directJobs.id,
+        directJobTitle: directJobs.title,
+        dueAt: tasks.dueAt,
+        entityId: tasks.entityId,
+        entityType: tasks.entityType,
+        id: tasks.id,
+        snoozedUntil: tasks.snoozedUntil,
+        status: tasks.status,
+        submissionCandidateId: submissionCandidates.id,
+        submissionCandidateName: submissionCandidates.fullName,
+        submissionClientName: submissionClients.name,
+        submissionId: taskSubmissions.id,
+        submissionJobId: submissionJobs.id,
+        submissionJobTitle: submissionJobs.title,
+        submissionStage: taskSubmissions.stage,
+        title: tasks.title,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .leftJoin(assignedUsers, eq(tasks.assignedToUserId, assignedUsers.id))
+      .leftJoin(
+        directClients,
+        and(
+          eq(tasks.entityType, "client"),
+          eq(tasks.entityId, directClients.id),
+        ),
+      )
+      .leftJoin(
+        directJobs,
+        and(eq(tasks.entityType, "job"), eq(tasks.entityId, directJobs.id)),
+      )
+      .leftJoin(directJobClients, eq(directJobs.clientId, directJobClients.id))
+      .leftJoin(
+        directCandidates,
+        and(
+          eq(tasks.entityType, "candidate"),
+          eq(tasks.entityId, directCandidates.id),
+        ),
+      )
+      .leftJoin(
+        taskSubmissions,
+        or(
+          eq(tasks.submissionId, taskSubmissions.id),
+          and(
+            eq(tasks.entityType, "submission"),
+            eq(tasks.entityId, taskSubmissions.id),
+          ),
+        ),
+      )
+      .leftJoin(submissionJobs, eq(taskSubmissions.jobId, submissionJobs.id))
+      .leftJoin(
+        submissionClients,
+        eq(submissionJobs.clientId, submissionClients.id),
+      )
+      .leftJoin(
+        submissionCandidates,
+        eq(taskSubmissions.candidateId, submissionCandidates.id),
+      )
+      .where(
+        and(eq(tasks.workspaceId, context.workspace.id), eq(tasks.id, taskId)),
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new NotFoundException("Task not found");
+    }
+
+    return serializeTaskRecord(row, new Date());
+  }
+
+  private async buildMutationResponse(
+    context: ApiWorkspaceContext,
+    taskId: string,
+    message: string,
+  ): Promise<TaskMutationResponse> {
+    const [task, entityOptions] = await Promise.all([
+      this.selectTaskRecord(context, taskId),
+      this.getEntityOptions(context),
+    ]);
+
+    return {
+      context: {
+        role: context.membership.role,
+        workspaceId: context.workspace.id,
+      },
+      contractVersion: "phase-1",
+      entityOptions,
+      message,
+      ownerOptions: this.getOwnerOptions(context),
+      task,
+      workspaceScoped: true,
+    };
+  }
+
   async listTasks(
     context: ApiWorkspaceContext,
     query: TasksListQuery,
@@ -328,7 +640,7 @@ export class TasksService {
     }
 
     const whereClause = and(...whereClauses);
-    const [summaryRow, totalRow] = await Promise.all([
+    const [summaryRow, totalRow, entityOptions] = await Promise.all([
       db
         .select({
           doneCount: sql<number>`cast(count(*) filter (where ${tasks.status} = 'done') as int)`,
@@ -388,6 +700,7 @@ export class TasksService {
         )
         .where(whereClause)
         .then((rows) => rows[0]),
+      this.getEntityOptions(context),
     ]);
 
     const rows = await db
@@ -476,6 +789,7 @@ export class TasksService {
         workspaceId,
       },
       contractVersion: "phase-1",
+      entityOptions,
       filters: {
         assignedToUserId,
         entityId: query.entityId ?? null,
@@ -502,5 +816,123 @@ export class TasksService {
       },
       workspaceScoped: true,
     };
+  }
+
+  async createTask(
+    context: ApiWorkspaceContext,
+    input: TaskMutationRequest,
+  ): Promise<TaskMutationResponse> {
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const assignedToUserId = this.resolveAssigneeUserId(
+      context,
+      input.assignedToUserId,
+    );
+    const linkedEntity = await this.resolveLinkedEntity(context, input);
+    const now = new Date();
+    const [task] = await db
+      .insert(tasks)
+      .values({
+        assignedToUserId,
+        createdAt: now,
+        createdByUserId: actorUserId,
+        description: input.description ?? null,
+        dueAt: toTaskDueAt(input.dueAt),
+        entityId: linkedEntity.entityId,
+        entityType: linkedEntity.entityType,
+        status: "open",
+        submissionId: linkedEntity.submissionId,
+        title: input.title,
+        updatedAt: now,
+        workspaceId,
+      })
+      .returning({ id: tasks.id });
+
+    if (!task) {
+      throw new NotFoundException("Failed to create task");
+    }
+
+    await writeAuditLog({
+      action: AuditAction.TASK_CREATED,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: task.id,
+      entityType: "task",
+      metadata: {
+        assignedToUserId,
+        linkedEntityId: linkedEntity.entityId,
+        linkedEntityType: linkedEntity.entityType,
+      },
+      source: "api",
+      workspaceId,
+    });
+
+    return this.buildMutationResponse(context, task.id, "Task created");
+  }
+
+  async updateTask(
+    context: ApiWorkspaceContext,
+    taskId: string,
+    input: TaskMutationRequest,
+  ): Promise<TaskMutationResponse> {
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const existingTask = await this.selectTaskRecord(context, taskId);
+    const assignedToUserId = this.resolveAssigneeUserId(
+      context,
+      input.assignedToUserId,
+    );
+    const linkedEntity = await this.resolveLinkedEntity(context, input);
+    const now = new Date();
+    const nextDueDate = input.dueAt;
+    const changedFields = [
+      existingTask.title !== input.title ? "title" : null,
+      existingTask.description !== (input.description ?? null)
+        ? "description"
+        : null,
+      existingTask.assignedToUserId !== assignedToUserId
+        ? "assignedToUserId"
+        : null,
+      toDateInputValue(existingTask.dueAt) !== nextDueDate ? "dueAt" : null,
+      existingTask.entityType !== linkedEntity.entityType ? "entityType" : null,
+      existingTask.entityId !== linkedEntity.entityId ? "entityId" : null,
+    ].filter((field): field is string => Boolean(field));
+
+    const [task] = await db
+      .update(tasks)
+      .set({
+        assignedToUserId,
+        description: input.description ?? null,
+        dueAt: toTaskDueAt(input.dueAt),
+        entityId: linkedEntity.entityId,
+        entityType: linkedEntity.entityType,
+        submissionId: linkedEntity.submissionId,
+        title: input.title,
+        updatedAt: now,
+      })
+      .where(and(eq(tasks.workspaceId, workspaceId), eq(tasks.id, taskId)))
+      .returning({ id: tasks.id });
+
+    if (!task) {
+      throw new NotFoundException("Task not found");
+    }
+
+    await writeAuditLog({
+      action: AuditAction.TASK_UPDATED,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: task.id,
+      entityType: "task",
+      metadata: {
+        assignedToUserId,
+        changedFields,
+        linkedEntityId: linkedEntity.entityId,
+        linkedEntityType: linkedEntity.entityType,
+      },
+      source: "api",
+      workspaceId,
+    });
+
+    return this.buildMutationResponse(context, task.id, "Task updated");
   }
 }

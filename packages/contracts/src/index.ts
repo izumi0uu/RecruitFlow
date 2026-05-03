@@ -915,6 +915,14 @@ export interface TaskSubmissionReference {
   stage: ApiSubmissionStage;
 }
 
+export interface TaskFormEntityOption {
+  entityId: string;
+  entityType: "client" | "submission";
+  label: string;
+  secondaryLabel: string | null;
+  trail: string[];
+}
+
 export interface TaskRecord {
   assignedTo: ApiUserReference | null;
   assignedToUserId: string | null;
@@ -937,6 +945,7 @@ export interface TaskRecord {
 export interface TasksListResponse {
   context: ApiCrmPlaceholderContext;
   contractVersion: "phase-1";
+  entityOptions: TaskFormEntityOption[];
   filters: {
     assignedToUserId: string | null;
     entityId: string | null;
@@ -961,6 +970,35 @@ export interface TasksListResponse {
     snoozedCount: number;
     workspaceActiveCount: number;
   };
+  workspaceScoped: true;
+}
+
+export const taskParamsSchema = z.object({
+  taskId: z.string().uuid(),
+});
+
+export type TaskParams = z.infer<typeof taskParamsSchema>;
+
+export const taskMutationRequestSchema = z.object({
+  assignedToUserId: z.string().uuid("Task owner is required"),
+  description: optionalTrimmedTextSchema(2000),
+  dueAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must use YYYY-MM-DD format"),
+  entityId: z.string().uuid("Linked entity is required"),
+  entityType: z.enum(apiTaskEntityTypeValues),
+  title: z.string().trim().min(1, "Task title is required").max(180),
+});
+
+export type TaskMutationRequest = z.infer<typeof taskMutationRequestSchema>;
+
+export interface TaskMutationResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  entityOptions: TaskFormEntityOption[];
+  message: string;
+  ownerOptions: ApiUserReference[];
+  task: TaskRecord;
   workspaceScoped: true;
 }
 

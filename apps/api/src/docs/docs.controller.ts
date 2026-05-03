@@ -318,6 +318,22 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     owner: "api",
     path: "/tasks",
   },
+  {
+    auth: "session",
+    description:
+      "Create a workspace-scoped follow-up task linked to a client, job, candidate, or submission.",
+    method: "POST",
+    owner: "api",
+    path: "/tasks",
+  },
+  {
+    auth: "session",
+    description:
+      "Update title, note, owner, due date, or linked entity for one workspace-scoped task.",
+    method: "PATCH",
+    owner: "api",
+    path: "/tasks/:taskId",
+  },
 ];
 
 const localApiUrl = (path: string) => {

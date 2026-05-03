@@ -2,6 +2,7 @@ import type {
   ApiTaskEntityType,
   ApiTaskStatus,
   ApiTaskView,
+  TaskMutationRequest,
   TaskRecord,
 } from "@recruitflow/contracts";
 
@@ -29,13 +30,65 @@ export const taskStatusOptions: Array<{
 
 export const taskEntityTypeOptions: Array<{
   label: string;
-  value: ApiTaskEntityType;
+  value: TaskMutationRequest["entityType"];
 }> = [
   { label: "Client", value: "client" },
   { label: "Job", value: "job" },
   { label: "Candidate", value: "candidate" },
   { label: "Submission", value: "submission" },
 ];
+
+export type TaskFormValues = {
+  assignedToUserId: string;
+  description: string;
+  dueAt: string;
+  entityKey: string;
+  title: string;
+};
+
+export const emptyTaskFormValues: TaskFormValues = {
+  assignedToUserId: "",
+  description: "",
+  dueAt: "",
+  entityKey: "",
+  title: "",
+};
+
+export const getTaskEntityKey = (
+  entityType: TaskMutationRequest["entityType"] | null,
+  entityId: string | null,
+) => (entityType && entityId ? `${entityType}:${entityId}` : "");
+
+export const parseTaskEntityKey = (entityKey: string) => {
+  const [entityType, entityId] = entityKey.split(":");
+
+  if (!entityType || !entityId) {
+    return null;
+  }
+
+  return {
+    entityId,
+    entityType: entityType as TaskMutationRequest["entityType"],
+  };
+};
+
+export const buildTaskFormValues = (
+  values: Partial<TaskFormValues>,
+): TaskFormValues => ({
+  ...emptyTaskFormValues,
+  ...values,
+});
+
+export const buildTaskFormValuesFromRecord = (
+  task: TaskRecord,
+): TaskFormValues =>
+  buildTaskFormValues({
+    assignedToUserId: task.assignedToUserId ?? "",
+    description: task.description ?? "",
+    dueAt: task.dueAt ? task.dueAt.slice(0, 10) : "",
+    entityKey: getTaskEntityKey(task.entityType, task.entityId),
+    title: task.title,
+  });
 
 export const taskStatusToneMap: Record<ApiTaskStatus, string> = {
   done: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",

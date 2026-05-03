@@ -3,6 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import type {
   ApiTaskEntityType,
+  TaskMutationResponse,
   TaskRecord,
   TasksListResponse,
 } from "@recruitflow/contracts";
@@ -19,6 +20,8 @@ import {
   ListChecks,
   ListTodo,
   Loader2,
+  Pencil,
+  Plus,
   RotateCcw,
   Search,
   TimerReset,
@@ -27,6 +30,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { KeyboardEvent, ReactNode } from "react";
+import { useState } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -53,6 +57,7 @@ import {
   taskViewOptions,
 } from "../utils";
 import { useTasksListSurface } from "./hooks/useTasksListSurface";
+import { TaskMutationDialog } from "./TaskMutationDialog";
 
 type TasksListSurfaceProps = {
   initialData: TasksListResponse;
@@ -204,6 +209,26 @@ const TasksSummaryDock = ({ tasksList }: { tasksList: TasksListResponse }) => (
       label="Done"
       value={tasksList.summary.doneCount}
     />
+  </div>
+);
+
+const TasksActionDock = ({
+  onCreateTask,
+  tasksList,
+}: {
+  onCreateTask: () => void;
+  tasksList: TasksListResponse;
+}) => (
+  <div className="flex w-full flex-col gap-3 xl:w-[32rem]">
+    <Button
+      className="w-full justify-center rounded-full"
+      type="button"
+      onClick={onCreateTask}
+    >
+      <Plus className="size-4" />
+      Create task
+    </Button>
+    <TasksSummaryDock tasksList={tasksList} />
   </div>
 );
 
@@ -421,7 +446,13 @@ const TaskGroupSection = ({
   );
 };
 
-const TaskContextPanel = ({ task }: { task: TaskRecord | null }) => {
+const TaskContextPanel = ({
+  onEditTask,
+  task,
+}: {
+  onEditTask: (task: TaskRecord) => void;
+  task: TaskRecord | null;
+}) => {
   const shouldReduceMotion = useReducedMotion() ?? false;
   const transition = getTransition(shouldReduceMotion);
   const entityHref = task ? getTaskEntityHref(task) : null;
@@ -490,14 +521,28 @@ const TaskContextPanel = ({ task }: { task: TaskRecord | null }) => {
               </div>
             ) : null}
 
-            {entityHref ? (
-              <Button asChild className="w-full justify-center rounded-full">
-                <TrackedLink href={entityHref}>
-                  Open linked record
-                  <ArrowUpRight className="size-4" />
-                </TrackedLink>
+            <div className="grid gap-2">
+              <Button
+                className="w-full justify-center rounded-full"
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onEditTask(task);
+                }}
+              >
+                <Pencil className="size-4" />
+                Edit task
               </Button>
-            ) : null}
+
+              {entityHref ? (
+                <Button asChild className="w-full justify-center rounded-full">
+                  <TrackedLink href={entityHref}>
+                    Open linked record
+                    <ArrowUpRight className="size-4" />
+                  </TrackedLink>
+                </Button>
+              ) : null}
+            </div>
           </motion.div>
         ) : (
           <motion.div
@@ -598,8 +643,13 @@ const TasksListSurface = ({
     initialData,
     initialFilters,
   });
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
   const groupedTasks = groupTasks(taskItems);
   const hasTaskItems = taskItems.length > 0;
+  const handleTaskSaved = (_response: TaskMutationResponse) => {
+    void refetch();
+  };
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -608,7 +658,14 @@ const TasksListSurface = ({
         title="Tasks"
         description="A workspace-scoped task inbox for recruiter follow-ups, overdue work, and snoozed execution context."
         rightSlotClassName="w-full xl:w-auto"
-        rightSlot={<TasksSummaryDock tasksList={tasksList} />}
+        rightSlot={
+          <TasksActionDock
+            tasksList={tasksList}
+            onCreateTask={() => {
+              setIsCreateDialogOpen(true);
+            }}
+          />
+        }
       />
 
       <WorkspaceListSurfaceShell
@@ -813,9 +870,38 @@ const TasksListSurface = ({
             </AnimatePresence>
           </div>
 
-          <TaskContextPanel task={selectedTask} />
+          <TaskContextPanel
+            task={selectedTask}
+            onEditTask={(task) => {
+              setEditingTask(task);
+            }}
+          />
         </div>
       </WorkspaceListSurfaceShell>
+
+      <TaskMutationDialog
+        mode="create"
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onTaskSaved={handleTaskSaved}
+        ownerOptions={tasksList.ownerOptions}
+        entityOptions={tasksList.entityOptions}
+        seedTask={selectedTask}
+      />
+
+      <TaskMutationDialog
+        mode="edit"
+        open={Boolean(editingTask)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingTask(null);
+          }
+        }}
+        onTaskSaved={handleTaskSaved}
+        ownerOptions={tasksList.ownerOptions}
+        entityOptions={tasksList.entityOptions}
+        task={editingTask}
+      />
     </section>
   );
 };

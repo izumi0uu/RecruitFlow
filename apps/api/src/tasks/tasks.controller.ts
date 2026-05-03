@@ -1,13 +1,20 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
+  Param,
+  Patch,
+  Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
 
 import {
+  type TaskMutationResponse,
   type TasksListResponse,
+  taskMutationRequestSchema,
+  taskParamsSchema,
   tasksListQuerySchema,
 } from "@recruitflow/contracts";
 
@@ -18,7 +25,7 @@ import { WorkspaceContextGuard } from "../workspace/workspace.guard";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
 
-import type { TasksService } from "./tasks.service";
+import { TasksService } from "./tasks.service";
 
 @Controller("tasks")
 @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
@@ -40,5 +47,50 @@ export class TasksController {
     }
 
     return this.tasksService.listTasks(context, parsedQuery.data);
+  }
+
+  @Post()
+  createTask(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Body() body: unknown,
+  ): Promise<TaskMutationResponse> {
+    const parsedBody = taskMutationRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(
+        parsedBody.error.issues[0]?.message ?? "Invalid task payload",
+      );
+    }
+
+    return this.tasksService.createTask(context, parsedBody.data);
+  }
+
+  @Patch(":taskId")
+  updateTask(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ): Promise<TaskMutationResponse> {
+    const parsedParams = taskParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid task id",
+      );
+    }
+
+    const parsedBody = taskMutationRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(
+        parsedBody.error.issues[0]?.message ?? "Invalid task payload",
+      );
+    }
+
+    return this.tasksService.updateTask(
+      context,
+      parsedParams.data.taskId,
+      parsedBody.data,
+    );
   }
 }
