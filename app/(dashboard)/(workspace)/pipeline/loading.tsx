@@ -116,7 +116,7 @@ const PipelineLoading = () => (
   >
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
       <div className="space-y-3">
-        <span className="inline-kicker">Submission pipeline</span>
+        <span className="inline-kicker">Opportunity pipeline</span>
         <SkeletonBlock className="h-10 w-48 rounded-[1rem]" />
         <div className="max-w-2xl space-y-2">
           <SkeletonLine className="w-full" />

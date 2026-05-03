@@ -543,11 +543,11 @@ const CandidatePipelineSummary = ({
           <div>
             <CardTitle className="flex items-center gap-2">
               <Gauge className="size-4" />
-              Candidate pipeline
+              Opportunity pipeline
             </CardTitle>
             <CardDescription>
-              Track every role this candidate is active for, with owner, stage,
-              risk, and next step visible in one place.
+              Track every opportunity for this candidate. Each opportunity is
+              this candidate matched to one role.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -562,7 +562,7 @@ const CandidatePipelineSummary = ({
                   href={`/pipeline/new?candidateId=${candidate.id}&returnTo=candidate`}
                 >
                   <Send className="size-4" />
-                  Launch for role
+                  Launch opportunity
                 </TrackedLink>
               </Button>
             ) : null}
@@ -572,7 +572,7 @@ const CandidatePipelineSummary = ({
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <PipelineSummaryMetric
-            label="Total roles"
+            label="Total opportunities"
             value={submissions.pagination.totalItems}
           />
           <PipelineSummaryMetric label="Active" value={activeCount} />
@@ -599,11 +599,11 @@ const CandidatePipelineSummary = ({
           <div className="rounded-[1.35rem] border border-dashed border-border bg-surface-1/60 p-5">
             <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <ShieldCheck className="size-4 text-muted-foreground" />
-              No roles are moving for this candidate yet.
+              No opportunities are moving for this candidate yet.
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Launch the first role track when the profile, contact context, and
-              target job are ready.
+              Launch the first opportunity when the profile, contact context,
+              and target role are ready.
             </p>
           </div>
         )}

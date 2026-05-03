@@ -45,7 +45,9 @@ export type PipelineActiveFilter = {
 type PipelineSurfaceProps = {
   activeFilters: PipelineActiveFilter[];
   boardHref: string;
+  clientFilterOptionItems: SubmissionRecord[];
   filterValues: PipelineFilterValues;
+  jobFilterOptionItems: SubmissionRecord[];
   listHref: string;
   resetHref: string;
   submissions: SubmissionsListResponse;
@@ -485,7 +487,7 @@ const PipelineEmptyState = ({
     </h2>
     <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
       {hasFilters
-        ? "The current filter set has no visible tracks. Reset the view or launch a new candidate-role opportunity."
+        ? "The current filter set has no visible opportunities. Reset the view or launch a new candidate-role opportunity."
         : "Launch the first candidate-role opportunity, then this route becomes the operating surface for stages, risk, owners, and next steps."}
     </p>
     <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -543,7 +545,9 @@ const PipelineFilterStrip = ({
 export const PipelineSurface = ({
   activeFilters,
   boardHref,
+  clientFilterOptionItems,
   filterValues,
+  jobFilterOptionItems,
   listHref,
   resetHref,
   submissions,
@@ -580,7 +584,7 @@ export const PipelineSurface = ({
   const canLaunch = canChangeStage;
   const metrics: PipelineMetric[] = [
     {
-      detail: "Open tracks before placed or lost.",
+      detail: "Open opportunities before placed or lost.",
       label: "Active",
       tone: "bg-emerald-500",
       value: activeItems.length,
@@ -608,7 +612,7 @@ export const PipelineSurface = ({
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
-        kicker="Submission pipeline"
+        kicker="Opportunity pipeline"
         title="Pipeline"
         description="A stage-first operating view for candidate-role opportunities, owner attention, and client-facing momentum."
         rightSlotClassName="w-full xl:w-[24rem]"
@@ -662,7 +666,9 @@ export const PipelineSurface = ({
 
       <PipelineFilterControls
         activeFilters={activeFilters}
+        clientFilterOptionItems={clientFilterOptionItems}
         filters={filterValues}
+        jobFilterOptionItems={jobFilterOptionItems}
         resetHref={resetHref}
         submissions={submissions}
       />
