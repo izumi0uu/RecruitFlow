@@ -221,9 +221,10 @@ const TaskViewTabs = ({
       const isActive = option.value === activeView;
 
       return (
-        <button
+        <Button
           key={option.value}
           type="button"
+          variant="ghost"
           aria-pressed={isActive}
           disabled={disabled}
           className={cn(
@@ -242,7 +243,7 @@ const TaskViewTabs = ({
             />
           ) : null}
           <span className="relative z-10">{option.label}</span>
-        </button>
+        </Button>
       );
     })}
   </div>
@@ -301,8 +302,9 @@ const TaskRow = ({
       onClick={onSelect}
       onKeyDown={handleKeyDown}
       className={cn(
-        "group relative grid cursor-pointer gap-4 border-t border-border/60 bg-background/18 px-4 py-4 outline-none transition-colors duration-200 first:border-t-0 hover:bg-workspace-muted-surface/38 focus-visible:bg-workspace-muted-surface/44 md:px-5 lg:grid-cols-[minmax(0,1fr)_minmax(9rem,0.22fr)_minmax(10rem,0.24fr)_auto] lg:items-center",
-        isSelected && "bg-workspace-muted-surface/48",
+        "group relative grid cursor-pointer gap-4 border-t border-border/60 bg-background/18 px-4 py-4 outline-none transition-[background-color,box-shadow] duration-200 first:border-t-0 hover:bg-workspace-muted-surface/38 focus-visible:bg-workspace-muted-surface/44 md:px-5 lg:grid-cols-[minmax(0,1fr)_minmax(9rem,0.22fr)_minmax(10rem,0.24fr)_auto] lg:items-center",
+        isSelected &&
+          "bg-workspace-muted-surface/72 shadow-[inset_0_0_0_1px_var(--border),0_18px_44px_-38px_var(--shadow-color)]",
       )}
     >
       <span
@@ -427,7 +429,7 @@ const TaskContextPanel = ({ task }: { task: TaskRecord | null }) => {
   const entityHref = task ? getTaskEntityHref(task) : null;
 
   return (
-    <aside className="border-t border-border/70 bg-background/30 p-4 lg:border-l lg:border-t-0 lg:p-5">
+    <aside className="border-t border-border/70 bg-workspace-muted-surface/58 p-4 shadow-[inset_1px_0_0_rgba(255,255,255,0.08)] lg:sticky lg:top-5 lg:max-h-[calc(100dvh-2.5rem)] lg:self-start lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-5 xl:top-6 xl:max-h-[calc(100dvh-3rem)]">
       <AnimatePresence mode="wait">
         {task ? (
           <motion.div
@@ -467,7 +469,7 @@ const TaskContextPanel = ({ task }: { task: TaskRecord | null }) => {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="rounded-[1rem] border border-border/65 bg-background/58 px-3 py-3"
+                  className="rounded-[1rem] border border-border/70 bg-background/72 px-3 py-3"
                 >
                   <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {label}
@@ -480,7 +482,7 @@ const TaskContextPanel = ({ task }: { task: TaskRecord | null }) => {
             </div>
 
             {task.description ? (
-              <div className="rounded-[1.15rem] border border-border/65 bg-workspace-muted-surface/44 px-4 py-4">
+              <div className="rounded-[1.15rem] border border-border/70 bg-background/68 px-4 py-4">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Note
                 </p>
@@ -531,7 +533,7 @@ const TasksEmptyState = ({
   hasFilters: boolean;
   onReset: () => void;
 }) => (
-  <div className="rounded-[1.55rem] border border-dashed border-border/75 bg-background/38 px-6 py-14 text-center">
+  <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-[1.55rem] border border-dashed border-border/75 bg-background/38 px-6 py-14 text-center">
     <span className="mx-auto flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-surface-1">
       <Inbox className="size-5 text-foreground" />
     </span>
@@ -612,6 +614,8 @@ const TasksListSurface = ({
       />
 
       <WorkspaceListSurfaceShell
+        className="lg:overflow-visible"
+        contentClassName="lg:overflow-visible"
         filterBadges={
           <>
             <WorkspaceListStatusBadge>
@@ -770,15 +774,15 @@ const TasksListSurface = ({
             "Every row is read through the active workspace and keeps its linked business record visible.",
         }}
       >
-        <div className="grid min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="min-w-0">
+        <div className="grid min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch">
+          <div className="min-h-[34rem] min-w-0">
             <AnimatePresence mode="popLayout">
               {!hasTaskItems && isFetching ? (
                 <motion.div key="loading" layout>
                   <TasksLoadingState />
                 </motion.div>
               ) : hasTaskItems ? (
-                <motion.div key="tasks" layout>
+                <div key="tasks">
                   {groupedTasks.map((section) => (
                     <TaskGroupSection
                       key={section.group}
@@ -801,9 +805,9 @@ const TasksListSurface = ({
                       </AnimatePresence>
                     </TaskGroupSection>
                   ))}
-                </motion.div>
+                </div>
               ) : (
-                <motion.div key="empty" layout>
+                <motion.div key="empty" layout className="h-full">
                   <TasksEmptyState
                     hasFilters={hasFilters}
                     onReset={resetFilters}
