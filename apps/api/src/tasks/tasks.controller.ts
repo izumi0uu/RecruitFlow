@@ -18,7 +18,10 @@ import { WorkspaceContextGuard } from "../workspace/workspace.guard";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
 
-import type { TasksService } from "./tasks.service";
+// Keep this as a runtime import. Nest constructor DI needs the class token;
+// `import type` is erased and becomes `Object` in decorator metadata.
+// Context: https://biomejs.dev/linter/rules/use-import-type/#caveat-with-typescript-experimental-decorators
+import { TasksService } from "./tasks.service";
 
 @Controller("tasks")
 @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
