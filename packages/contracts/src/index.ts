@@ -215,6 +215,14 @@ export const apiTaskStatusValues = ["open", "snoozed", "done"] as const;
 
 export type ApiTaskStatus = (typeof apiTaskStatusValues)[number];
 
+export const apiTaskStatusActionValues = [
+  "complete",
+  "snooze",
+  "reopen",
+] as const;
+
+export type ApiTaskStatusAction = (typeof apiTaskStatusActionValues)[number];
+
 export const apiTaskEntityTypeValues = [
   "client",
   "job",
@@ -991,6 +999,27 @@ export const taskMutationRequestSchema = z.object({
 });
 
 export type TaskMutationRequest = z.infer<typeof taskMutationRequestSchema>;
+
+const taskReminderDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Reminder date must use YYYY-MM-DD format");
+
+export const taskStatusActionRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("complete"),
+  }),
+  z.object({
+    action: z.literal("snooze"),
+    snoozedUntil: taskReminderDateSchema,
+  }),
+  z.object({
+    action: z.literal("reopen"),
+  }),
+]);
+
+export type TaskStatusActionRequest = z.infer<
+  typeof taskStatusActionRequestSchema
+>;
 
 export interface TaskMutationResponse {
   context: ApiCrmPlaceholderContext;

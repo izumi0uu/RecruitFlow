@@ -5,6 +5,7 @@ import type {
   ApiTaskEntityType,
   TaskMutationResponse,
   TaskRecord,
+  TaskStatusActionRequest,
   TasksListResponse,
 } from "@recruitflow/contracts";
 import type { LucideIcon } from "lucide-react";
@@ -29,13 +30,22 @@ import {
   UserSearch,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import type { KeyboardEvent, ReactNode } from "react";
-import { useState } from "react";
+import type { FormEvent, KeyboardEvent, ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/Dialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import {
   WorkspaceListStatusBadge,
   WorkspaceListSurfaceShell,
@@ -56,6 +66,7 @@ import {
   taskStatusToneMap,
   taskViewOptions,
 } from "../utils";
+import { useTaskStatusActionMutation } from "./hooks/useTaskMutations";
 import { useTasksListSurface } from "./hooks/useTasksListSurface";
 import { TaskMutationDialog } from "./TaskMutationDialog";
 
@@ -65,6 +76,18 @@ type TasksListSurfaceProps = {
 };
 
 type TaskGroupKey = "overdue" | "open" | "snoozed" | "done";
+
+type TaskStatusActionState = {
+  error: string | null;
+  isPending: boolean;
+  pendingAction: TaskStatusActionRequest["action"] | null;
+  pendingTaskId: string | null;
+};
+
+type TaskStatusActionHandler = (
+  task: TaskRecord,
+  input: TaskStatusActionRequest,
+) => void;
 
 const taskMotionTransition = {
   duration: 0.28,
@@ -110,6 +133,13 @@ const taskGroupOrder: TaskGroupKey[] = ["overdue", "open", "snoozed", "done"];
 
 const getTransition = (shouldReduceMotion: boolean) =>
   shouldReduceMotion ? instantMotionTransition : taskMotionTransition;
+
+const getDefaultSnoozeDate = () => {
+  const value = new Date();
+  value.setDate(value.getDate() + 1);
+
+  return value.toISOString().slice(0, 10);
+};
 
 const TaskBadge = ({
   children,
@@ -291,13 +321,123 @@ const TaskEntityMark = ({ task }: { task: TaskRecord }) => {
   );
 };
 
+const TaskStatusActions = ({
+  compact = false,
+  onOpenSnooze,
+  onStatusAction,
+  state,
+  task,
+}: {
+  compact?: boolean;
+  onOpenSnooze: (task: TaskRecord) => void;
+  onStatusAction: TaskStatusActionHandler;
+  state: TaskStatusActionState;
+  task: TaskRecord;
+}) => {
+  const isTaskPending = state.isPending && state.pendingTaskId === task.id;
+  const pendingAction = isTaskPending ? state.pendingAction : null;
+  const canComplete = task.status !== "done";
+  const canSnooze = task.status !== "done";
+  const canReopen = task.status === "done" || task.status === "snoozed";
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2",
+        compact ? "lg:justify-end" : "w-full",
+      )}
+    >
+      {canComplete ? (
+        <Button
+          aria-label="Complete task"
+          className="rounded-full"
+          disabled={state.isPending}
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={(event) => {
+            event.stopPropagation();
+            onStatusAction(task, { action: "complete" });
+          }}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+          }}
+        >
+          {pendingAction === "complete" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <CheckCircle2 className="size-3.5" />
+          )}
+          Done
+        </Button>
+      ) : null}
+
+      {canSnooze ? (
+        <Button
+          aria-label="Snooze task"
+          className="rounded-full"
+          disabled={state.isPending}
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenSnooze(task);
+          }}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+          }}
+        >
+          {pendingAction === "snooze" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Bell className="size-3.5" />
+          )}
+          Snooze
+        </Button>
+      ) : null}
+
+      {canReopen ? (
+        <Button
+          aria-label="Reopen task"
+          className="rounded-full"
+          disabled={state.isPending}
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={(event) => {
+            event.stopPropagation();
+            onStatusAction(task, { action: "reopen" });
+          }}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+          }}
+        >
+          {pendingAction === "reopen" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <RotateCcw className="size-3.5" />
+          )}
+          Reopen
+        </Button>
+      ) : null}
+    </div>
+  );
+};
+
 const TaskRow = ({
   isSelected,
+  onOpenSnooze,
   onSelect,
+  onStatusAction,
+  statusActionState,
   task,
 }: {
   isSelected: boolean;
+  onOpenSnooze: (task: TaskRecord) => void;
   onSelect: () => void;
+  onStatusAction: TaskStatusActionHandler;
+  statusActionState: TaskStatusActionState;
   task: TaskRecord;
 }) => {
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -306,6 +446,9 @@ const TaskRow = ({
   const entityHref = getTaskEntityHref(task);
   const railTone = task.isOverdue ? "overdue" : task.status;
   const dueLabel = task.isOverdue ? "Overdue" : formatTaskDate(task.dueAt);
+  const reminderLabel = task.snoozedUntil
+    ? formatTaskDate(task.snoozedUntil)
+    : null;
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -381,6 +524,12 @@ const TaskRow = ({
             {dueLabel}
           </p>
         </div>
+        {task.status === "snoozed" && reminderLabel ? (
+          <div className="mt-2 flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+            <Bell className="size-3.5" />
+            <p className="min-w-0 truncate">Returns {reminderLabel}</p>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-[1.15rem] border border-border/65 bg-background/46 px-3 py-3">
@@ -395,16 +544,31 @@ const TaskRow = ({
         </div>
       </div>
 
-      {entityHref ? (
-        <div className="flex lg:justify-end">
+      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <TaskStatusActions
+          compact
+          task={task}
+          state={statusActionState}
+          onOpenSnooze={onOpenSnooze}
+          onStatusAction={onStatusAction}
+        />
+        {entityHref ? (
           <Button asChild size="sm" variant="outline" className="rounded-full">
-            <TrackedLink href={entityHref}>
+            <TrackedLink
+              href={entityHref}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              onKeyDown={(event) => {
+                event.stopPropagation();
+              }}
+            >
               Open
               <ArrowUpRight className="size-3.5" />
             </TrackedLink>
           </Button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </motion.article>
   );
 };
@@ -448,9 +612,15 @@ const TaskGroupSection = ({
 
 const TaskContextPanel = ({
   onEditTask,
+  onOpenSnooze,
+  onStatusAction,
+  statusActionState,
   task,
 }: {
   onEditTask: (task: TaskRecord) => void;
+  onOpenSnooze: (task: TaskRecord) => void;
+  onStatusAction: TaskStatusActionHandler;
+  statusActionState: TaskStatusActionState;
   task: TaskRecord | null;
 }) => {
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -522,6 +692,13 @@ const TaskContextPanel = ({
             ) : null}
 
             <div className="grid gap-2">
+              <TaskStatusActions
+                task={task}
+                state={statusActionState}
+                onOpenSnooze={onOpenSnooze}
+                onStatusAction={onStatusAction}
+              />
+
               <Button
                 className="w-full justify-center rounded-full"
                 type="button"
@@ -566,6 +743,121 @@ const TaskContextPanel = ({
         )}
       </AnimatePresence>
     </aside>
+  );
+};
+
+const TaskSnoozeDialog = ({
+  onOpenChange,
+  onStatusAction,
+  open,
+  state,
+  task,
+}: {
+  onOpenChange: (open: boolean) => void;
+  onStatusAction: TaskStatusActionHandler;
+  open: boolean;
+  state: TaskStatusActionState;
+  task: TaskRecord | null;
+}) => {
+  const [reminderDate, setReminderDate] = useState(getDefaultSnoozeDate);
+  const isPending =
+    state.isPending &&
+    state.pendingAction === "snooze" &&
+    state.pendingTaskId === task?.id;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setReminderDate(task?.snoozedUntil?.slice(0, 10) ?? getDefaultSnoozeDate());
+  }, [open, task]);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!task) {
+      return;
+    }
+
+    onStatusAction(task, {
+      action: "snooze",
+      snoozedUntil: reminderDate,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md gap-4 rounded-[1.35rem] p-5">
+        <DialogHeader className="pr-10">
+          <DialogTitle className="text-xl">Snooze task</DialogTitle>
+          <DialogDescription className="text-sm leading-6">
+            Choose the date this task should return to the active queue.
+          </DialogDescription>
+        </DialogHeader>
+
+        {task ? (
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="rounded-[1rem] border border-border/70 bg-workspace-muted-surface/48 px-3 py-3">
+              <p className="truncate text-sm font-medium text-foreground">
+                {task.title}
+              </p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                {task.linkedEntity?.trail.join(" / ") ?? "No linked entity"}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="task-snooze-reminder">Reminder date</Label>
+              <Input
+                id="task-snooze-reminder"
+                type="date"
+                required
+                leadingIcon={<CalendarClock className="size-4" />}
+                value={reminderDate}
+                disabled={isPending}
+                onChange={(event) => {
+                  setReminderDate(event.target.value);
+                }}
+              />
+            </div>
+
+            {state.error && state.pendingTaskId === task.id ? (
+              <p className="status-message status-error">{state.error}</p>
+            ) : null}
+
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <DialogClose asChild>
+                <Button
+                  className="rounded-full"
+                  disabled={isPending}
+                  type="button"
+                  variant="outline"
+                >
+                  Close
+                </Button>
+              </DialogClose>
+              <Button
+                className="rounded-full"
+                disabled={isPending}
+                type="submit"
+              >
+                {isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Bell className="size-4" />
+                )}
+                Snooze
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <p className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
+            Select a task to snooze.
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -645,10 +937,33 @@ const TasksListSurface = ({
   });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
+  const [snoozingTask, setSnoozingTask] = useState<TaskRecord | null>(null);
   const groupedTasks = groupTasks(taskItems);
   const hasTaskItems = taskItems.length > 0;
   const handleTaskSaved = (_response: TaskMutationResponse) => {
     void refetch();
+  };
+  const {
+    applyTaskStatusAction,
+    error: statusActionError,
+    isPending: isStatusActionPending,
+    pendingAction,
+    pendingTaskId,
+    resetError: resetStatusActionError,
+  } = useTaskStatusActionMutation({
+    onSuccess: (response) => {
+      setSnoozingTask(null);
+      handleTaskSaved(response);
+    },
+  });
+  const statusActionState: TaskStatusActionState = {
+    error: statusActionError,
+    isPending: isStatusActionPending,
+    pendingAction,
+    pendingTaskId,
+  };
+  const handleStatusAction: TaskStatusActionHandler = (task, input) => {
+    applyTaskStatusAction({ input, taskId: task.id });
   };
 
   return (
@@ -781,29 +1096,51 @@ const TasksListSurface = ({
           </>
         }
         alerts={
-          isError ? (
-            <div className="rounded-[1.35rem] border border-destructive/30 bg-destructive/10 p-4">
-              <p className="text-sm font-medium text-foreground">
-                Unable to refresh tasks.
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {error instanceof Error
-                  ? error.message
-                  : "The tasks API returned an unexpected error."}
-              </p>
-              <Button
-                className="mt-4 rounded-full"
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void refetch();
-                }}
-              >
-                <RotateCcw className="size-4" />
-                Retry
-              </Button>
-            </div>
-          ) : null
+          <>
+            {statusActionError ? (
+              <div className="rounded-[1.35rem] border border-destructive/30 bg-destructive/10 p-4">
+                <p className="text-sm font-medium text-foreground">
+                  Unable to update task status.
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {statusActionError}
+                </p>
+                <Button
+                  className="mt-4 rounded-full"
+                  type="button"
+                  variant="outline"
+                  onClick={resetStatusActionError}
+                >
+                  <RotateCcw className="size-4" />
+                  Dismiss
+                </Button>
+              </div>
+            ) : null}
+
+            {isError ? (
+              <div className="rounded-[1.35rem] border border-destructive/30 bg-destructive/10 p-4">
+                <p className="text-sm font-medium text-foreground">
+                  Unable to refresh tasks.
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {error instanceof Error
+                    ? error.message
+                    : "The tasks API returned an unexpected error."}
+                </p>
+                <Button
+                  className="mt-4 rounded-full"
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    void refetch();
+                  }}
+                >
+                  <RotateCcw className="size-4" />
+                  Retry
+                </Button>
+              </div>
+            ) : null}
+          </>
         }
         pagination={{
           currentPage,
@@ -851,7 +1188,13 @@ const TasksListSurface = ({
                               key={task.id}
                               task={task}
                               isSelected={selection.isSelected}
+                              onOpenSnooze={(targetTask) => {
+                                resetStatusActionError();
+                                setSnoozingTask(targetTask);
+                              }}
                               onSelect={selection.onSelect}
+                              onStatusAction={handleStatusAction}
+                              statusActionState={statusActionState}
                             />
                           );
                         })}
@@ -872,9 +1215,15 @@ const TasksListSurface = ({
 
           <TaskContextPanel
             task={selectedTask}
+            onOpenSnooze={(task) => {
+              resetStatusActionError();
+              setSnoozingTask(task);
+            }}
             onEditTask={(task) => {
               setEditingTask(task);
             }}
+            onStatusAction={handleStatusAction}
+            statusActionState={statusActionState}
           />
         </div>
       </WorkspaceListSurfaceShell>
@@ -901,6 +1250,18 @@ const TasksListSurface = ({
         ownerOptions={tasksList.ownerOptions}
         entityOptions={tasksList.entityOptions}
         task={editingTask}
+      />
+
+      <TaskSnoozeDialog
+        open={Boolean(snoozingTask)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSnoozingTask(null);
+          }
+        }}
+        onStatusAction={handleStatusAction}
+        state={statusActionState}
+        task={snoozingTask}
       />
     </section>
   );

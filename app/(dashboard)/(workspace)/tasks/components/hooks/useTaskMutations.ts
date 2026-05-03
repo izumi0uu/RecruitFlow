@@ -2,7 +2,9 @@
 
 import {
   type TaskMutationResponse,
+  type TaskStatusActionRequest,
   taskMutationRequestSchema,
+  taskStatusActionRequestSchema,
 } from "@recruitflow/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -21,6 +23,10 @@ type UseTaskMutationOptions = {
   mode: TaskMutationMode;
   onSuccess?: (response: TaskMutationResponse) => Promise<void> | void;
   taskId?: string;
+};
+
+type UseTaskStatusActionOptions = {
+  onSuccess?: (response: TaskMutationResponse) => Promise<void> | void;
 };
 
 const getTaskPayload = (values: TaskFormValues) => {
@@ -66,6 +72,31 @@ const requestTaskMutation = async ({
       method: mode === "create" ? "POST" : "PATCH",
     },
   );
+};
+
+const requestTaskStatusAction = async ({
+  input,
+  taskId,
+}: {
+  input: TaskStatusActionRequest;
+  taskId: string;
+}) => {
+  const parsedPayload = taskStatusActionRequestSchema.safeParse(input);
+
+  if (!parsedPayload.success) {
+    throw new Error(
+      parsedPayload.error.issues[0]?.message ?? "Invalid task status action",
+    );
+  }
+
+  return fetchJson<TaskMutationResponse>(`/api/tasks/${taskId}/status`, {
+    body: JSON.stringify(parsedPayload.data),
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+    },
+    method: "PATCH",
+  });
 };
 
 export const useTasksCacheActions = () => {
@@ -134,5 +165,50 @@ export const useTaskMutation = ({
     isPending: mutation.isPending,
     resetError,
     saveTask: mutation.mutate,
+  };
+};
+
+export const useTaskStatusActionMutation = ({
+  onSuccess,
+}: UseTaskStatusActionOptions = {}) => {
+  const router = useRouter();
+  const { invalidateTasksList, removeInactiveTasksListCache } =
+    useTasksCacheActions();
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: requestTaskStatusAction,
+    onMutate: () => {
+      setError(null);
+    },
+    onSuccess: async (response) => {
+      removeInactiveTasksListCache();
+      await invalidateTasksList();
+      await onSuccess?.(response);
+    },
+    onError: (mutationError) => {
+      if (isApiRequestError(mutationError) && mutationError.status === 401) {
+        router.push("/sign-in");
+        return;
+      }
+
+      setError(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Unable to update task status.",
+      );
+    },
+  });
+
+  const resetError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  return {
+    applyTaskStatusAction: mutation.mutate,
+    error,
+    isPending: mutation.isPending,
+    pendingAction: mutation.variables?.input.action ?? null,
+    pendingTaskId: mutation.variables?.taskId ?? null,
+    resetError,
   };
 };

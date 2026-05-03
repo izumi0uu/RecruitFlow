@@ -334,6 +334,14 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     owner: "api",
     path: "/tasks/:taskId",
   },
+  {
+    auth: "session",
+    description:
+      "Complete, snooze, or reopen one workspace-scoped task and audit the status change.",
+    method: "PATCH",
+    owner: "api",
+    path: "/tasks/:taskId/status",
+  },
 ];
 
 const localApiUrl = (path: string) => {

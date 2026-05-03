@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -12,6 +13,7 @@ import type {
   TaskMutationRequest,
   TaskMutationResponse,
   TaskRecord,
+  TaskStatusActionRequest,
   TaskSubmissionReference,
   TasksListQuery,
   TasksListResponse,
@@ -95,6 +97,8 @@ const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
 const toDateInputValue = (date: string | null) => date?.slice(0, 10) ?? null;
 
 const toTaskDueAt = (value: string) => new Date(`${value}T00:00:00.000Z`);
+
+const toTaskReminderAt = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 const normalizeTextFilter = (value: string | undefined) => {
   const normalizedValue = value?.trim();
@@ -565,6 +569,20 @@ export class TasksService {
     };
   }
 
+  private assertCanUpdateTaskStatus(
+    context: ApiWorkspaceContext,
+    task: TaskRecord,
+  ) {
+    if (
+      context.membership.role === "coordinator" &&
+      task.assignedToUserId !== context.membership.userId
+    ) {
+      throw new ForbiddenException(
+        "Coordinators can update only tasks assigned to them",
+      );
+    }
+  }
+
   async listTasks(
     context: ApiWorkspaceContext,
     query: TasksListQuery,
@@ -934,5 +952,93 @@ export class TasksService {
     });
 
     return this.buildMutationResponse(context, task.id, "Task updated");
+  }
+
+  async updateTaskStatus(
+    context: ApiWorkspaceContext,
+    taskId: string,
+    input: TaskStatusActionRequest,
+  ): Promise<TaskMutationResponse> {
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const existingTask = await this.selectTaskRecord(context, taskId);
+    this.assertCanUpdateTaskStatus(context, existingTask);
+
+    const now = new Date();
+    let auditAction: AuditAction;
+    let message: string;
+    let nextCompletedAt: Date | null = null;
+    let nextSnoozedUntil: Date | null = null;
+    let nextStatus: ApiTaskStatus;
+
+    switch (input.action) {
+      case "complete":
+        if (existingTask.status === "done") {
+          throw new BadRequestException("Task is already complete");
+        }
+
+        auditAction = AuditAction.TASK_COMPLETED;
+        message = "Task completed";
+        nextCompletedAt = now;
+        nextStatus = "done";
+        break;
+      case "snooze":
+        if (existingTask.status === "done") {
+          throw new BadRequestException(
+            "Completed tasks must be reopened before snoozing",
+          );
+        }
+
+        auditAction = AuditAction.TASK_SNOOZED;
+        message = "Task snoozed";
+        nextSnoozedUntil = toTaskReminderAt(input.snoozedUntil);
+        nextStatus = "snoozed";
+        break;
+      case "reopen":
+        if (existingTask.status === "open") {
+          throw new BadRequestException("Task is already open");
+        }
+
+        auditAction = AuditAction.TASK_REOPENED;
+        message = "Task reopened";
+        nextStatus = "open";
+        break;
+    }
+
+    const [task] = await db
+      .update(tasks)
+      .set({
+        completedAt: nextCompletedAt,
+        snoozedUntil: nextSnoozedUntil,
+        status: nextStatus,
+        updatedAt: now,
+      })
+      .where(and(eq(tasks.workspaceId, workspaceId), eq(tasks.id, taskId)))
+      .returning({ id: tasks.id });
+
+    if (!task) {
+      throw new NotFoundException("Task not found");
+    }
+
+    await writeAuditLog({
+      action: auditAction,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: task.id,
+      entityType: "task",
+      metadata: {
+        action: input.action,
+        assignedToUserId: existingTask.assignedToUserId,
+        nextStatus,
+        previousCompletedAt: existingTask.completedAt,
+        previousSnoozedUntil: existingTask.snoozedUntil,
+        previousStatus: existingTask.status,
+        snoozedUntil: nextSnoozedUntil?.toISOString() ?? null,
+      },
+      source: "api",
+      workspaceId,
+    });
+
+    return this.buildMutationResponse(context, task.id, message);
   }
 }

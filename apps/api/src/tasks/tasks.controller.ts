@@ -15,6 +15,7 @@ import {
   type TasksListResponse,
   taskMutationRequestSchema,
   taskParamsSchema,
+  taskStatusActionRequestSchema,
   tasksListQuerySchema,
 } from "@recruitflow/contracts";
 
@@ -88,6 +89,35 @@ export class TasksController {
     }
 
     return this.tasksService.updateTask(
+      context,
+      parsedParams.data.taskId,
+      parsedBody.data,
+    );
+  }
+
+  @Patch(":taskId/status")
+  updateTaskStatus(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ): Promise<TaskMutationResponse> {
+    const parsedParams = taskParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid task id",
+      );
+    }
+
+    const parsedBody = taskStatusActionRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(
+        parsedBody.error.issues[0]?.message ?? "Invalid task status payload",
+      );
+    }
+
+    return this.tasksService.updateTaskStatus(
       context,
       parsedParams.data.taskId,
       parsedBody.data,
