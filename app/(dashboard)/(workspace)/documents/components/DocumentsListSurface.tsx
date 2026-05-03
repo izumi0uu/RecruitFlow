@@ -1,24 +1,30 @@
 "use client";
 
-import type { ReactNode } from "react";
 import {
+  type ApiAutomationStatus,
+  type ApiDocumentEntityType,
+  type ApiDocumentType,
+  apiDocumentEntityTypeValues,
+  apiDocumentTypeValues,
+  type DocumentRecord,
+} from "@recruitflow/contracts";
+import {
+  ArrowRight,
   Bot,
+  CheckCircle2,
   Database,
+  Download,
+  FileSpreadsheet,
   FileText,
   Filter,
   Loader2,
   RotateCcw,
+  ShieldCheck,
+  Upload,
   UserRound,
+  Workflow,
 } from "lucide-react";
-
-import {
-  apiDocumentEntityTypeValues,
-  apiDocumentTypeValues,
-  type ApiAutomationStatus,
-  type ApiDocumentEntityType,
-  type ApiDocumentType,
-  type DocumentRecord,
-} from "@recruitflow/contracts";
+import type { ReactNode } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -28,9 +34,13 @@ import {
   WorkspaceListStatusBadge,
   WorkspaceListSurfaceShell,
 } from "@/components/workspace/WorkspaceListSurfaceShell";
-import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
+import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import type { DocumentListFilters } from "@/lib/documents/filters";
+import {
+  type ImportExportTemplateId,
+  importExportTemplateDefinitions,
+} from "@/lib/import-export/templates";
 import { cn } from "@/lib/utils";
 
 import { useDocumentsListSurface } from "./hooks/useDocumentsListSurface";
@@ -59,6 +69,28 @@ const statusToneMap: Record<ApiAutomationStatus, string> = {
   succeeded:
     "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
 };
+
+const templateAccentMap: Record<ImportExportTemplateId, string> = {
+  candidates: "from-emerald-500/80 via-sky-500/70 to-cyan-500/70",
+  clients: "from-blue-500/80 via-indigo-500/70 to-fuchsia-500/65",
+  documents: "from-amber-500/80 via-lime-500/65 to-emerald-500/70",
+  jobs: "from-rose-500/75 via-orange-500/70 to-amber-500/75",
+  "pipeline-updates": "from-violet-500/75 via-sky-500/70 to-teal-500/70",
+};
+
+const importFlowSteps = [
+  { label: "Template", state: "ready" },
+  { label: "Upload", state: "planned" },
+  { label: "Map", state: "planned" },
+  { label: "Validate", state: "planned" },
+  { label: "Preview", state: "planned" },
+] as const;
+
+const documentSkeletonRowKeys = [
+  "document-skeleton-one",
+  "document-skeleton-two",
+  "document-skeleton-three",
+] as const;
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en", {
@@ -121,6 +153,150 @@ const StatusBadge = ({
   </DocumentBadge>
 );
 
+const TemplateLibrarySurface = () => (
+  <section className="overflow-hidden rounded-[2.15rem] border border-border/70 bg-background/60 shadow-[0_24px_70px_-54px_var(--shadow-color)]">
+    <div className="grid gap-0 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)]">
+      <div className="p-4 md:p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-[1.1rem] border border-border/70 bg-surface-1 text-foreground">
+              <FileSpreadsheet className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <span className="inline-kicker">Import/export templates</span>
+              <h2 className="mt-2 text-2xl font-semibold text-foreground">
+                Approved CSV starting points
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Static templates only: no workspace data is exported here, and
+                bulk import execution stays behind a future review workflow.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 rounded-full border border-border/70 bg-surface-1 px-3 py-2 text-xs font-semibold text-muted-foreground">
+            <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-300" />
+            Template safe
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          {importExportTemplateDefinitions.map((template) => (
+            <article
+              key={template.id}
+              className="group relative overflow-hidden rounded-[1.15rem] border border-border/70 bg-surface-1/62 p-4 transition hover:-translate-y-0.5 hover:border-primary/45"
+            >
+              <span
+                className={cn(
+                  "absolute inset-x-0 top-0 h-1 bg-gradient-to-r",
+                  templateAccentMap[template.id],
+                )}
+              />
+              <div className="flex items-start justify-between gap-3 pt-1">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    {template.domain}
+                  </p>
+                  <h3 className="mt-2 text-base font-semibold text-foreground">
+                    {template.title}
+                  </h3>
+                </div>
+                <Button
+                  asChild
+                  className="h-9 shrink-0 rounded-full px-3"
+                  variant="outline"
+                >
+                  <a
+                    download={template.filename}
+                    href={`/api/import-export/templates/${template.id}`}
+                  >
+                    <Download className="size-4" />
+                    CSV
+                  </a>
+                </Button>
+              </div>
+              <p className="mt-3 min-h-10 text-sm leading-5 text-muted-foreground">
+                {template.description}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
+                <span className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1">
+                  {template.headers.length} columns
+                </span>
+                <span className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1">
+                  example row
+                </span>
+                <span className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1">
+                  guidance row
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <aside className="border-t border-border/70 bg-workspace-muted-surface/42 p-4 md:p-5 xl:border-l xl:border-t-0">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-[1rem] border border-border/70 bg-background/70">
+            <Workflow className="size-5 text-foreground" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              Future import runway
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Built for mapping and validation before any database write.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-2">
+          {importFlowSteps.map((step, index) => (
+            <div
+              key={step.label}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] border border-border/70 bg-background/52 px-3 py-2.5"
+            >
+              <span
+                className={cn(
+                  "flex size-7 items-center justify-center rounded-full border",
+                  step.state === "ready"
+                    ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-border/70 bg-surface-1 text-muted-foreground",
+                )}
+              >
+                {step.state === "ready" ? (
+                  <CheckCircle2 className="size-4" />
+                ) : (
+                  <Upload className="size-3.5" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {step.label}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {step.state === "ready" ? "Available now" : "Downstream"}
+                </p>
+              </div>
+              {index < importFlowSteps.length - 1 ? (
+                <ArrowRight className="size-4 text-muted-foreground" />
+              ) : (
+                <ShieldCheck className="size-4 text-muted-foreground" />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 rounded-[1rem] border border-border/70 bg-background/52 p-4">
+          <p className="text-sm font-semibold text-foreground">Boundary note</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Real result-set exports and bulk imports require API ownership,
+            permission checks, row-level errors, preview, and audit events.
+          </p>
+        </div>
+      </aside>
+    </div>
+  </section>
+);
+
 const DocumentRow = ({ document }: { document: DocumentRecord }) => {
   const entityHref = getEntityHref(document);
   const entityLabel = `${entityTypeLabelMap[document.entityType]} ${document.entityId.slice(0, 8)}`;
@@ -172,7 +348,9 @@ const DocumentRow = ({ document }: { document: DocumentRecord }) => {
           <UserRound className="size-3.5 text-muted-foreground" />
           Uploaded by {uploadedByLabel}
         </p>
-        <p className="mt-1 truncate">Created {formatDate(document.createdAt)}</p>
+        <p className="mt-1 truncate">
+          Created {formatDate(document.createdAt)}
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -185,8 +363,8 @@ const DocumentRow = ({ document }: { document: DocumentRecord }) => {
 
 const DocumentRowsSkeleton = () => (
   <div className="divide-y divide-border/60">
-    {Array.from({ length: 3 }).map((_, index) => (
-      <div key={index} className="px-4 py-4 md:px-5">
+    {documentSkeletonRowKeys.map((rowKey) => (
+      <div key={rowKey} className="px-4 py-4 md:px-5">
         <div className="h-4 w-32 animate-pulse rounded-full bg-surface-2" />
         <div className="mt-4 h-6 w-64 max-w-full animate-pulse rounded-full bg-surface-2" />
         <div className="mt-3 h-4 w-full max-w-lg animate-pulse rounded-full bg-surface-2" />
@@ -228,9 +406,7 @@ const DocumentsEmptyState = ({
       </Button>
     ) : (
       <Button asChild variant="outline" className="mt-4 rounded-full">
-        <TrackedLink href="/documents/new">
-          Add metadata
-        </TrackedLink>
+        <TrackedLink href="/documents/new">Add metadata</TrackedLink>
       </Button>
     )}
   </div>
@@ -277,6 +453,8 @@ export const DocumentsListSurface = ({
         }
       />
 
+      <TemplateLibrarySurface />
+
       <WorkspaceListSurfaceShell
         filterBadges={
           <>
@@ -301,11 +479,12 @@ export const DocumentsListSurface = ({
         filterControlsClassName="lg:grid-cols-[minmax(10rem,0.35fr)_minmax(10rem,0.35fr)_minmax(16rem,1fr)_auto]"
         filterControls={
           <>
-            <label className="space-y-2">
+            <label className="space-y-2" htmlFor="documents-type-filter">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Type
               </span>
               <FilterSelect
+                id="documents-type-filter"
                 value={filters.type}
                 options={[
                   { label: "All types", value: "" },
@@ -324,11 +503,12 @@ export const DocumentsListSurface = ({
               />
             </label>
 
-            <label className="space-y-2">
+            <label className="space-y-2" htmlFor="documents-entity-filter">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Entity
               </span>
               <FilterSelect
+                id="documents-entity-filter"
                 value={filters.entityType}
                 options={[
                   { label: "All entities", value: "" },
@@ -340,19 +520,19 @@ export const DocumentsListSurface = ({
                 placeholder="All entities"
                 onValueChange={(entityType) => {
                   applyFilters({
-                    entityType:
-                      entityType as DocumentListFilters["entityType"],
+                    entityType: entityType as DocumentListFilters["entityType"],
                     page: "",
                   });
                 }}
               />
             </label>
 
-            <label className="space-y-2">
+            <label className="space-y-2" htmlFor="documents-entity-id-filter">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Entity ID
               </span>
               <Input
+                id="documents-entity-id-filter"
                 value={entityIdDraft}
                 onChange={(event) => setEntityIdDraft(event.target.value)}
                 placeholder="Linked entity id"
