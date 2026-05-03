@@ -277,7 +277,7 @@ export class TasksService {
         break;
       case "overdue":
         whereClauses.push(ne(tasks.status, "done"));
-        whereClauses.push(lt(tasks.dueAt, now));
+        whereClauses.push(lt(tasks.dueAt, sql`now()`));
         break;
       case "snoozed":
         whereClauses.push(eq(tasks.status, "snoozed"));
@@ -334,7 +334,7 @@ export class TasksService {
           doneCount: sql<number>`cast(count(*) filter (where ${tasks.status} = 'done') as int)`,
           mineCount: sql<number>`cast(count(*) filter (where ${tasks.assignedToUserId} = ${context.membership.userId} and ${tasks.status} <> 'done') as int)`,
           openCount: sql<number>`cast(count(*) filter (where ${tasks.status} = 'open') as int)`,
-          overdueCount: sql<number>`cast(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueAt} < ${now}) as int)`,
+          overdueCount: sql<number>`cast(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueAt} < now()) as int)`,
           snoozedCount: sql<number>`cast(count(*) filter (where ${tasks.status} = 'snoozed') as int)`,
           workspaceActiveCount: sql<number>`cast(count(*) filter (where ${tasks.status} <> 'done') as int)`,
         })
