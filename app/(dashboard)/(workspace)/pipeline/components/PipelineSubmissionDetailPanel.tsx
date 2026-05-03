@@ -4,6 +4,7 @@ import {
   type ApiJobStatus,
   type ApiRiskFlag,
   type ApiSubmissionStage,
+  type ApiUserReference,
   apiDefaultJobStageTemplate,
   type SubmissionRecord,
 } from "@recruitflow/contracts";
@@ -30,7 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog";
 import { cn } from "@/lib/utils";
-
+import { QuickTaskPanel } from "../../tasks/components/QuickTaskPanel";
 import {
   PipelineNextStepControl,
   PipelineRiskControl,
@@ -41,6 +42,7 @@ type PipelineSubmissionDetailPanelProps = {
   canChangeStage: boolean;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  ownerOptions: ApiUserReference[];
   submission: SubmissionRecord | null;
 };
 
@@ -168,6 +170,7 @@ export const PipelineSubmissionDetailPanel = ({
   canChangeStage,
   onOpenChange,
   open,
+  ownerOptions,
   submission,
 }: PipelineSubmissionDetailPanelProps) => {
   return (
@@ -381,6 +384,24 @@ export const PipelineSubmissionDetailPanel = ({
                     value={canChangeStage ? "Editable" : "Read-only"}
                   />
                 </DetailSection>
+
+                <QuickTaskPanel
+                  defaultAssignedToUserId={submission.ownerUserId}
+                  entity={{
+                    entityId: submission.id,
+                    entityType: "submission",
+                    label: getCandidateTitle(submission),
+                    secondaryLabel: getRoleTitle(submission),
+                    trail: [
+                      "Submission",
+                      getClientName(submission),
+                      getRoleTitle(submission),
+                      getCandidateTitle(submission),
+                    ],
+                  }}
+                  ownerOptions={ownerOptions}
+                  title="Submission tasks"
+                />
 
                 <DetailSection
                   icon={<CircleDollarSign className="size-4" />}

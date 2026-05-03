@@ -215,6 +215,14 @@ export const apiTaskStatusValues = ["open", "snoozed", "done"] as const;
 
 export type ApiTaskStatus = (typeof apiTaskStatusValues)[number];
 
+export const apiTaskStatusActionValues = [
+  "complete",
+  "snooze",
+  "reopen",
+] as const;
+
+export type ApiTaskStatusAction = (typeof apiTaskStatusActionValues)[number];
+
 export const apiTaskEntityTypeValues = [
   "client",
   "job",
@@ -915,6 +923,14 @@ export interface TaskSubmissionReference {
   stage: ApiSubmissionStage;
 }
 
+export interface TaskFormEntityOption {
+  entityId: string;
+  entityType: ApiTaskEntityType;
+  label: string;
+  secondaryLabel: string | null;
+  trail: string[];
+}
+
 export interface TaskRecord {
   assignedTo: ApiUserReference | null;
   assignedToUserId: string | null;
@@ -937,6 +953,7 @@ export interface TaskRecord {
 export interface TasksListResponse {
   context: ApiCrmPlaceholderContext;
   contractVersion: "phase-1";
+  entityOptions: TaskFormEntityOption[];
   filters: {
     assignedToUserId: string | null;
     entityId: string | null;
@@ -961,6 +978,56 @@ export interface TasksListResponse {
     snoozedCount: number;
     workspaceActiveCount: number;
   };
+  workspaceScoped: true;
+}
+
+export const taskParamsSchema = z.object({
+  taskId: z.string().uuid(),
+});
+
+export type TaskParams = z.infer<typeof taskParamsSchema>;
+
+export const taskMutationRequestSchema = z.object({
+  assignedToUserId: z.string().uuid("Task owner is required"),
+  description: optionalTrimmedTextSchema(2000),
+  dueAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must use YYYY-MM-DD format"),
+  entityId: z.string().uuid("Linked entity is required"),
+  entityType: z.enum(apiTaskEntityTypeValues),
+  title: z.string().trim().min(1, "Task title is required").max(180),
+});
+
+export type TaskMutationRequest = z.infer<typeof taskMutationRequestSchema>;
+
+const taskReminderDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Reminder date must use YYYY-MM-DD format");
+
+export const taskStatusActionRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("complete"),
+  }),
+  z.object({
+    action: z.literal("snooze"),
+    snoozedUntil: taskReminderDateSchema,
+  }),
+  z.object({
+    action: z.literal("reopen"),
+  }),
+]);
+
+export type TaskStatusActionRequest = z.infer<
+  typeof taskStatusActionRequestSchema
+>;
+
+export interface TaskMutationResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  entityOptions: TaskFormEntityOption[];
+  message: string;
+  ownerOptions: ApiUserReference[];
+  task: TaskRecord;
   workspaceScoped: true;
 }
 

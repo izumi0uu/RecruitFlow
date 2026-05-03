@@ -1,4 +1,7 @@
-import type { TasksListResponse } from "@recruitflow/contracts";
+import type {
+  TaskMutationResponse,
+  TasksListResponse,
+} from "@recruitflow/contracts";
 import type { NextRequest } from "next/server";
 
 import { withBffApiErrorResponse } from "@/lib/api/bff";
@@ -12,4 +15,15 @@ export const GET = (request: NextRequest) =>
     );
 
     return Response.json(tasks);
+  });
+
+export const POST = (request: NextRequest) =>
+  withBffApiErrorResponse(async () => {
+    const payload = await request.json();
+    const task = await requestApiJson<TaskMutationResponse>("/tasks", {
+      method: "POST",
+      json: payload,
+    });
+
+    return Response.json(task, { status: 201 });
   });

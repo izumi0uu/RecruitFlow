@@ -37,6 +37,7 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
+import { QuickTaskPanel } from "../../tasks/components/QuickTaskPanel";
 
 import { JobStatusPriorityControls as JobStatusPriorityControlsForm } from "../components/JobStatusPriorityControls";
 import {
@@ -528,10 +529,8 @@ const StageTemplateOverview = ({
 const JobDetailPage = async ({ params, searchParams }: PageProps) => {
   const { jobId } = await params;
   const urlParams = await Promise.resolve(searchParams ?? {});
-  const [{ context, job, stageTemplate }, jobSubmissions] = await Promise.all([
-    getJobDetail(jobId),
-    getJobSubmissions(jobId),
-  ]);
+  const [{ context, job, ownerOptions, stageTemplate }, jobSubmissions] =
+    await Promise.all([getJobDetail(jobId), getJobSubmissions(jobId)]);
   const ownerLabel = job.owner?.name ?? job.owner?.email ?? "Unassigned";
   const canEdit = context.role !== "coordinator";
 
@@ -674,6 +673,22 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
               </CardContent>
             </Card>
           )}
+
+          <QuickTaskPanel
+            canCreateTask={!job.archivedAt}
+            defaultAssignedToUserId={job.ownerUserId}
+            entity={{
+              entityId: job.id,
+              entityType: "job",
+              label: job.title,
+              secondaryLabel: job.client?.name ?? null,
+              trail: ["Job", job.client?.name, job.title].filter(
+                (item): item is string => Boolean(item),
+              ),
+            }}
+            ownerOptions={ownerOptions}
+            title="Job tasks"
+          />
 
           <Card>
             <CardHeader>
