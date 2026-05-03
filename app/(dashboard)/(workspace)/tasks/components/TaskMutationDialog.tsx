@@ -41,7 +41,11 @@ import { useTaskMutation } from "./hooks/useTaskMutations";
 type TaskMutationMode = "create" | "edit";
 
 type TaskMutationDialogProps = {
+  defaultAssignedToUserId?: string | null;
+  defaultEntityOption?: TaskFormEntityOption | null;
+  description?: string;
   entityOptions: TaskFormEntityOption[];
+  lockEntity?: boolean;
   mode: TaskMutationMode;
   onOpenChange: (open: boolean) => void;
   onTaskSaved: (response: TaskMutationResponse) => void;
@@ -59,6 +63,8 @@ const getDefaultDueDate = () => {
 };
 
 const getInitialTaskValues = ({
+  defaultAssignedToUserId,
+  defaultEntityOption,
   entityOptions,
   mode,
   ownerOptions,
@@ -66,7 +72,13 @@ const getInitialTaskValues = ({
   task,
 }: Pick<
   TaskMutationDialogProps,
-  "entityOptions" | "mode" | "ownerOptions" | "seedTask" | "task"
+  | "defaultAssignedToUserId"
+  | "defaultEntityOption"
+  | "entityOptions"
+  | "mode"
+  | "ownerOptions"
+  | "seedTask"
+  | "task"
 >): TaskFormValues => {
   if (mode === "edit" && task) {
     return buildTaskFormValuesFromRecord(task);
@@ -74,16 +86,30 @@ const getInitialTaskValues = ({
 
   const seededEntityKey = seedTask
     ? getTaskEntityKey(seedTask.entityType, seedTask.entityId)
-    : "";
+    : defaultEntityOption
+      ? getTaskEntityKey(
+          defaultEntityOption.entityType,
+          defaultEntityOption.entityId,
+        )
+      : "";
   const entityKey = entityOptions.some(
     (option) =>
       getTaskEntityKey(option.entityType, option.entityId) === seededEntityKey,
   )
     ? seededEntityKey
     : "";
+  const defaultAssignee =
+    defaultAssignedToUserId &&
+    ownerOptions.some((owner) => owner.id === defaultAssignedToUserId)
+      ? defaultAssignedToUserId
+      : null;
 
   return buildTaskFormValues({
-    assignedToUserId: seedTask?.assignedToUserId ?? ownerOptions[0]?.id ?? "",
+    assignedToUserId:
+      seedTask?.assignedToUserId ??
+      defaultAssignee ??
+      ownerOptions[0]?.id ??
+      "",
     dueAt: getDefaultDueDate(),
     entityKey,
   });
@@ -93,7 +119,11 @@ const getEntityOptionLabel = (option: TaskFormEntityOption) =>
   `${option.label}${option.secondaryLabel ? ` / ${option.secondaryLabel}` : ""}`;
 
 const TaskMutationDialog = ({
+  defaultAssignedToUserId,
+  defaultEntityOption,
+  description,
   entityOptions,
+  lockEntity = false,
   mode,
   onOpenChange,
   onTaskSaved,
@@ -104,6 +134,8 @@ const TaskMutationDialog = ({
 }: TaskMutationDialogProps) => {
   const [values, setValues] = useState<TaskFormValues>(() =>
     getInitialTaskValues({
+      defaultAssignedToUserId,
+      defaultEntityOption,
       entityOptions,
       mode,
       ownerOptions,
@@ -145,6 +177,8 @@ const TaskMutationDialog = ({
     resetError();
     setValues(
       getInitialTaskValues({
+        defaultAssignedToUserId,
+        defaultEntityOption,
         entityOptions,
         mode,
         ownerOptions,
@@ -152,7 +186,17 @@ const TaskMutationDialog = ({
         task,
       }),
     );
-  }, [entityOptions, mode, open, ownerOptions, resetError, seedTask, task]);
+  }, [
+    defaultAssignedToUserId,
+    defaultEntityOption,
+    entityOptions,
+    mode,
+    open,
+    ownerOptions,
+    resetError,
+    seedTask,
+    task,
+  ]);
 
   const updateValue = (field: keyof TaskFormValues, value: string) => {
     setValues((currentValues) => ({
@@ -172,8 +216,8 @@ const TaskMutationDialog = ({
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit task" : "Create task"}</DialogTitle>
           <DialogDescription>
-            Capture the follow-up, ownership, due date, and business record in
-            one place.
+            {description ??
+              "Capture the follow-up, ownership, due date, and business record in one place."}
           </DialogDescription>
         </DialogHeader>
 
@@ -221,6 +265,7 @@ const TaskMutationDialog = ({
                   value={values.entityKey}
                   options={entitySelectOptions}
                   placeholder="Select client or submission"
+                  disabled={lockEntity}
                   onValueChange={(entityKey) => {
                     updateValue("entityKey", entityKey);
                   }}
@@ -258,9 +303,9 @@ const TaskMutationDialog = ({
                 <div className="flex items-start gap-3">
                   <Link2 className="mt-0.5 size-4 text-muted-foreground" />
                   <p className="text-sm leading-6 text-muted-foreground">
-                    RF-061 supports client-linked and submission-linked tasks in
-                    the UI. The API still validates all supported task entity
-                    types for downstream entry points.
+                    {lockEntity
+                      ? "This quick task inherits the current business record, while the API still validates the workspace link."
+                      : "The tasks inbox keeps the full selector focused, while quick-entry surfaces inherit job, candidate, client, or submission links."}
                   </p>
                 </div>
               </div>

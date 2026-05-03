@@ -749,6 +749,7 @@ export const PipelineSurface = ({
       <PipelineSubmissionDetailPanel
         canChangeStage={canChangeStage}
         open={Boolean(selectedSubmissionId)}
+        ownerOptions={submissions.ownerOptions}
         onOpenChange={(open) => {
           if (!open) {
             setSelectedSubmissionId(null);

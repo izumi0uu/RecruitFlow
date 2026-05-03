@@ -43,6 +43,7 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
+import { QuickTaskPanel } from "../../tasks/components/QuickTaskPanel";
 
 type PageProps = {
   params: Promise<{
@@ -634,12 +635,15 @@ const hasSubmissionCreatedFlag = (
 const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
   const { candidateId } = await params;
   const urlParams = await Promise.resolve(searchParams ?? {});
-  const [{ candidate, context }, documentsList, candidateSubmissions] =
-    await Promise.all([
-      getCandidateDetail(candidateId),
-      getCandidateDocuments(candidateId),
-      getCandidateSubmissions(candidateId),
-    ]);
+  const [
+    { candidate, context, ownerOptions },
+    documentsList,
+    candidateSubmissions,
+  ] = await Promise.all([
+    getCandidateDetail(candidateId),
+    getCandidateDocuments(candidateId),
+    getCandidateSubmissions(candidateId),
+  ]);
   const ownerLabel =
     candidate.owner?.name ?? candidate.owner?.email ?? "Unassigned";
   const linkedinHref = normalizeExternalHref(candidate.linkedinUrl);
@@ -830,6 +834,20 @@ const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
               ) : null}
             </CardContent>
           </Card>
+
+          <QuickTaskPanel
+            canCreateTask={!candidate.archivedAt}
+            defaultAssignedToUserId={candidate.ownerUserId}
+            entity={{
+              entityId: candidate.id,
+              entityType: "candidate",
+              label: candidate.fullName,
+              secondaryLabel: formatCandidateFocus(candidate),
+              trail: ["Candidate", candidate.fullName],
+            }}
+            ownerOptions={ownerOptions}
+            title="Candidate tasks"
+          />
 
           <Card>
             <CardHeader>

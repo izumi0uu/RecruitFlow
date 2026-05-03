@@ -925,7 +925,7 @@ export interface TaskSubmissionReference {
 
 export interface TaskFormEntityOption {
   entityId: string;
-  entityType: "client" | "submission";
+  entityType: ApiTaskEntityType;
   label: string;
   secondaryLabel: string | null;
   trail: string[];

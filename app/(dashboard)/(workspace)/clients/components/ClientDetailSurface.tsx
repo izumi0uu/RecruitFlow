@@ -26,6 +26,7 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { isApiRequestError } from "@/lib/api/errors";
 import { clientDetailQueryOptions } from "@/lib/query/options";
 import { cn } from "@/lib/utils";
+import { QuickTaskPanel } from "../../tasks/components/QuickTaskPanel";
 import {
   clientDetailPriorityToneMap,
   clientStatusToneMap,
@@ -454,6 +455,20 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
               </div>
             </CardContent>
           </Card>
+
+          <QuickTaskPanel
+            canCreateTask={!isArchived}
+            defaultAssignedToUserId={client.ownerUserId}
+            entity={{
+              entityId: client.id,
+              entityType: "client",
+              label: client.name,
+              secondaryLabel: client.industry,
+              trail: ["Client", client.name],
+            }}
+            ownerOptions={ownerOptions}
+            title="Client tasks"
+          />
 
           {isArchived || canArchive ? (
             <Card
