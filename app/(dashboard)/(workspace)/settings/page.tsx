@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
 
 import {
   Card,
@@ -24,7 +24,7 @@ import {
 import { WorkspaceActionsDock } from "./components/WorkspaceActionsDock";
 
 const SettingsGateSkeleton = () => (
-  <div className="flex h-full min-h-0 flex-col gap-5">
+  <div className="flex flex-col gap-5">
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
       <div className="space-y-4">
         <div className="h-8 w-52 animate-pulse rounded-full bg-surface-2" />
@@ -38,7 +38,7 @@ const SettingsGateSkeleton = () => (
       </div>
     </div>
 
-    <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-2">
+    <div className="grid gap-5 xl:grid-cols-2">
       <BillingSectionSkeleton />
       <MembersSectionSkeleton />
     </div>
@@ -50,8 +50,8 @@ const SettingsRestrictedState = () => (
     <CardHeader>
       <CardTitle>Restricted workspace settings</CardTitle>
       <CardDescription>
-        Billing controls and membership administration stay limited to
-        workspace owners.
+        Billing controls and membership administration stay limited to workspace
+        owners.
       </CardDescription>
     </CardHeader>
     <CardContent className="space-y-5">
@@ -71,13 +71,17 @@ const SettingsRestrictedState = () => (
 );
 
 const SettingsSections = () => (
-  <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-2">
-    <Suspense fallback={<BillingSectionSkeleton />}>
-      <BillingSection />
-    </Suspense>
-    <Suspense fallback={<MembersSectionSkeleton />}>
-      <MembersSection />
-    </Suspense>
+  <div className="grid gap-5 xl:grid-cols-2">
+    <div id="settings-billing">
+      <Suspense fallback={<BillingSectionSkeleton />}>
+        <BillingSection />
+      </Suspense>
+    </div>
+    <div id="settings-members">
+      <Suspense fallback={<MembersSectionSkeleton />}>
+        <MembersSection />
+      </Suspense>
+    </div>
   </div>
 );
 
@@ -86,7 +90,7 @@ const SettingsPageContent = () => {
   const isOwner = user?.role === "owner";
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <WorkspacePageHeader
         kicker="Workspace settings"
         title="Workspace settings"
@@ -101,7 +105,7 @@ const SettingsPageContent = () => {
 };
 
 const SettingsPage = () => (
-  <section className="h-full min-h-0 px-0 py-1 lg:py-0">
+  <section className="px-0 py-1 lg:py-0">
     <Suspense fallback={<SettingsGateSkeleton />}>
       <SettingsPageContent />
     </Suspense>

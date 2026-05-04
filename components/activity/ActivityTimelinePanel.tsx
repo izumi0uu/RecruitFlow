@@ -442,9 +442,9 @@ const TimelineEvent = ({ event }: { event: ActivityTimelineEvent }) => {
           isDeletedNote && "border-dashed bg-muted/35 hover:bg-muted/45",
         )}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">
+            <p className="break-words text-sm font-semibold text-foreground">
               {event.title}
             </p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -453,7 +453,7 @@ const TimelineEvent = ({ event }: { event: ActivityTimelineEvent }) => {
           </div>
           <span
             className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold",
+              "max-w-full self-start rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold",
               eventToneClassMap[event.type],
             )}
           >
@@ -471,7 +471,7 @@ const TimelineEvent = ({ event }: { event: ActivityTimelineEvent }) => {
             {event.metadata.map((item) => (
               <span
                 key={`${event.id}-${item.label}-${item.value}`}
-                className="rounded-full border border-border/70 bg-background/68 px-2 py-1 text-[0.68rem] font-medium text-muted-foreground"
+                className="max-w-full break-words rounded-full border border-border/70 bg-background/68 px-2 py-1 text-[0.68rem] font-medium text-muted-foreground"
               >
                 {item.label}: {item.value}
               </span>

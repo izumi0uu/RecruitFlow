@@ -91,7 +91,7 @@ const ActivityPage = async () => {
   const logs = await getActivityLogs();
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto px-0 py-1 pr-1 lg:py-0">
+    <section className="flex flex-col gap-5 px-0 py-1 lg:py-0">
       <WorkspacePageHeader
         backHref="/settings"
         breadcrumbItems={[
@@ -103,43 +103,46 @@ const ActivityPage = async () => {
         description="Review recent account and workspace actions in the same subdued surface as the rest of the product."
       />
 
-      <Card className="min-h-0 w-full flex-1">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Recent activity</CardTitle>
           <CardDescription>
             The last few actions recorded for this account.
           </CardDescription>
         </CardHeader>
-        <CardContent className="min-h-0 flex-1 overflow-y-auto">
+        <CardContent>
           {logs.length > 0 ? (
-            <ul className="space-y-3">
-              {logs.map((log) => {
-                const Icon = iconMap[log.action as ActivityType] || ShieldCheck;
-                const formattedAction = formatAction(
-                  log.action as ActivityType,
-                );
+            <div className="max-h-[min(26rem,52dvh)] overflow-y-auto pr-1">
+              <ul className="space-y-3">
+                {logs.map((log) => {
+                  const Icon =
+                    iconMap[log.action as ActivityType] || ShieldCheck;
+                  const formattedAction = formatAction(
+                    log.action as ActivityType,
+                  );
 
-                return (
-                  <li
-                    key={log.id}
-                    className="flex gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/75 px-4 py-4"
-                  >
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-background/75">
-                      <Icon className="size-[1.125rem] text-foreground" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">
-                        {formattedAction}
-                        {log.ipAddress ? ` from IP ${log.ipAddress}` : ""}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                        {getRelativeTime(new Date(log.timestamp))}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                  return (
+                    <li
+                      key={log.id}
+                      className="flex gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/75 px-4 py-4"
+                    >
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-background/75">
+                        <Icon className="size-[1.125rem] text-foreground" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">
+                          {formattedAction}
+                          {log.ipAddress ? ` from IP ${log.ipAddress}` : ""}
+                        </p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                          {getRelativeTime(new Date(log.timestamp))}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border/70 bg-surface-1/55 px-6 py-14 text-center">
               <div className="flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70">

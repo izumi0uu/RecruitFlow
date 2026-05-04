@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 import {
   currentUserQueryOptions,
   currentWorkspaceQueryOptions,
@@ -53,6 +54,11 @@ const getUserInitials = (user: UserIdentity) => {
 const toRoleLabel = (role: ApiWorkspaceRole) => {
   return role.charAt(0).toUpperCase() + role.slice(1);
 };
+
+const workspaceRoleOptions = apiWorkspaceRoleValues.map((role) => ({
+  label: toRoleLabel(role),
+  value: role,
+}));
 
 const formatJoinedAt = (joinedAt?: string | null) => {
   if (!joinedAt) {
@@ -112,21 +118,17 @@ const MemberRoleControl = ({
         <label className="sr-only" htmlFor={`member-role-${member.id}`}>
           Role for {getUserDisplayName(member.user)}
         </label>
-        <select
+        <FilterSelect
           id={`member-role-${member.id}`}
-          className="input h-10 min-w-36"
+          className="min-w-36"
+          options={workspaceRoleOptions}
+          placeholder="Select role"
           value={role}
           disabled={!isOwner || isPending}
-          onChange={(event) => {
-            setRole(event.target.value as ApiWorkspaceRole);
+          onValueChange={(value) => {
+            setRole(value as ApiWorkspaceRole);
           }}
-        >
-          {apiWorkspaceRoleValues.map((nextRole) => (
-            <option key={nextRole} value={nextRole}>
-              {toRoleLabel(nextRole)}
-            </option>
-          ))}
-        </select>
+        />
 
         <Button
           type="submit"

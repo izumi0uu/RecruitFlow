@@ -1,8 +1,8 @@
 "use client";
 
+import { Activity, Menu, Settings, Shield, Users, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Activity, Menu, Settings, Shield, Users, X } from "lucide-react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -22,7 +22,7 @@ const SettingsLayout = ({ children }: { children: React.ReactNode }) => {
     navItems.find((item) => pathname === item.href) ?? navItems[0];
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-4 pb-8 pt-0 lg:grid lg:h-[calc(100dvh-8.5rem)] lg:min-h-0 lg:grid-cols-[5rem_minmax(0,1fr)] lg:gap-5 lg:overflow-hidden lg:pb-0">
+    <div className="flex w-full max-w-none flex-col gap-4 pb-8 pt-0 lg:grid lg:grid-cols-[5rem_minmax(0,1fr)] lg:items-start lg:gap-5 lg:pb-0">
       <div className="panel-shell flex items-center justify-between px-4 py-3 lg:hidden">
         <div>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -132,9 +132,7 @@ const SettingsLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </aside>
 
-      <main className="min-w-0 w-full lg:min-h-0 lg:overflow-hidden">
-        {children}
-      </main>
+      <main className="min-w-0 w-full">{children}</main>
     </div>
   );
 };

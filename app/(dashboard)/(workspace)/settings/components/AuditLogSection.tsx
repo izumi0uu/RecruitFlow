@@ -189,46 +189,50 @@ const AuditLogSection = () => {
             Loading audit events...
           </div>
         ) : auditQuery.data?.items.length ? (
-          <ul className="space-y-3">
-            {auditQuery.data.items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/70 px-4 py-4 md:flex-row md:items-start md:justify-between"
-              >
-                <div className="flex min-w-0 gap-4">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-background/75">
-                    <ShieldCheck className="size-[1.125rem] text-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground">
-                      {formatAuditAction(item.action)}
-                    </p>
-                    <p className="mt-1 truncate text-sm text-muted-foreground">
-                      {item.actor?.name || item.actor?.email || "System event"}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      {item.entityType ? (
-                        <span className="status-message border-border/70 bg-background text-muted-foreground">
-                          {item.entityType}
-                        </span>
-                      ) : null}
-                      {item.entityId ? (
-                        <span className="font-mono text-[0.7rem]">
-                          {item.entityId}
-                        </span>
-                      ) : null}
+          <div className="max-h-[min(34rem,60dvh)] overflow-y-auto pr-1">
+            <ul className="space-y-3">
+              {auditQuery.data.items.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/70 px-4 py-4 md:flex-row md:items-start md:justify-between"
+                >
+                  <div className="flex min-w-0 gap-4">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-background/75">
+                      <ShieldCheck className="size-[1.125rem] text-foreground" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">
+                        {formatAuditAction(item.action)}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {item.actor?.name ||
+                          item.actor?.email ||
+                          "System event"}
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        {item.entityType ? (
+                          <span className="status-message border-border/70 bg-background text-muted-foreground">
+                            {item.entityType}
+                          </span>
+                        ) : null}
+                        {item.entityId ? (
+                          <span className="font-mono text-[0.7rem]">
+                            {item.entityId}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="text-sm text-muted-foreground md:text-right">
-                  <p>{formatAuditDate(item.createdAt)}</p>
-                  {item.ipAddress ? (
-                    <p className="mt-2 font-mono text-xs">{item.ipAddress}</p>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
+                  <div className="text-sm text-muted-foreground md:text-right">
+                    <p>{formatAuditDate(item.createdAt)}</p>
+                    {item.ipAddress ? (
+                      <p className="mt-2 font-mono text-xs">{item.ipAddress}</p>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border/70 bg-surface-1/55 px-6 py-12 text-center">
             <div className="flex size-14 items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/70">
