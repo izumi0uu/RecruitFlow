@@ -48,6 +48,7 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { type FilterTabOption, FilterTabs } from "@/components/ui/FilterTabs";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import {
@@ -343,90 +344,12 @@ const getTaskViewCount = (
   }
 };
 
-const TaskViewTabs = ({
-  activeView,
-  disabled,
-  onViewChange,
-  tasksList,
-}: {
-  activeView: TaskListFilters["view"];
-  disabled: boolean;
-  onViewChange: (view: TaskListFilters["view"]) => void;
-  tasksList: TasksListResponse;
-}) => (
-  <div className="rounded-[1.45rem] border border-border/70 bg-background/58 p-1.5">
-    <div className="grid gap-1.5 md:grid-cols-5">
-      {taskViewOrder.map((view) => {
-        const isActive = view === activeView;
-        const meta = taskViewMeta[view];
-        const Icon = meta.icon;
-        const count = getTaskViewCount(view, tasksList);
-
-        return (
-          <button
-            key={view}
-            type="button"
-            aria-pressed={isActive}
-            disabled={disabled}
-            className={cn(
-              "relative min-h-[5.8rem] rounded-[1.05rem] px-3 py-3 text-left transition-colors",
-              "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20",
-              "disabled:cursor-not-allowed disabled:opacity-55",
-              isActive
-                ? "text-foreground"
-                : "text-muted-foreground hover:bg-surface-1/58 hover:text-foreground",
-            )}
-            onClick={() => {
-              onViewChange(view);
-            }}
-          >
-            {isActive ? (
-              <motion.span
-                layoutId="task-view-tab"
-                transition={taskMotionTransition}
-                className="absolute inset-0 rounded-[1.05rem] border border-border/70 bg-surface-1 shadow-[0_22px_54px_-42px_var(--shadow-color)]"
-              />
-            ) : null}
-            <span className="relative z-10 flex h-full min-w-0 flex-col justify-between gap-3">
-              <span className="flex items-center justify-between gap-2">
-                <span
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-[0.85rem] border bg-background/74",
-                    meta.tone,
-                  )}
-                >
-                  <Icon className="size-4" />
-                </span>
-                <span className="rounded-full border border-border/70 bg-background/72 px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
-                  <NumberFlow value={count} />
-                </span>
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold">
-                  {meta.label}
-                </span>
-                <span className="mt-1 block truncate text-xs">
-                  {meta.description}
-                </span>
-              </span>
-              <span className="text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                {meta.countLabel}
-              </span>
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  </div>
-);
-
 const getOptionLabel = (options: TaskFilterOption[], value: string) =>
   options.find((option) => option.value === value)?.label ?? value;
 
 const TaskFilterScopeRail = ({
   filters,
   hasFilters,
-  isFetching,
   onClearEntity,
   onClearOwner,
   onClearSearch,
@@ -437,7 +360,6 @@ const TaskFilterScopeRail = ({
 }: {
   filters: TaskListFilters;
   hasFilters: boolean;
-  isFetching: boolean;
   onClearEntity: () => void;
   onClearOwner: () => void;
   onClearSearch: () => void;
@@ -482,23 +404,17 @@ const TaskFilterScopeRail = ({
   ].filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   return (
-    <div className="rounded-[1.25rem] border border-border/70 bg-background/48 px-3 py-3">
+    <div className="rounded-[1.25rem] border border-border/70 bg-background/48 px-3 py-2">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-surface-1/70 px-2.5 py-1 text-xs font-semibold text-foreground">
+          <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border/70 bg-surface-1/70 px-2.5 text-xs font-semibold text-foreground">
             <Target className="size-3.5 text-muted-foreground" />
             {taskViewMeta[filters.view].label}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-surface-1/70 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+          <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border/70 bg-surface-1/70 px-2.5 text-xs font-medium text-muted-foreground">
             <SlidersHorizontal className="size-3.5" />
             <NumberFlow value={tasksList.pagination.totalItems} /> matching
           </span>
-          {isFetching ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-700 dark:text-sky-300">
-              <Loader2 className="size-3.5 animate-spin" />
-              Syncing
-            </span>
-          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -507,7 +423,7 @@ const TaskFilterScopeRail = ({
               <button
                 key={filter.key}
                 type="button"
-                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-workspace-muted-surface/70 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20"
+                className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-workspace-muted-surface/70 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20"
                 onClick={filter.onClear}
               >
                 <span className="shrink-0 text-muted-foreground/80">
@@ -520,7 +436,7 @@ const TaskFilterScopeRail = ({
               </button>
             ))
           ) : (
-            <span className="inline-flex items-center rounded-full border border-border/70 bg-workspace-muted-surface/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex h-7 items-center rounded-full border border-border/70 bg-workspace-muted-surface/60 px-2.5 text-xs font-medium text-muted-foreground">
               No fine filters
             </span>
           )}
@@ -530,7 +446,7 @@ const TaskFilterScopeRail = ({
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-full"
+              className="h-7 rounded-full px-2.5 text-xs"
               onClick={onReset}
             >
               <RotateCcw className="size-3.5" />
@@ -1181,6 +1097,13 @@ const TasksListSurface = ({
   const [snoozingTask, setSnoozingTask] = useState<TaskRecord | null>(null);
   const groupedTasks = groupTasks(taskItems);
   const hasTaskItems = taskItems.length > 0;
+  const taskViewOptions = taskViewOrder.map(
+    (view): FilterTabOption<TaskListFilters["view"]> => ({
+      ...taskViewMeta[view],
+      count: getTaskViewCount(view, tasksList),
+      value: view,
+    }),
+  );
   const handleTaskSaved = (_response: TaskMutationResponse) => {
     void refetch();
   };
@@ -1247,11 +1170,12 @@ const TasksListSurface = ({
         filterControls={
           <>
             <div className="lg:col-span-4">
-              <TaskViewTabs
-                activeView={filters.view}
+              <FilterTabs
                 disabled={isFetching}
-                tasksList={tasksList}
-                onViewChange={(view) => {
+                layoutId="task-view-tab"
+                options={taskViewOptions}
+                value={filters.view}
+                onValueChange={(view) => {
                   applyFilters({ page: "", status: "", view });
                 }}
               />
@@ -1261,7 +1185,6 @@ const TasksListSurface = ({
               <TaskFilterScopeRail
                 filters={filters}
                 hasFilters={hasFilters}
-                isFetching={isFetching}
                 ownerOptions={ownerOptions}
                 tasksList={tasksList}
                 onClearEntity={() => {
