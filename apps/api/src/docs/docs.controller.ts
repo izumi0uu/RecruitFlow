@@ -342,6 +342,14 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     owner: "api",
     path: "/tasks/:taskId/status",
   },
+  {
+    auth: "session",
+    description:
+      "Return a normalized activity timeline for one workspace-scoped client, job, candidate, or submission.",
+    method: "GET",
+    owner: "api",
+    path: "/activity/timeline",
+  },
 ];
 
 const localApiUrl = (path: string) => {

@@ -31,6 +31,7 @@ import {
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import {
@@ -849,26 +850,12 @@ const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
             title="Candidate tasks"
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline</CardTitle>
-              <CardDescription>
-                Basic record dates before activity aggregation lands.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <DetailTile
-                icon={<CalendarClock className="size-3.5" />}
-                label="Created"
-                value={formatDate(candidate.createdAt)}
-              />
-              <DetailTile
-                icon={<CalendarClock className="size-3.5" />}
-                label="Updated"
-                value={formatDate(candidate.updatedAt)}
-              />
-            </CardContent>
-          </Card>
+          <ActivityTimelinePanel
+            entityId={candidate.id}
+            entityType="candidate"
+            title="Candidate activity"
+            description="Profile changes, submission movement, linked tasks, resume metadata, and notes in newest-first order."
+          />
         </aside>
       </div>
     </section>

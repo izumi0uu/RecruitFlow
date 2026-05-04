@@ -9,7 +9,6 @@ import {
   type SubmissionRecord,
 } from "@recruitflow/contracts";
 import {
-  Activity,
   BriefcaseBusiness,
   CalendarClock,
   CircleDollarSign,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import {
@@ -76,25 +76,6 @@ const jobStatusLabelMap: Record<ApiJobStatus, string> = {
   open: "Open",
 };
 
-const formatDateTime = (value: string | null) => {
-  if (!value) {
-    return "Not captured";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Date pending";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    month: "short",
-  }).format(date);
-};
-
 const formatMoney = (amount: number | null, currency: string | null) => {
   if (amount === null) {
     return "Not captured";
@@ -126,9 +107,6 @@ const getRoleTitle = (submission: SubmissionRecord) =>
 
 const getClientName = (submission: SubmissionRecord) =>
   submission.job?.client?.name ?? "Client pending";
-
-const getTouchValue = (submission: SubmissionRecord) =>
-  submission.lastTouchAt ?? submission.updatedAt ?? submission.createdAt;
 
 const DetailSection = ({
   children,
@@ -326,33 +304,14 @@ export const PipelineSubmissionDetailPanel = ({
                   />
                 </DetailSection>
 
-                <DetailSection
-                  icon={<Activity className="size-4" />}
-                  title="Timeline signals"
-                >
-                  <div>
-                    <FactRow
-                      label="Created"
-                      value={formatDateTime(submission.createdAt)}
-                    />
-                    <FactRow
-                      label="Submitted"
-                      value={formatDateTime(submission.submittedAt)}
-                    />
-                    <FactRow
-                      label="Last touch"
-                      value={formatDateTime(getTouchValue(submission))}
-                    />
-                    <FactRow
-                      label="Latest feedback"
-                      value={formatDateTime(submission.latestFeedbackAt)}
-                    />
-                    <FactRow
-                      label="Updated"
-                      value={formatDateTime(submission.updatedAt)}
-                    />
-                  </div>
-                </DetailSection>
+                <ActivityTimelinePanel
+                  className="bg-background/62 shadow-none"
+                  entityId={submission.id}
+                  entityType="submission"
+                  pageSize={18}
+                  title="Submission activity"
+                  description="Stage movement, follow-up changes, task updates, documents, and notes tied to this opportunity."
+                />
               </main>
 
               <aside className="space-y-4">

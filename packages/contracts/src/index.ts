@@ -232,6 +232,26 @@ export const apiTaskEntityTypeValues = [
 
 export type ApiTaskEntityType = (typeof apiTaskEntityTypeValues)[number];
 
+export const apiActivityTimelineEntityTypeValues = [
+  "workspace",
+  ...apiTaskEntityTypeValues,
+] as const;
+
+export type ApiActivityTimelineEntityType =
+  (typeof apiActivityTimelineEntityTypeValues)[number];
+
+export const apiActivityTimelineEventTypeValues = [
+  "record",
+  "task",
+  "submission",
+  "document",
+  "note",
+  "member",
+] as const;
+
+export type ApiActivityTimelineEventType =
+  (typeof apiActivityTimelineEventTypeValues)[number];
+
 export const apiTaskViewValues = [
   "mine",
   "workspace",
@@ -1028,6 +1048,59 @@ export interface TaskMutationResponse {
   message: string;
   ownerOptions: ApiUserReference[];
   task: TaskRecord;
+  workspaceScoped: true;
+}
+
+export const activityTimelineQuerySchema = z.object({
+  entityId: z.string().uuid("Timeline entity id is required"),
+  entityType: z.enum(apiActivityTimelineEntityTypeValues),
+  pageSize: z.coerce.number().int().min(1).max(50).default(24),
+});
+
+export type ActivityTimelineQuery = z.infer<typeof activityTimelineQuerySchema>;
+
+export interface ActivityTimelineEntityReference {
+  href: string | null;
+  id: string | null;
+  label: string;
+  secondaryLabel: string | null;
+  type: string;
+}
+
+export interface ActivityTimelineEventMetadata {
+  label: string;
+  value: string;
+}
+
+export interface ActivityTimelineEvent {
+  action: string;
+  actor: ApiUserReference | null;
+  actorLabel: string;
+  description: string | null;
+  entity: ActivityTimelineEntityReference | null;
+  id: string;
+  metadata: ActivityTimelineEventMetadata[];
+  occurredAt: string;
+  relatedEntity: ActivityTimelineEntityReference | null;
+  source: "audit" | "note";
+  title: string;
+  tone: "muted" | "primary" | "secondary" | "accent" | "strong";
+  type: ApiActivityTimelineEventType;
+}
+
+export interface ActivityTimelineResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    entityId: string;
+    entityType: ApiActivityTimelineEntityType;
+  };
+  items: ActivityTimelineEvent[];
+  summary: {
+    countsByType: Record<ApiActivityTimelineEventType, number>;
+    totalCount: number;
+  };
+  target: ActivityTimelineEntityReference;
   workspaceScoped: true;
 }
 
