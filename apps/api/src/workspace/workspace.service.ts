@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { and, asc, eq, isNull, ne } from "drizzle-orm";
+
+import type { WorkspaceProfileUpdateRequest } from "@recruitflow/contracts";
 
 import { db } from "../db/database";
 
+import { writeAuditLog } from "@/lib/db/audit";
 import {
+  AuditAction,
   teamMembers,
   teams,
   users,
@@ -29,6 +37,7 @@ export type ApiWorkspace = {
   memberships: ApiWorkspaceMember[];
   name: string;
   planName: string | null;
+  slug: string | null;
   stripeCustomerId: string | null;
   stripeProductId: string | null;
   stripeSubscriptionId: string | null;
@@ -67,6 +76,7 @@ export class WorkspaceService {
         workspaceId: teams.id,
         workspaceName: teams.name,
         workspacePlanName: teams.planName,
+        workspaceSlug: teams.slug,
         workspaceStripeCustomerId: teams.stripeCustomerId,
         workspaceStripeProductId: teams.stripeProductId,
         workspaceStripeSubscriptionId: teams.stripeSubscriptionId,
@@ -120,6 +130,7 @@ export class WorkspaceService {
       memberships,
       name: membership.workspaceName,
       planName: membership.workspacePlanName,
+      slug: membership.workspaceSlug,
       stripeCustomerId: membership.workspaceStripeCustomerId,
       stripeProductId: membership.workspaceStripeProductId,
       stripeSubscriptionId: membership.workspaceStripeSubscriptionId,
@@ -137,6 +148,7 @@ export class WorkspaceService {
         id: workspace.id,
         name: workspace.name,
         planName: workspace.planName,
+        slug: workspace.slug,
         stripeCustomerId: workspace.stripeCustomerId,
         stripeProductId: workspace.stripeProductId,
         stripeSubscriptionId: workspace.stripeSubscriptionId,
@@ -172,6 +184,55 @@ export class WorkspaceService {
     }
 
     return bundle;
+  }
+
+  async updateCurrentWorkspace(
+    context: ApiWorkspaceContext,
+    input: WorkspaceProfileUpdateRequest,
+  ): Promise<ApiWorkspace> {
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const name = input.name.trim();
+    const slug = input.slug.trim().toLowerCase();
+
+    const [existingSlugOwner] = await db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(and(eq(teams.slug, slug), ne(teams.id, workspaceId)))
+      .limit(1);
+
+    if (existingSlugOwner) {
+      throw new ConflictException("Workspace slug is already in use");
+    }
+
+    await db
+      .update(teams)
+      .set({
+        name,
+        slug,
+        updatedAt: new Date(),
+      })
+      .where(eq(teams.id, workspaceId));
+
+    await writeAuditLog({
+      workspaceId,
+      actorUserId,
+      actorRole: context.membership.role,
+      action: AuditAction.WORKSPACE_UPDATED,
+      entityType: "workspace",
+      entityId: workspaceId,
+      source: "api",
+      metadata: {
+        previousName: context.workspace.name,
+        previousSlug: context.workspace.slug,
+        nextName: name,
+        nextSlug: slug,
+      },
+    });
+
+    const updatedContext = await this.requireWorkspaceContext(actorUserId);
+
+    return updatedContext.workspace;
   }
 }
 

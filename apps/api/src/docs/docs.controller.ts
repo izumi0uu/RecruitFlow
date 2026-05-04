@@ -78,6 +78,13 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     path: "/workspaces/current",
   },
   {
+    auth: "owner",
+    description: "Update current workspace name and slug and audit the profile change.",
+    method: "PATCH",
+    owner: "api",
+    path: "/workspaces/current",
+  },
+  {
     auth: "session",
     description: "Return the current user's workspace membership and role.",
     method: "GET",
@@ -97,6 +104,20 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     method: "DELETE",
     owner: "api",
     path: "/members/:memberId",
+  },
+  {
+    auth: "owner",
+    description: "Change a workspace member role while preserving owner safety checks.",
+    method: "PATCH",
+    owner: "api",
+    path: "/members/:memberId/role",
+  },
+  {
+    auth: "owner",
+    description: "List curated workspace audit events with baseline settings filters.",
+    method: "GET",
+    owner: "api",
+    path: "/audit/logs",
   },
   {
     auth: "owner",
