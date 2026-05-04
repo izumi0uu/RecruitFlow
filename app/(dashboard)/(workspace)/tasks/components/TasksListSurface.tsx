@@ -25,6 +25,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  ShieldCheck,
   SlidersHorizontal,
   Target,
   TimerReset,
@@ -314,14 +315,20 @@ const TasksActionDock = ({
   tasksList: TasksListResponse;
 }) => (
   <div className="flex w-full flex-col gap-3 xl:w-[32rem]">
-    <Button
-      className="w-full justify-center rounded-full"
-      type="button"
-      onClick={onCreateTask}
-    >
-      <Plus className="size-4" />
-      Create task
-    </Button>
+    {tasksList.permissions.canCreateTask ? (
+      <Button
+        className="w-full justify-center rounded-full"
+        type="button"
+        onClick={onCreateTask}
+      >
+        <Plus className="size-4" />
+        Create task
+      </Button>
+    ) : (
+      <p className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
+        Task creation is unavailable for your role.
+      </p>
+    )}
     <TasksSummaryDock tasksList={tasksList} />
   </div>
 );
@@ -492,9 +499,9 @@ const TaskStatusActions = ({
 }) => {
   const isTaskPending = state.isPending && state.pendingTaskId === task.id;
   const pendingAction = isTaskPending ? state.pendingAction : null;
-  const canComplete = task.status !== "done";
-  const canSnooze = task.status !== "done";
-  const canReopen = task.status === "done" || task.status === "snoozed";
+  const canComplete = task.canComplete;
+  const canSnooze = task.canSnooze;
+  const canReopen = task.canReopen;
 
   return (
     <div
@@ -856,17 +863,24 @@ const TaskContextPanel = ({
                 onStatusAction={onStatusAction}
               />
 
-              <Button
-                className="w-full justify-center rounded-full"
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  onEditTask(task);
-                }}
-              >
-                <Pencil className="size-4" />
-                Edit task
-              </Button>
+              {task.canEdit ? (
+                <Button
+                  className="w-full justify-center rounded-full"
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    onEditTask(task);
+                  }}
+                >
+                  <Pencil className="size-4" />
+                  Edit task
+                </Button>
+              ) : (
+                <p className="status-message border-border/70 bg-background/70 text-muted-foreground">
+                  <ShieldCheck className="size-4" />
+                  Edits are limited to owners and recruiters.
+                </p>
+              )}
 
               {entityHref ? (
                 <Button asChild className="w-full justify-center rounded-full">
@@ -1411,7 +1425,9 @@ const TasksListSurface = ({
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onTaskSaved={handleTaskSaved}
+        assigneeOptions={tasksList.assigneeOptions}
         ownerOptions={tasksList.ownerOptions}
+        permissions={tasksList.permissions}
         entityOptions={tasksList.entityOptions}
         seedTask={selectedTask}
       />
@@ -1425,7 +1441,9 @@ const TasksListSurface = ({
           }
         }}
         onTaskSaved={handleTaskSaved}
+        assigneeOptions={tasksList.assigneeOptions}
         ownerOptions={tasksList.ownerOptions}
+        permissions={tasksList.permissions}
         entityOptions={tasksList.entityOptions}
         task={editingTask}
       />

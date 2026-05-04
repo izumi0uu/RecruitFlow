@@ -430,6 +430,24 @@ export class NotesService {
     const actorUserId = context.membership.userId;
 
     if (!canDeleteNote(context, existingNote)) {
+      await writeAuditLog({
+        action: AuditAction.NOTE_PERMISSION_DENIED,
+        actorRole: context.membership.role,
+        actorUserId,
+        entityId: noteId,
+        entityType: "note",
+        metadata: {
+          attemptedAction: existingNote.archivedAt ? "final_delete" : "archive",
+          createdByUserId: existingNote.createdByUserId,
+          entityId: existingNote.entityId,
+          entityType: existingNote.entityType,
+          noteId,
+          reason: "coordinator_note_author_scope",
+        },
+        source: "api",
+        workspaceId,
+      });
+
       throw new ForbiddenException("You can delete only your own notes");
     }
 

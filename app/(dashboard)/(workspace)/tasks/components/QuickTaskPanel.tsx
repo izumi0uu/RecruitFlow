@@ -120,6 +120,9 @@ const QuickTaskPanel = ({
   const items = tasksList?.items ?? [];
   const activeItems = items.filter((task) => task.status !== "done");
   const doneItems = items.filter((task) => task.status === "done");
+  const isPermissionPending = canCreateTask && !tasksList && isFetching;
+  const canOpenCreateTask =
+    canCreateTask && (tasksList?.permissions.canCreateTask ?? false);
   const handleTaskCreated = (_response: TaskMutationResponse) => {
     void refetch();
   };
@@ -135,9 +138,10 @@ const QuickTaskPanel = ({
             </CardTitle>
             <CardDescription>{description}</CardDescription>
           </div>
-          {canCreateTask ? (
+          {canOpenCreateTask ? (
             <Button
               className="shrink-0 rounded-full"
+              disabled={isPermissionPending}
               size="sm"
               type="button"
               onClick={() => {
@@ -146,6 +150,16 @@ const QuickTaskPanel = ({
             >
               <Plus className="size-3.5" />
               Add task
+            </Button>
+          ) : isPermissionPending ? (
+            <Button
+              className="shrink-0 rounded-full"
+              disabled
+              size="sm"
+              type="button"
+            >
+              <Loader2 className="size-3.5 animate-spin" />
+              Syncing
             </Button>
           ) : (
             <span className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
@@ -295,7 +309,9 @@ const QuickTaskPanel = ({
           lockEntity
           mode="create"
           open={isCreateDialogOpen}
-          ownerOptions={ownerOptions}
+          assigneeOptions={tasksList?.assigneeOptions ?? ownerOptions}
+          ownerOptions={tasksList?.ownerOptions ?? ownerOptions}
+          permissions={tasksList?.permissions}
           onOpenChange={setIsCreateDialogOpen}
           onTaskSaved={handleTaskCreated}
         />

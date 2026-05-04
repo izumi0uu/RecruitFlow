@@ -17,6 +17,7 @@ import type {
   TaskSubmissionReference,
   TasksListQuery,
   TasksListResponse,
+  TaskWorkspacePermissions,
 } from "@recruitflow/contracts";
 import { apiTaskEntityTypeValues } from "@recruitflow/contracts";
 import {
@@ -45,6 +46,14 @@ import {
 } from "@/lib/db/schema";
 import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
+
+import {
+  canCreateTaskForAssignee,
+  canEditTask,
+  canManageTasks,
+  canUpdateTaskStatus,
+  getTaskActionPermissions,
+} from "./tasks.permissions";
 
 const assignedUsers = alias(users, "task_assigned_users");
 const directClients = alias(clients, "task_direct_clients");
@@ -115,6 +124,41 @@ const getOwnerOptions = (context: ApiWorkspaceContext): ApiUserReference[] =>
     id: membership.user.id,
     name: membership.user.name,
   }));
+
+const getCurrentUserReference = (
+  context: ApiWorkspaceContext,
+): ApiUserReference | null => {
+  const currentMember = context.workspace.memberships.find(
+    (membership) => membership.userId === context.membership.userId,
+  );
+
+  if (!currentMember) {
+    return null;
+  }
+
+  return {
+    email: currentMember.user.email,
+    id: currentMember.user.id,
+    name: currentMember.user.name,
+  };
+};
+
+const getAssigneeOptions = (context: ApiWorkspaceContext) => {
+  if (canManageTasks(context.membership.role)) {
+    return getOwnerOptions(context);
+  }
+
+  const currentUser = getCurrentUserReference(context);
+
+  return currentUser ? [currentUser] : [];
+};
+
+const getTaskWorkspacePermissions = (
+  context: ApiWorkspaceContext,
+): TaskWorkspacePermissions => ({
+  canAssignTasks: canManageTasks(context.membership.role),
+  canCreateTask: true,
+});
 
 const getAssignedToReference = (
   row: TaskRecordRow,
@@ -236,17 +280,32 @@ const getLinkedEntityReference = (
   return null;
 };
 
-const serializeTaskRecord = (row: TaskRecordRow, now: Date): TaskRecord => {
+const serializeTaskRecord = (
+  context: ApiWorkspaceContext,
+  row: TaskRecordRow,
+  now: Date,
+): TaskRecord => {
   const submission = getTaskSubmissionReference(row);
   const entityType = isTaskEntityType(row.entityType)
     ? row.entityType
     : submission
       ? "submission"
       : null;
+  const actionFlags = getTaskActionPermissions(
+    {
+      role: context.membership.role,
+      userId: context.membership.userId,
+    },
+    {
+      assignedToUserId: row.assignedToUserId,
+      status: row.status,
+    },
+  );
 
   return {
     assignedTo: getAssignedToReference(row),
     assignedToUserId: row.assignedToUserId,
+    ...actionFlags,
     completedAt: toIsoString(row.completedAt),
     createdAt: row.createdAt.toISOString(),
     description: row.description,
@@ -563,7 +622,7 @@ export class TasksService {
       throw new NotFoundException("Task not found");
     }
 
-    return serializeTaskRecord(row, new Date());
+    return serializeTaskRecord(context, row, new Date());
   }
 
   private async buildMutationResponse(
@@ -577,6 +636,7 @@ export class TasksService {
     ]);
 
     return {
+      assigneeOptions: getAssigneeOptions(context),
       context: {
         role: context.membership.role,
         workspaceId: context.workspace.id,
@@ -585,23 +645,122 @@ export class TasksService {
       entityOptions,
       message,
       ownerOptions: this.getOwnerOptions(context),
+      permissions: getTaskWorkspacePermissions(context),
       task,
       workspaceScoped: true,
     };
   }
 
-  private assertCanUpdateTaskStatus(
+  private async writeTaskPermissionDeniedAudit(
+    context: ApiWorkspaceContext,
+    input: {
+      assignedToUserId?: string | null;
+      attemptedAction: string;
+      reason: string;
+      taskId?: string | null;
+    },
+  ) {
+    await writeAuditLog({
+      action: AuditAction.TASK_PERMISSION_DENIED,
+      actorRole: context.membership.role,
+      actorUserId: context.membership.userId,
+      entityId: input.taskId ?? null,
+      entityType: "task",
+      metadata: {
+        assignedToUserId: input.assignedToUserId ?? null,
+        attemptedAction: input.attemptedAction,
+        reason: input.reason,
+      },
+      source: "api",
+      workspaceId: context.workspace.id,
+    });
+  }
+
+  private async assertCanCreateTask(
+    context: ApiWorkspaceContext,
+    assignedToUserId: string,
+  ) {
+    if (
+      canCreateTaskForAssignee(
+        {
+          role: context.membership.role,
+          userId: context.membership.userId,
+        },
+        assignedToUserId,
+      )
+    ) {
+      return;
+    }
+
+    const reason = "coordinator_assignee_scope";
+
+    await this.writeTaskPermissionDeniedAudit(context, {
+      assignedToUserId,
+      attemptedAction: "create",
+      reason,
+    });
+
+    throw new ForbiddenException(
+      "Coordinators can create only tasks assigned to themselves",
+    );
+  }
+
+  private async assertCanEditTask(
     context: ApiWorkspaceContext,
     task: TaskRecord,
   ) {
     if (
-      context.membership.role === "coordinator" &&
-      task.assignedToUserId !== context.membership.userId
+      canEditTask({
+        role: context.membership.role,
+        userId: context.membership.userId,
+      })
     ) {
-      throw new ForbiddenException(
-        "Coordinators can update only tasks assigned to them",
-      );
+      return;
     }
+
+    const reason = "coordinator_edit_scope";
+
+    await this.writeTaskPermissionDeniedAudit(context, {
+      assignedToUserId: task.assignedToUserId,
+      attemptedAction: "edit",
+      reason,
+      taskId: task.id,
+    });
+
+    throw new ForbiddenException(
+      "Only owner and recruiter roles can edit tasks",
+    );
+  }
+
+  private async assertCanUpdateTaskStatus(
+    context: ApiWorkspaceContext,
+    task: TaskRecord,
+    action: TaskStatusActionRequest["action"],
+  ) {
+    if (
+      canUpdateTaskStatus(
+        {
+          role: context.membership.role,
+          userId: context.membership.userId,
+        },
+        { assignedToUserId: task.assignedToUserId },
+      )
+    ) {
+      return;
+    }
+
+    const reason = "coordinator_status_scope";
+
+    await this.writeTaskPermissionDeniedAudit(context, {
+      assignedToUserId: task.assignedToUserId,
+      attemptedAction: action,
+      reason,
+      taskId: task.id,
+    });
+
+    throw new ForbiddenException(
+      "Coordinators can update only tasks assigned to them",
+    );
   }
 
   async listTasks(
@@ -823,6 +982,7 @@ export class TasksService {
     const totalItems = totalRow?.count ?? 0;
 
     return {
+      assigneeOptions: getAssigneeOptions(context),
       context: {
         role: context.membership.role,
         workspaceId,
@@ -837,8 +997,9 @@ export class TasksService {
         status: query.status ?? null,
         view: query.view,
       },
-      items: rows.map((row) => serializeTaskRecord(row, now)),
+      items: rows.map((row) => serializeTaskRecord(context, row, now)),
       ownerOptions: getOwnerOptions(context),
+      permissions: getTaskWorkspacePermissions(context),
       pagination: {
         page,
         pageSize,
@@ -867,6 +1028,8 @@ export class TasksService {
       context,
       input.assignedToUserId,
     );
+    await this.assertCanCreateTask(context, assignedToUserId);
+
     const linkedEntity = await this.resolveLinkedEntity(context, input);
     const now = new Date();
     const [task] = await db
@@ -917,6 +1080,8 @@ export class TasksService {
     const workspaceId = context.workspace.id;
     const actorUserId = context.membership.userId;
     const existingTask = await this.selectTaskRecord(context, taskId);
+    await this.assertCanEditTask(context, existingTask);
+
     const assignedToUserId = this.resolveAssigneeUserId(
       context,
       input.assignedToUserId,
@@ -983,7 +1148,7 @@ export class TasksService {
     const workspaceId = context.workspace.id;
     const actorUserId = context.membership.userId;
     const existingTask = await this.selectTaskRecord(context, taskId);
-    this.assertCanUpdateTaskStatus(context, existingTask);
+    await this.assertCanUpdateTaskStatus(context, existingTask, input.action);
 
     const now = new Date();
     let auditAction: AuditAction;
