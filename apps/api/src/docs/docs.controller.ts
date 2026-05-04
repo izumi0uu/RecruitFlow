@@ -305,6 +305,22 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   {
     auth: "session",
     description:
+      "Export the current workspace-scoped document metadata result set as CSV without raw file contents.",
+    method: "GET",
+    owner: "api",
+    path: "/documents/export",
+  },
+  {
+    auth: "session",
+    description:
+      "Deliver one private document through the API-owned authorization boundary and audit the download.",
+    method: "GET",
+    owner: "api",
+    path: "/documents/:documentId/download",
+  },
+  {
+    auth: "session",
+    description:
       "Return workspace-scoped submissions with job, candidate, owner, stage, risk, and next-step filters.",
     method: "GET",
     owner: "api",

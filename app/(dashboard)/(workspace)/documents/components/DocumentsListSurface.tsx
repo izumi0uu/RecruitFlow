@@ -2,6 +2,7 @@
 
 import {
   type ApiAutomationStatus,
+  type ApiDocumentDeliveryStatus,
   type ApiDocumentEntityType,
   type ApiDocumentType,
   apiDocumentEntityTypeValues,
@@ -26,6 +27,8 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
+import { DocumentExportButton } from "@/components/documents/DocumentExportButton";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/FilterSelect";
@@ -91,6 +94,13 @@ const documentSkeletonRowKeys = [
   "document-skeleton-two",
   "document-skeleton-three",
 ] as const;
+
+const deliveryToneMap: Record<ApiDocumentDeliveryStatus, string> = {
+  available:
+    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  missing:
+    "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+};
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en", {
@@ -317,15 +327,17 @@ const DocumentRow = ({ document }: { document: DocumentRecord }) => {
           <DocumentBadge className="border-border/70 bg-surface-1 text-muted-foreground">
             {document.mimeType ?? "MIME pending"}
           </DocumentBadge>
+          <DocumentBadge className={deliveryToneMap[document.deliveryStatus]}>
+            {document.deliveryStatus === "available"
+              ? "Download ready"
+              : "File unavailable"}
+          </DocumentBadge>
         </div>
         <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
           {document.title}
         </h2>
         <p className="mt-1 truncate text-sm leading-6 text-muted-foreground">
           {document.sourceFilename}
-        </p>
-        <p className="mt-1 truncate text-xs leading-5 text-muted-foreground">
-          {document.storageKey}
         </p>
       </div>
 
@@ -353,9 +365,17 @@ const DocumentRow = ({ document }: { document: DocumentRecord }) => {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 lg:justify-end">
-        <StatusBadge label="Summary" status={document.summaryStatus} />
-        <StatusBadge label="Embedding" status={document.embeddingStatus} />
+      <div className="flex flex-col gap-3 lg:items-end">
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          <StatusBadge label="Summary" status={document.summaryStatus} />
+          <StatusBadge label="Embedding" status={document.embeddingStatus} />
+        </div>
+        <DocumentDownloadButton
+          documentId={document.id}
+          deliveryStatus={document.deliveryStatus}
+          fileName={document.sourceFilename}
+          sourceSurface="documents_hub"
+        />
       </div>
     </article>
   );
@@ -441,7 +461,7 @@ export const DocumentsListSurface = ({
       <WorkspacePageHeader
         kicker="Document operations"
         title="Documents"
-        description="Browse workspace document metadata by type and linked entity before AI search, previews, and row-level document linking expand this surface."
+        description="Browse workspace document metadata, download private originals through the API-owned delivery boundary, and export the current filtered metadata set as CSV."
         rightSlot={
           <WorkspacePageHeaderSummary
             actionHref="/documents/new"
@@ -474,6 +494,10 @@ export const DocumentsListSurface = ({
                 Syncing
               </WorkspaceListStatusBadge>
             ) : null}
+            <DocumentExportButton
+              filters={filters}
+              totalItems={documentsList?.pagination.totalItems ?? 0}
+            />
           </>
         }
         filterControlsClassName="lg:grid-cols-[minmax(10rem,0.35fr)_minmax(10rem,0.35fr)_minmax(16rem,1fr)_auto]"
@@ -588,7 +612,7 @@ export const DocumentsListSurface = ({
           <>
             <span>Document</span>
             <span>Entity</span>
-            <span className="text-right">Automation</span>
+            <span className="text-right">Status &amp; delivery</span>
           </>
         }
         contentHeaderClassName="lg:grid-cols-[minmax(0,1.2fr)_minmax(12rem,0.55fr)_minmax(12rem,0.5fr)]"
@@ -609,9 +633,9 @@ export const DocumentsListSurface = ({
         }}
         footerNote={{
           icon: <FileText className="size-4 text-muted-foreground" />,
-          title: "Document metadata boundary",
+          title: "Secure delivery boundary",
           children:
-            "This surface owns workspace-scoped document metadata browsing, linked entity filters, and AI processing status visibility before previews and semantic search expand the document workflow.",
+            "Downloads and filtered metadata exports stay API-owned here, while previews, binary upload transport, and semantic search remain downstream work.",
         }}
       >
         {isError && !documentsList ? (

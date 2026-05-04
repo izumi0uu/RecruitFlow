@@ -284,6 +284,30 @@ export const apiDocumentEntityTypeValues = [
 export type ApiDocumentEntityType =
   (typeof apiDocumentEntityTypeValues)[number];
 
+export const apiDocumentDeliveryStatusValues = [
+  "available",
+  "missing",
+] as const;
+
+export type ApiDocumentDeliveryStatus =
+  (typeof apiDocumentDeliveryStatusValues)[number];
+
+export const apiDocumentDownloadSourceSurfaceValues = [
+  "documents_hub",
+  "candidate_detail",
+  "job_detail",
+  "submission_detail",
+  "semantic_search",
+] as const;
+
+export type ApiDocumentDownloadSourceSurface =
+  (typeof apiDocumentDownloadSourceSurfaceValues)[number];
+
+export const apiDocumentsExportSourceSurfaceValues = ["documents_hub"] as const;
+
+export type ApiDocumentsExportSourceSurface =
+  (typeof apiDocumentsExportSourceSurfaceValues)[number];
+
 export const apiAutomationStatusValues = [
   "queued",
   "running",
@@ -864,8 +888,21 @@ export type DocumentMutationRequest = z.infer<
   typeof documentMutationRequestSchema
 >;
 
+export const documentParamsSchema = z.object({
+  documentId: z.string().uuid(),
+});
+
+export type DocumentParams = z.infer<typeof documentParamsSchema>;
+
+export const documentDownloadQuerySchema = z.object({
+  sourceSurface: z.enum(apiDocumentDownloadSourceSurfaceValues),
+});
+
+export type DocumentDownloadQuery = z.infer<typeof documentDownloadQuerySchema>;
+
 export interface DocumentRecord {
   createdAt: string;
+  deliveryStatus: ApiDocumentDeliveryStatus;
   embeddingStatus: ApiAutomationStatus;
   entityId: string;
   entityType: ApiDocumentEntityType;
@@ -873,7 +910,6 @@ export interface DocumentRecord {
   mimeType: string | null;
   sizeBytes: number | null;
   sourceFilename: string;
-  storageKey: string;
   summaryStatus: ApiAutomationStatus;
   summaryText: string | null;
   title: string;
@@ -898,6 +934,15 @@ export const documentsListQuerySchema = apiCollectionQuerySchema.extend({
 });
 
 export type DocumentsListQuery = z.infer<typeof documentsListQuerySchema>;
+
+export const documentsExportQuerySchema = z.object({
+  entityId: optionalUuidSchema,
+  entityType: z.enum(apiDocumentEntityTypeValues).optional(),
+  sourceSurface: z.enum(apiDocumentsExportSourceSurfaceValues),
+  type: z.enum(apiDocumentTypeValues).optional(),
+});
+
+export type DocumentsExportQuery = z.infer<typeof documentsExportQuerySchema>;
 
 export interface DocumentsListResponse {
   context: ApiCrmPlaceholderContext;
