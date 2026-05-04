@@ -206,6 +206,14 @@ const formatDateTime = (value: string | Date | null | undefined) => {
   }).format(date);
 };
 
+const toDeletedNotePreview = (body: string) => {
+  const trimmedBody = body.trim();
+
+  return trimmedBody.length > 140
+    ? `${trimmedBody.slice(0, 137)}...`
+    : trimmedBody;
+};
+
 const createReference = ({
   href,
   id,
@@ -1198,16 +1206,26 @@ export class ActivityService {
         actorUserId: row.archivedByUserId,
       });
       const originalAuthorLabel = actor?.name ?? actor?.email ?? null;
+      const deletedContent = row.body.trim();
       const metadata = compact([originalAuthorLabel]).map((value) => ({
         label: "Original author",
         value,
       }));
 
+      if (deletedContent) {
+        metadata.push({
+          label: "Deleted content",
+          value: deletedContent,
+        });
+      }
+
       return {
         action: "NOTE_ARCHIVED",
         actor: archiveActor,
         actorLabel: archiveActor?.name ?? archiveActor?.email ?? "System",
-        description: "A workspace note was deleted. Its content is hidden.",
+        description: deletedContent
+          ? toDeletedNotePreview(deletedContent)
+          : "A workspace note was deleted. Its content is hidden.",
         entity,
         id: `note-archived-${row.id}`,
         metadata,
