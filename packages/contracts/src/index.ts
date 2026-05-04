@@ -1055,6 +1055,7 @@ export interface CurrentWorkspaceSummaryResponse {
   id: string;
   name: string;
   planName: string | null;
+  slug: string | null;
   stripeCustomerId: string | null;
   stripeProductId: string | null;
   stripeSubscriptionId: string | null;
@@ -1074,6 +1075,29 @@ export interface CurrentMembershipResponse {
   userId: string;
   workspace: CurrentWorkspaceSummaryResponse;
   workspaceId: string;
+}
+
+export const workspaceProfileUpdateRequestSchema = z.object({
+  name: z.string().trim().min(1, "Workspace name is required").max(100),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Workspace slug must be at least 3 characters")
+    .max(120, "Workspace slug must be 120 characters or fewer")
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Workspace slug can only use lowercase letters, numbers, and hyphens",
+    ),
+});
+
+export type WorkspaceProfileUpdateRequest = z.infer<
+  typeof workspaceProfileUpdateRequestSchema
+>;
+
+export interface WorkspaceProfileUpdateResponse {
+  message: string;
+  workspace: CurrentWorkspaceResponse;
 }
 
 export const authSignUpRequestSchema = z.object({
@@ -1178,6 +1202,57 @@ export interface MemberRemovalResponse {
   memberId: string;
   message: string;
   removed: true;
+}
+
+export const memberRoleUpdateParamsSchema = z.object({
+  memberId: z.string().uuid(),
+});
+
+export type MemberRoleUpdateParams = z.infer<
+  typeof memberRoleUpdateParamsSchema
+>;
+
+export const memberRoleUpdateRequestSchema = z.object({
+  role: z.enum(apiWorkspaceRoleValues),
+});
+
+export type MemberRoleUpdateRequest = z.infer<
+  typeof memberRoleUpdateRequestSchema
+>;
+
+export interface MemberRoleUpdateResponse {
+  member: CurrentWorkspaceMemberResponse;
+  message: string;
+}
+
+export const settingsAuditListQuerySchema = z.object({
+  action: z.string().trim().max(120).optional(),
+  actorUserId: z.string().uuid().optional(),
+  entityType: z.string().trim().max(50).optional(),
+});
+
+export type SettingsAuditListQuery = z.infer<
+  typeof settingsAuditListQuerySchema
+>;
+
+export interface SettingsAuditLogItemResponse {
+  action: string;
+  actor: {
+    email: string;
+    id: string;
+    name: string | null;
+  } | null;
+  actorUserId: string | null;
+  createdAt: string;
+  entityId: string | null;
+  entityType: string | null;
+  id: string;
+  ipAddress: string | null;
+}
+
+export interface SettingsAuditListResponse {
+  filters: SettingsAuditListQuery;
+  items: SettingsAuditLogItemResponse[];
 }
 
 export const billingCheckoutRequestSchema = z.object({

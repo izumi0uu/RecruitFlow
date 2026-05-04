@@ -7,6 +7,8 @@ import type {
   DocumentsListResponse,
   JobDetailResponse,
   JobsListResponse,
+  SettingsAuditListQuery,
+  SettingsAuditListResponse,
   SubmissionsListResponse,
 } from "@recruitflow/contracts";
 
@@ -153,4 +155,35 @@ export const submissionsListQueryOptions = () =>
   queryOptions({
     queryKey: submissionsListRootQueryKey,
     queryFn: () => fetchJson<SubmissionsListResponse>("/api/submissions"),
+  });
+
+export const settingsAuditRootQueryKey = ["settings", "audit"] as const;
+
+export const settingsAuditQueryKey = (filters: SettingsAuditListQuery) =>
+  [...settingsAuditRootQueryKey, filters] as const;
+
+export const settingsAuditQueryOptions = (filters: SettingsAuditListQuery) =>
+  queryOptions({
+    queryKey: settingsAuditQueryKey(filters),
+    queryFn: () => {
+      const params = new URLSearchParams();
+
+      if (filters.action) {
+        params.set("action", filters.action);
+      }
+
+      if (filters.actorUserId) {
+        params.set("actorUserId", filters.actorUserId);
+      }
+
+      if (filters.entityType) {
+        params.set("entityType", filters.entityType);
+      }
+
+      const queryString = params.toString();
+
+      return fetchJson<SettingsAuditListResponse>(
+        `/api/settings/audit${queryString ? `?${queryString}` : ""}`,
+      );
+    },
   });
