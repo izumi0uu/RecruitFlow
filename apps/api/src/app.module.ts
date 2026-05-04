@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { BillingModule } from "./billing/billing.module";
 import { CandidatesModule } from "./candidates/candidates.module";
@@ -15,7 +14,6 @@ import { WorkspaceModule } from "./workspace/workspace.module";
 
 @Module({
   imports: [
-    AuditModule,
     AuthModule,
     BillingModule,
     CandidatesModule,

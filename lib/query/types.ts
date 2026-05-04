@@ -1,5 +1,3 @@
-import type { CurrentWorkspaceResponse } from "@recruitflow/contracts";
-
 import type { User, WorkspaceDataWithMembers } from "@/lib/db/schema";
 
 type JsonPrimitive = string | number | boolean | null;
@@ -15,10 +13,7 @@ type Jsonify<T> = T extends JsonPrimitive
         : never;
 
 export type CurrentUserDto = Jsonify<Omit<User, "passwordHash">> | null;
-export type CurrentWorkspaceDto =
-  | CurrentWorkspaceResponse
-  | Jsonify<WorkspaceDataWithMembers>
-  | null;
+export type CurrentWorkspaceDto = Jsonify<WorkspaceDataWithMembers> | null;
 export type CurrentTeamDto = CurrentWorkspaceDto;
 
 export const toQueryDto = <T>(value: T) =>
