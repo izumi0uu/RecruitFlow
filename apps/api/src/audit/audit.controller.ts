@@ -7,15 +7,15 @@ import {
 } from "@nestjs/common";
 
 import {
-  settingsAuditListQuerySchema,
   type SettingsAuditListResponse,
+  settingsAuditListQuerySchema,
 } from "@recruitflow/contracts";
 
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentWorkspaceContext } from "../workspace/current-workspace-context.decorator";
 import { RequireWorkspaceRole } from "../workspace/require-workspace-role.decorator";
-import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceContextGuard } from "../workspace/workspace.guard";
+import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
 
 import { AuditService } from "./audit.service";

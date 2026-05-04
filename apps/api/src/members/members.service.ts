@@ -4,8 +4,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, eq, ne } from "drizzle-orm";
-
 import type {
   CurrentWorkspaceMemberResponse,
   MemberInvitationRequest,
@@ -14,20 +12,19 @@ import type {
   MemberRoleUpdateRequest,
   MemberRoleUpdateResponse,
 } from "@recruitflow/contracts";
-
-import { db } from "../db/database";
-import type { ApiWorkspaceContext } from "../workspace/workspace.service";
-
+import { and, eq, ne } from "drizzle-orm";
 import { writeAuditLog } from "@/lib/db/audit";
 import {
-  AuditAction,
   ActivityType,
+  AuditAction,
   activityLogs,
   invitations,
+  type NewActivityLog,
   teamMembers,
   users,
-  type NewActivityLog,
 } from "@/lib/db/schema";
+import { db } from "../db/database";
+import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
 const toMemberDto = (member: {
   id: string;
@@ -123,7 +120,11 @@ export class MembersService {
     }
 
     await Promise.all([
-      this.logActivity(workspaceId, actorUserId, ActivityType.INVITE_TEAM_MEMBER),
+      this.logActivity(
+        workspaceId,
+        actorUserId,
+        ActivityType.INVITE_TEAM_MEMBER,
+      ),
       writeAuditLog({
         workspaceId,
         actorUserId,
@@ -165,7 +166,9 @@ export class MembersService {
         userId: teamMembers.userId,
       })
       .from(teamMembers)
-      .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)))
+      .where(
+        and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)),
+      )
       .limit(1);
 
     if (!existingMembership) {
@@ -200,10 +203,16 @@ export class MembersService {
 
     await db
       .delete(teamMembers)
-      .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)));
+      .where(
+        and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)),
+      );
 
     await Promise.all([
-      this.logActivity(workspaceId, actorUserId, ActivityType.REMOVE_TEAM_MEMBER),
+      this.logActivity(
+        workspaceId,
+        actorUserId,
+        ActivityType.REMOVE_TEAM_MEMBER,
+      ),
       writeAuditLog({
         workspaceId,
         actorUserId,
@@ -244,7 +253,9 @@ export class MembersService {
       })
       .from(teamMembers)
       .innerJoin(users, eq(teamMembers.userId, users.id))
-      .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)))
+      .where(
+        and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)),
+      )
       .limit(1);
 
     if (!existingMembership) {
@@ -272,7 +283,9 @@ export class MembersService {
         .limit(1);
 
       if (!remainingOwner) {
-        throw new ForbiddenException("A workspace must keep at least one owner");
+        throw new ForbiddenException(
+          "A workspace must keep at least one owner",
+        );
       }
     }
 
@@ -282,7 +295,9 @@ export class MembersService {
         role: input.role,
         updatedAt: new Date(),
       })
-      .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)));
+      .where(
+        and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)),
+      );
 
     await writeAuditLog({
       workspaceId,

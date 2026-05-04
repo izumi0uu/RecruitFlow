@@ -8,10 +8,7 @@ export const PATCH = (
   { params }: { params: Promise<{ memberId: string }> },
 ) =>
   withBffApiErrorResponse(async () => {
-    const [{ memberId }, payload] = await Promise.all([
-      params,
-      request.json(),
-    ]);
+    const [{ memberId }, payload] = await Promise.all([params, request.json()]);
     const member = await requestApiJson<MemberRoleUpdateResponse>(
       `/members/${memberId}/role`,
       {

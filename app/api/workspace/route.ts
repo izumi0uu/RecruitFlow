@@ -8,8 +8,9 @@ import { requestApiJson } from "@/lib/api/client";
 
 export const GET = () =>
   withBffApiErrorResponse(async () => {
-    const workspace =
-      await requestApiJson<CurrentWorkspaceResponse>("/workspaces/current");
+    const workspace = await requestApiJson<CurrentWorkspaceResponse>(
+      "/workspaces/current",
+    );
 
     return Response.json(workspace);
   });

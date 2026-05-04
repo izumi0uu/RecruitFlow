@@ -3,12 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, asc, eq, isNull, ne } from "drizzle-orm";
-
 import type { WorkspaceProfileUpdateRequest } from "@recruitflow/contracts";
-
-import { db } from "../db/database";
-
+import { and, asc, eq, isNull, ne } from "drizzle-orm";
 import { writeAuditLog } from "@/lib/db/audit";
 import {
   AuditAction,
@@ -17,6 +13,7 @@ import {
   users,
   type WorkspaceRole,
 } from "@/lib/db/schema";
+import { db } from "../db/database";
 
 export type ApiWorkspaceMember = {
   id: string;

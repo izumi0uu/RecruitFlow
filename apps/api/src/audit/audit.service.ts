@@ -1,15 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { and, desc, eq, type SQL } from "drizzle-orm";
-
 import type {
   SettingsAuditListQuery,
   SettingsAuditListResponse,
 } from "@recruitflow/contracts";
-
+import { and, desc, eq, type SQL } from "drizzle-orm";
+import { auditLogs, users } from "@/lib/db/schema";
 import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
-
-import { auditLogs, users } from "@/lib/db/schema";
 
 @Injectable()
 export class AuditService {

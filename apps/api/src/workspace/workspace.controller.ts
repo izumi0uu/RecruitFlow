@@ -18,13 +18,13 @@ import { AuthGuard } from "../auth/auth.guard";
 
 import { CurrentWorkspaceContext } from "./current-workspace-context.decorator";
 import { RequireWorkspaceRole } from "./require-workspace-role.decorator";
+import { WorkspaceContextGuard } from "./workspace.guard";
 import type {
   ApiCurrentMembership,
   ApiWorkspace,
   ApiWorkspaceContext,
 } from "./workspace.service";
 import { WorkspaceService } from "./workspace.service";
-import { WorkspaceContextGuard } from "./workspace.guard";
 import { WorkspaceRoleGuard } from "./workspace-role.guard";
 
 const toIsoString = (value: Date | null) => value?.toISOString() ?? null;

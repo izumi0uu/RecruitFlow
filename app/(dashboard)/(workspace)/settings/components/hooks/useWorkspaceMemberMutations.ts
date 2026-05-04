@@ -1,19 +1,22 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
 import {
-  memberInvitationRequestSchema,
-  memberRemovalParamsSchema,
   type MemberInvitationRequest,
   type MemberInvitationResponse,
   type MemberRemovalResponse,
+  type MemberRoleUpdateRequest,
+  type MemberRoleUpdateResponse,
+  memberInvitationRequestSchema,
+  memberRemovalParamsSchema,
+  memberRoleUpdateParamsSchema,
+  memberRoleUpdateRequestSchema,
 } from "@recruitflow/contracts";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 
 import { isApiRequestError } from "@/lib/api/errors";
 import { fetchJson } from "@/lib/query/fetcher";
-import { workspaceQueryKey } from "@/lib/query/options";
+import { userQueryKey, workspaceQueryKey } from "@/lib/query/options";
 
 type WorkspaceMemberMutationOptions<TResponse> = {
   onSuccess?: (response: TResponse) => Promise<void> | void;
@@ -21,6 +24,11 @@ type WorkspaceMemberMutationOptions<TResponse> = {
 
 type InviteWorkspaceMemberValues = {
   email: string;
+  role: string;
+};
+
+type UpdateWorkspaceMemberRoleValues = {
+  memberId: string;
   role: string;
 };
 
@@ -52,6 +60,19 @@ const removeWorkspaceMember = (memberId: string) =>
       accept: "application/json",
     },
     method: "DELETE",
+  });
+
+const updateWorkspaceMemberRole = ({
+  memberId,
+  role,
+}: MemberRoleUpdateRequest & { memberId: string }) =>
+  fetchJson<MemberRoleUpdateResponse>(`/api/members/${memberId}/role`, {
+    body: JSON.stringify({ role }),
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+    },
+    method: "PATCH",
   });
 
 const useWorkspaceMemberInviteMutation = ({
@@ -155,8 +176,7 @@ const useWorkspaceMemberRemoveMutation = ({
 
       if (!parsedParams.success) {
         setError(
-          parsedParams.error.issues[0]?.message ??
-            "Invalid workspace member.",
+          parsedParams.error.issues[0]?.message ?? "Invalid workspace member.",
         );
         return;
       }
@@ -182,7 +202,93 @@ const useWorkspaceMemberRemoveMutation = ({
   };
 };
 
+const useWorkspaceMemberRoleUpdateMutation = ({
+  onSuccess,
+}: WorkspaceMemberMutationOptions<MemberRoleUpdateResponse> = {}) => {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const { isPending, mutate, reset, variables } = useMutation({
+    mutationFn: updateWorkspaceMemberRole,
+    onMutate: () => {
+      setError(null);
+      setSuccess(null);
+    },
+    onSuccess: async (response) => {
+      setSuccess(response.message);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          exact: true,
+          queryKey: workspaceQueryKey,
+        }),
+        queryClient.invalidateQueries({
+          exact: true,
+          queryKey: userQueryKey,
+        }),
+      ]);
+      await onSuccess?.(response);
+    },
+    onError: (caughtError) => {
+      setError(
+        getMutationErrorMessage(caughtError, "Unable to update member role."),
+      );
+    },
+  });
+
+  const updateMemberRole = useCallback(
+    (values: UpdateWorkspaceMemberRoleValues) => {
+      setError(null);
+      setSuccess(null);
+
+      const parsedParams = memberRoleUpdateParamsSchema.safeParse({
+        memberId: values.memberId,
+      });
+
+      if (!parsedParams.success) {
+        setError(
+          parsedParams.error.issues[0]?.message ?? "Invalid workspace member.",
+        );
+        return;
+      }
+
+      const parsedPayload = memberRoleUpdateRequestSchema.safeParse({
+        role: values.role,
+      });
+
+      if (!parsedPayload.success) {
+        setError(
+          parsedPayload.error.issues[0]?.message ??
+            "Invalid member role payload.",
+        );
+        return;
+      }
+
+      mutate({
+        memberId: parsedParams.data.memberId,
+        role: parsedPayload.data.role,
+      });
+    },
+    [mutate],
+  );
+
+  const resetStatus = useCallback(() => {
+    setError(null);
+    setSuccess(null);
+    reset();
+  }, [reset]);
+
+  return {
+    error,
+    isPending,
+    resetStatus,
+    success,
+    updateMemberRole,
+    variables,
+  };
+};
+
 export {
   useWorkspaceMemberInviteMutation,
   useWorkspaceMemberRemoveMutation,
+  useWorkspaceMemberRoleUpdateMutation,
 };
