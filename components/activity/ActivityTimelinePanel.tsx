@@ -467,10 +467,10 @@ const ActivityTimelinePanel = ({
               className="rounded-[1.1rem] border border-dashed border-border bg-surface-1/60 p-5"
             >
               <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-[1rem] border border-border/70 bg-background text-muted-foreground">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-[1rem] border border-border/70 bg-background text-muted-foreground">
                   <Activity className="size-4" />
                 </span>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground">
                     No activity yet.
                   </p>

@@ -1,5 +1,5 @@
 import { apiDefaultJobStageTemplate } from "@recruitflow/contracts";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { hashPassword } from "@/lib/auth/session";
 import { ensureDevTestAccounts } from "@/lib/dev/test-accounts";
@@ -1712,6 +1712,36 @@ const seed = async () => {
     },
   ]);
 
+  const activityTaskTitles = [
+    "Send panel prep to Nina Patel",
+    "Confirm Nina Patel panel notes uploaded",
+    "Book Elena Garcia portfolio screen",
+    "Map Lattice Labs stakeholder follow-up",
+    "Refresh RevOps hold criteria",
+    "Review Priya Nair counteroffer risk",
+    "Draft Priya Nair offer approval memo",
+  ];
+
+  const createdTasks = await db
+    .select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.workspaceId, workspace.id),
+        inArray(tasks.title, activityTaskTitles),
+      ),
+    );
+
+  const getCreatedTask = (title: string) => {
+    const task = createdTasks.find((item) => item.title === title);
+
+    if (!task) {
+      throw new Error(`Failed to create seed task: ${title}`);
+    }
+
+    return task;
+  };
+
   await db.insert(documents).values([
     {
       workspaceId: workspace.id,
@@ -1909,6 +1939,33 @@ const seed = async () => {
     },
   ]);
 
+  const activityDocumentTitles = [
+    "Senior Full Stack Engineer JD",
+    "Nina Patel Resume",
+    "Marcus Lee Client Interview Notes",
+    "Priya Nair Offer Calibration Notes",
+  ];
+
+  const createdDocuments = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.workspaceId, workspace.id),
+        inArray(documents.title, activityDocumentTitles),
+      ),
+    );
+
+  const getCreatedDocument = (title: string) => {
+    const document = createdDocuments.find((item) => item.title === title);
+
+    if (!document) {
+      throw new Error(`Failed to create seed document: ${title}`);
+    }
+
+    return document;
+  };
+
   await db.insert(notes).values([
     {
       workspaceId: workspace.id,
@@ -2045,6 +2102,32 @@ const seed = async () => {
     },
   ]);
 
+  const ninaPanelPrepTask = getCreatedTask("Send panel prep to Nina Patel");
+  const ninaPanelNotesTask = getCreatedTask(
+    "Confirm Nina Patel panel notes uploaded",
+  );
+  const elenaPortfolioTask = getCreatedTask(
+    "Book Elena Garcia portfolio screen",
+  );
+  const latticeStakeholderTask = getCreatedTask(
+    "Map Lattice Labs stakeholder follow-up",
+  );
+  const revOpsHoldTask = getCreatedTask("Refresh RevOps hold criteria");
+  const priyaRiskTask = getCreatedTask("Review Priya Nair counteroffer risk");
+  const priyaOfferMemoTask = getCreatedTask(
+    "Draft Priya Nair offer approval memo",
+  );
+  const fullStackJdDocument = getCreatedDocument(
+    "Senior Full Stack Engineer JD",
+  );
+  const ninaResumeDocument = getCreatedDocument("Nina Patel Resume");
+  const marcusInterviewDocument = getCreatedDocument(
+    "Marcus Lee Client Interview Notes",
+  );
+  const priyaOfferDocument = getCreatedDocument(
+    "Priya Nair Offer Calibration Notes",
+  );
+
   await Promise.all([
     writeAuditLog({
       workspaceId: workspace.id,
@@ -2084,6 +2167,322 @@ const seed = async () => {
       createdAt: relativeDate(-19, 11, 15),
       metadata: {
         joinedViaInvitation: true,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.CLIENT_UPDATED,
+      entityType: "client",
+      entityId: latticeLabs.id,
+      source: "seed",
+      createdAt: relativeDate(-3, 15, 35),
+      metadata: {
+        changedFields: ["lastContactedAt", "notesPreview", "priority"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.JOB_UPDATED,
+      entityType: "job",
+      entityId: fullStackJob.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 16, 5),
+      metadata: {
+        changedFields: ["intakeSummary", "targetFillDate"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.JOB_STATUS_CHANGED,
+      entityType: "job",
+      entityId: revOpsJob.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 10, 30),
+      metadata: {
+        from: "open",
+        to: "on_hold",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.CANDIDATE_UPDATED,
+      entityType: "candidate",
+      entityId: nina.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 17, 10),
+      metadata: {
+        changedFields: ["summary", "salaryExpectation", "hasResume"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.CANDIDATE_UPDATED,
+      entityType: "candidate",
+      entityId: priya.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 25),
+      metadata: {
+        changedFields: ["summary", "salaryExpectation"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.SUBMISSION_CREATED,
+      entityType: "submission",
+      entityId: ninaSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-4, 10, 30),
+      metadata: {
+        candidateId: nina.id,
+        candidateName: nina.fullName,
+        jobId: fullStackJob.id,
+        jobTitle: fullStackJob.title,
+        ownerUserId: recruiter.id,
+        riskFlag: "none",
+        stage: "submitted",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.SUBMISSION_STAGE_CHANGED,
+      entityType: "submission",
+      entityId: marcusSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 10, 0),
+      metadata: {
+        candidateId: marcus.id,
+        fromStage: "submitted",
+        jobId: fullStackJob.id,
+        toStage: "client_interview",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.SUBMISSION_RISK_UPDATED,
+      entityType: "submission",
+      entityId: priyaSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 15),
+      metadata: {
+        candidateId: priya.id,
+        fromRiskFlag: "none",
+        jobId: aiInfraJob.id,
+        toRiskFlag: "compensation_risk",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.SUBMISSION_NEXT_STEP_UPDATED,
+      entityType: "submission",
+      entityId: rosaSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 15, 25),
+      metadata: {
+        candidateId: rosa.id,
+        fromNextStep: null,
+        jobId: designerJob.id,
+        toNextStep:
+          "Clarify bonus payout timing before founder portfolio review.",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: fullStackJdDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-10, 9, 30),
+      metadata: {
+        documentType: fullStackJdDocument.type,
+        linkedEntityId: fullStackJob.id,
+        linkedEntityType: "job",
+        sourceFilename: fullStackJdDocument.sourceFilename,
+        title: fullStackJdDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: ninaResumeDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-9, 11, 30),
+      metadata: {
+        documentType: ninaResumeDocument.type,
+        linkedEntityId: nina.id,
+        linkedEntityType: "candidate",
+        sourceFilename: ninaResumeDocument.sourceFilename,
+        title: ninaResumeDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: marcusInterviewDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 10, 15),
+      metadata: {
+        documentType: marcusInterviewDocument.type,
+        linkedEntityId: marcusSubmission.id,
+        linkedEntityType: "submission",
+        sourceFilename: marcusInterviewDocument.sourceFilename,
+        title: marcusInterviewDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: priyaOfferDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 20),
+      metadata: {
+        documentType: priyaOfferDocument.type,
+        linkedEntityId: priyaSubmission.id,
+        linkedEntityType: "submission",
+        sourceFilename: priyaOfferDocument.sourceFilename,
+        title: priyaOfferDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: latticeStakeholderTask.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 9, 15),
+      metadata: {
+        assignedToUserId: owner.id,
+        linkedEntityId: latticeLabs.id,
+        linkedEntityType: "client",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: ninaPanelPrepTask.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 16, 0),
+      metadata: {
+        assignedToUserId: recruiter.id,
+        linkedEntityId: ninaSubmission.id,
+        linkedEntityType: "submission",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.TASK_COMPLETED,
+      entityType: "task",
+      entityId: ninaPanelNotesTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 35),
+      metadata: {
+        action: "complete",
+        assignedToUserId: recruiter.id,
+        nextStatus: "done",
+        previousCompletedAt: null,
+        previousSnoozedUntil: null,
+        previousStatus: "open",
+        snoozedUntil: null,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: coordinator.id,
+      actorRole: "coordinator",
+      action: AuditAction.TASK_SNOOZED,
+      entityType: "task",
+      entityId: elenaPortfolioTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 12, 30),
+      metadata: {
+        action: "snooze",
+        assignedToUserId: coordinator.id,
+        nextStatus: "snoozed",
+        previousCompletedAt: null,
+        previousSnoozedUntil: null,
+        previousStatus: "open",
+        snoozedUntil: relativeDate(1, 9, 0).toISOString(),
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.TASK_UPDATED,
+      entityType: "task",
+      entityId: revOpsHoldTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 11, 10),
+      metadata: {
+        assignedToUserId: owner.id,
+        changedFields: ["description", "dueAt"],
+        linkedEntityId: revOpsJob.id,
+        linkedEntityType: "job",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: priyaRiskTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 45),
+      metadata: {
+        assignedToUserId: recruiter.id,
+        linkedEntityId: priya.id,
+        linkedEntityType: "candidate",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: priyaOfferMemoTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 55),
+      metadata: {
+        assignedToUserId: owner.id,
+        linkedEntityId: priyaSubmission.id,
+        linkedEntityType: "submission",
       },
     }),
     writeAuditLog({
