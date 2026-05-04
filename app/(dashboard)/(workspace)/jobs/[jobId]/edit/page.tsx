@@ -1,10 +1,10 @@
-import { notFound, redirect } from "next/navigation";
-
 import type {
   JobDetailResponse,
   JobStageTemplateSummary,
 } from "@recruitflow/contracts";
-
+import { notFound, redirect } from "next/navigation";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { Button } from "@/components/ui/Button";
 import {
   Card,
   CardContent,
@@ -12,8 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
@@ -52,7 +50,7 @@ const StageTemplateCard = ({
   );
 
   return (
-    <Card className="max-w-5xl">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Default stage template</CardTitle>
         <CardDescription>
@@ -142,9 +140,7 @@ const hasRestrictedFlag = (
 ) => {
   const restricted = params.restricted;
 
-  return Array.isArray(restricted)
-    ? restricted[0] === "1"
-    : restricted === "1";
+  return Array.isArray(restricted) ? restricted[0] === "1" : restricted === "1";
 };
 
 const EditJobPage = async ({ params, searchParams }: PageProps) => {
@@ -156,6 +152,12 @@ const EditJobPage = async ({ params, searchParams }: PageProps) => {
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={`/jobs/${job.id}`}
+        breadcrumbItems={[
+          { label: "Jobs", href: "/jobs" },
+          { label: job.title, href: `/jobs/${job.id}` },
+          { label: "Edit" },
+        ]}
         kicker="Job maintenance"
         title={`Edit ${job.title}`}
         description="Update the structured requisition baseline and verify the default stage container that downstream submissions will use."
@@ -198,7 +200,7 @@ const EditJobPage = async ({ params, searchParams }: PageProps) => {
             stageTemplate={stageTemplate}
           />
 
-          <Card className="max-w-5xl">
+          <Card className="w-full">
             <CardHeader>
               <CardTitle>Job intake baseline</CardTitle>
               <CardDescription>

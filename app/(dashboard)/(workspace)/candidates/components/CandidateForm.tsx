@@ -1,12 +1,12 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { Loader2 } from "lucide-react";
-
 import type { CandidatesListOwnerOption } from "@recruitflow/contracts";
+import { Loader2 } from "lucide-react";
+import { type FormEvent, useState } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 
@@ -51,11 +51,21 @@ export const CandidateForm = ({
   onSubmit,
   ownerOptions,
 }: CandidateFormProps) => {
+  const values = initialValues;
+  const [ownerUserId, setOwnerUserId] = useState(values.ownerUserId);
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!ownerUserId) {
+      return;
+    }
+
     onSubmit(getCandidateFormValues(new FormData(event.currentTarget)));
   };
-  const values = initialValues;
+  const ownerSelectOptions = ownerOptions.map((owner) => ({
+    label: owner.name ?? owner.email,
+    value: owner.id,
+  }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -81,22 +91,14 @@ export const CandidateForm = ({
 
         <div className="space-y-2">
           <Label htmlFor="ownerUserId">Candidate owner</Label>
-          <select
+          <FilterSelect
             id="ownerUserId"
-            className="input"
             name="ownerUserId"
-            defaultValue={values.ownerUserId}
-            required
-          >
-            <option value="" disabled>
-              Select owner
-            </option>
-            {ownerOptions.map((owner) => (
-              <option key={owner.id} value={owner.id}>
-                {owner.name ?? owner.email}
-              </option>
-            ))}
-          </select>
+            onValueChange={setOwnerUserId}
+            options={ownerSelectOptions}
+            placeholder="Select owner"
+            value={ownerUserId}
+          />
         </div>
 
         <div className="space-y-2">
@@ -223,9 +225,7 @@ export const CandidateForm = ({
         </div>
       </div>
 
-      {error ? (
-        <p className="status-message status-error">{error}</p>
-      ) : null}
+      {error ? <p className="status-message status-error">{error}</p> : null}
 
       <p className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
         Candidate profile edits are non-destructive and available to workspace
@@ -234,7 +234,11 @@ export const CandidateForm = ({
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" className="rounded-full" disabled={isPending}>
+        <Button
+          type="submit"
+          className="rounded-full"
+          disabled={isPending || !ownerUserId}
+        >
           {isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
@@ -246,7 +250,12 @@ export const CandidateForm = ({
             "Save candidate"
           )}
         </Button>
-        <Button asChild type="button" variant="outline" className="rounded-full">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          className="rounded-full"
+        >
           <TrackedLink href="/candidates">Cancel</TrackedLink>
         </Button>
       </div>

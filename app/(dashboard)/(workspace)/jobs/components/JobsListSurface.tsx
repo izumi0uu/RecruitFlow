@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { JobsListItem, JobsListResponse } from "@recruitflow/contracts";
 import {
   BriefcaseBusiness,
   Building2,
@@ -10,23 +10,19 @@ import {
   Search,
   UserRound,
 } from "lucide-react";
-
-import type { JobsListItem, JobsListResponse } from "@recruitflow/contracts";
-
+import type { ReactNode } from "react";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Input } from "@/components/ui/Input";
-import { TrackedLink } from "@/components/navigation/TrackedLink";
 import {
   WorkspaceListStatusBadge,
   WorkspaceListSurfaceShell,
 } from "@/components/workspace/WorkspaceListSurfaceShell";
-import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
+import { WorkspacePageHeaderSummary } from "@/components/workspace/WorkspacePageHeaderSummary";
 import type { JobListFilters } from "@/lib/jobs/filters";
 import { cn } from "@/lib/utils";
-
-import { useJobsListSurface } from "./hooks/useJobsListSurface";
 import {
   formatJobDate,
   formatJobLabel,
@@ -37,6 +33,7 @@ import {
   jobStatusOptions,
   jobStatusToneMap,
 } from "../utils";
+import { useJobsListSurface } from "./hooks/useJobsListSurface";
 
 type JobsListSurfaceProps = {
   initialData: JobsListResponse;
@@ -90,7 +87,10 @@ const JobRow = ({
         ) : null}
       </div>
       <h2 className="mt-3 truncate text-lg font-semibold tracking-[-0.04em] text-foreground">
-        <TrackedLink href={`/jobs/${job.id}`} className="hover:underline">
+        <TrackedLink
+          href={`/jobs/${job.id}`}
+          className="underline decoration-2 underline-offset-[0.14em] hover:decoration-foreground/70"
+        >
           {job.title}
         </TrackedLink>
       </h2>
@@ -243,17 +243,14 @@ const JobsListSurface = ({
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Search
               </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Role, client, department, or location"
-                  value={searchDraft}
-                  onChange={(event) => {
-                    setSearchDraft(event.target.value);
-                  }}
-                />
-              </span>
+              <Input
+                leadingIcon={<Search className="size-4" />}
+                placeholder="Role, client, department, or location"
+                value={searchDraft}
+                onChange={(event) => {
+                  setSearchDraft(event.target.value);
+                }}
+              />
             </label>
 
             <label className="space-y-2">

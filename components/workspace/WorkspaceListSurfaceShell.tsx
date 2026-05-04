@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight, Filter } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -26,6 +26,8 @@ type WorkspaceListFooterNote = {
 type WorkspaceListSurfaceShellProps = {
   alerts?: ReactNode;
   children: ReactNode;
+  className?: string;
+  contentClassName?: string;
   contentHeader?: ReactNode;
   contentHeaderClassName?: string;
   filterBadges: ReactNode;
@@ -123,6 +125,8 @@ const WorkspaceListFooterNote = ({
 const WorkspaceListSurfaceShell = ({
   alerts,
   children,
+  className,
+  contentClassName,
   contentHeader,
   contentHeaderClassName,
   filterBadges,
@@ -131,23 +135,26 @@ const WorkspaceListSurfaceShell = ({
   footerNote,
   pagination,
 }: WorkspaceListSurfaceShellProps) => (
-  <Card className="rounded-[2.15rem]">
+  <Card className={cn("rounded-[2.15rem]", className)}>
     <CardContent className="space-y-5 pt-1">
       <div className="rounded-[1.65rem] border border-border/70 bg-workspace-muted-surface/48 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
         <div className="mb-3 flex flex-wrap items-center gap-2 px-1">
           {filterBadges}
         </div>
 
-        <div
-          className={cn("grid gap-3 lg:items-end", filterControlsClassName)}
-        >
+        <div className={cn("grid gap-3 lg:items-end", filterControlsClassName)}>
           {filterControls}
         </div>
       </div>
 
       {alerts}
 
-      <div className="overflow-hidden rounded-[1.85rem] border border-border/70 bg-background/42 shadow-[0_24px_70px_-54px_var(--shadow-color)]">
+      <div
+        className={cn(
+          "overflow-hidden rounded-[1.85rem] border border-border/70 bg-background/42 shadow-[0_24px_70px_-54px_var(--shadow-color)]",
+          contentClassName,
+        )}
+      >
         {contentHeader ? (
           <div
             className={cn(

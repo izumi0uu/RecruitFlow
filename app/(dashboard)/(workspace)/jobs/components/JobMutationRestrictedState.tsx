@@ -21,7 +21,7 @@ export const JobMutationRestrictedState = ({
   description = "Coordinators can inspect job intake records, but owners and recruiters own job creation, edit, status, priority, and stage-template repair actions.",
   title = "Restricted job action",
 }: JobMutationRestrictedStateProps) => (
-  <Card className="max-w-5xl">
+  <Card className="w-full">
     <CardHeader>
       <CardTitle>{title}</CardTitle>
       <CardDescription>

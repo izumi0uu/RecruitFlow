@@ -1,6 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-
 import type { CandidateDetailResponse } from "@recruitflow/contracts";
+import { notFound, redirect } from "next/navigation";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -13,11 +12,8 @@ import {
 } from "@/components/ui/Card";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
-
-import {
-  buildCandidateFormValues,
-} from "../../components/candidateFormValues";
 import { CandidateFormController } from "../../components/CandidateFormController";
+import { buildCandidateFormValues } from "../../components/candidateFormValues";
 
 type PageProps = {
   params: Promise<{
@@ -64,6 +60,12 @@ const EditCandidatePage = async ({ params, searchParams }: PageProps) => {
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={`/candidates/${candidate.id}`}
+        breadcrumbItems={[
+          { label: "Candidates", href: "/candidates" },
+          { label: candidate.fullName, href: `/candidates/${candidate.id}` },
+          { label: "Edit" },
+        ]}
         kicker="Candidate maintenance"
         title={`Edit ${candidate.fullName}`}
         description="Keep owner, source, contact details, skills, and location current before downstream submissions and documents attach to this profile."
@@ -79,12 +81,12 @@ const EditCandidatePage = async ({ params, searchParams }: PageProps) => {
             variant="outline"
             className="ml-2 rounded-full"
           >
-            <TrackedLink href="/candidates">Back to candidates</TrackedLink>
+            <TrackedLink href="/candidates">Open candidates</TrackedLink>
           </Button>
         </p>
       ) : null}
 
-      <Card className="max-w-5xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Candidate profile baseline</CardTitle>
           <CardDescription>

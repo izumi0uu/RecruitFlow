@@ -1,8 +1,8 @@
 import {
-  apiDocumentEntityTypeValues,
-  apiDocumentTypeValues,
   type ApiDocumentEntityType,
   type ApiDocumentType,
+  apiDocumentEntityTypeValues,
+  apiDocumentTypeValues,
 } from "@recruitflow/contracts";
 
 import {
@@ -13,11 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
-
-import {
-  buildDocumentMetadataFormValues,
-} from "../components/documentMetadataFormValues";
 import { DocumentMetadataFormController } from "../components/DocumentMetadataFormController";
+import { buildDocumentMetadataFormValues } from "../components/documentMetadataFormValues";
 
 type PageProps = {
   searchParams?:
@@ -81,16 +78,22 @@ const NewDocumentPage = async ({ searchParams }: PageProps) => {
   const entityType = parseEntityType(params.entityType);
   const entityId = getSingleParamValue(params.entityId) ?? "";
   const type = parseDocumentType(params.type, entityType);
+  const cancelHref = getCancelHref(entityType, entityId);
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={cancelHref}
+        breadcrumbItems={[
+          { label: "Documents", href: "/documents" },
+          { label: "Add metadata" },
+        ]}
         kicker="Document metadata"
         title="Add document metadata"
         description="Register a resume, JD, call note, or interview note against a workspace entity without taking ownership of binary upload transport yet."
       />
 
-      <Card className="max-w-5xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Metadata-only upload checkpoint</CardTitle>
           <CardDescription>
@@ -100,7 +103,7 @@ const NewDocumentPage = async ({ searchParams }: PageProps) => {
         </CardHeader>
         <CardContent>
           <DocumentMetadataFormController
-            cancelHref={getCancelHref(entityType, entityId)}
+            cancelHref={cancelHref}
             initialValues={buildDocumentMetadataFormValues({
               entityId,
               entityType,

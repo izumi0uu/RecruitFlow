@@ -213,6 +213,33 @@
   }
 }
 
+@keyframes download-switch-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 28%, transparent);
+    transform: scale(0.96);
+  }
+
+  70% {
+    box-shadow: 0 0 0 14px transparent;
+    transform: scale(1);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes download-switch-fill {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: 100%;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -226,10 +253,15 @@
     @apply overscroll-none bg-background text-foreground antialiased;
     position: relative;
     isolation: isolate;
-    font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    font-family:
+      var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
     background-image:
-      radial-gradient(circle at top left, rgba(var(--hero-glow), 0.56), transparent 36%),
+      radial-gradient(
+        circle at top left,
+        rgba(var(--hero-glow), 0.56),
+        transparent 36%
+      ),
       linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 24%);
     background-attachment: fixed;
   }
@@ -241,7 +273,11 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(circle at 80% 14%, rgba(var(--hero-glow), 0.12), transparent 26%),
+      radial-gradient(
+        circle at 80% 14%,
+        rgba(var(--hero-glow), 0.12),
+        transparent 26%
+      ),
       linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 34%);
     opacity: 0.8;
   }
@@ -250,7 +286,8 @@
   pre,
   kbd,
   samp {
-    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+    font-family:
+      var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   }
 
   ::selection {
@@ -304,7 +341,11 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: radial-gradient(circle at top, rgba(var(--hero-glow), 0.12), transparent 52%);
+    background: radial-gradient(
+      circle at top,
+      rgba(var(--hero-glow), 0.12),
+      transparent 52%
+    );
   }
 
   .card {
@@ -338,7 +379,11 @@
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(circle at 50% 5%, rgba(255, 255, 255, 0.09), transparent 34%),
+      radial-gradient(
+        circle at 50% 5%,
+        rgba(255, 255, 255, 0.09),
+        transparent 34%
+      ),
       linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 42%);
   }
 
@@ -515,11 +560,129 @@
     @apply border-destructive/25 bg-destructive text-destructive-foreground hover:bg-destructive/90;
   }
 
+  .download-action-switch {
+    --download-switch-accent: var(--primary);
+    --download-switch-accent-foreground: var(--primary-foreground);
+    --download-switch-complete: var(--success);
+    --download-switch-complete-foreground: var(--success-foreground);
+    @apply relative inline-flex h-14 w-40 cursor-pointer items-center overflow-hidden rounded-full border-2 border-primary/80 bg-transparent p-1 text-sm font-semibold tracking-normal text-foreground outline-none transition-[width,border-color,background-color,box-shadow,opacity] duration-300 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/25;
+    box-shadow:
+      0 20px 46px -34px var(--shadow-color),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .download-action-switch:hover {
+    @apply bg-surface-1/72;
+  }
+
+  .download-action-switch__orb {
+    @apply relative z-10 flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full text-primary-foreground transition-[opacity,transform,background-color] duration-300;
+    background: var(--download-switch-accent);
+  }
+
+  .download-action-switch__orb::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 0;
+    background: color-mix(in srgb, var(--download-switch-accent) 68%, black);
+    transition: height 0.3s ease;
+  }
+
+  .download-action-switch__download-icon,
+  .download-action-switch__stop-icon,
+  .download-action-switch__check-icon {
+    @apply absolute size-5 transition-[opacity,transform] duration-300;
+  }
+
+  .download-action-switch__stop-icon,
+  .download-action-switch__check-icon {
+    @apply opacity-0;
+  }
+
+  .download-action-switch__label {
+    @apply pointer-events-none absolute right-5 text-sm font-semibold tracking-normal transition-[opacity,transform,color] duration-300;
+  }
+
+  .download-action-switch__label--running,
+  .download-action-switch__label--complete {
+    @apply opacity-0;
+  }
+
+  .download-action-switch[data-state="running"] {
+    @apply w-14;
+  }
+
+  .download-action-switch[data-state="running"] .download-action-switch__orb {
+    animation: download-switch-pulse 1s ease forwards;
+    transform: rotate(180deg);
+  }
+
+  .download-action-switch[data-state="running"]
+    .download-action-switch__orb::before {
+    animation: download-switch-fill 3s ease-in-out forwards;
+  }
+
+  .download-action-switch[data-state="running"]
+    .download-action-switch__download-icon,
+  .download-action-switch[data-state="running"]
+    .download-action-switch__label--idle {
+    @apply opacity-0;
+  }
+
+  .download-action-switch[data-state="running"]
+    .download-action-switch__stop-icon {
+    @apply opacity-100;
+  }
+
+  .download-action-switch[data-state="complete"] {
+    @apply w-36 border-success bg-success/10 text-success;
+  }
+
+  .download-action-switch[data-state="complete"] .download-action-switch__orb {
+    background: var(--download-switch-complete);
+    color: var(--download-switch-complete-foreground);
+  }
+
+  .download-action-switch[data-state="complete"]
+    .download-action-switch__download-icon,
+  .download-action-switch[data-state="complete"]
+    .download-action-switch__stop-icon,
+  .download-action-switch[data-state="complete"]
+    .download-action-switch__label--idle {
+    @apply opacity-0;
+  }
+
+  .download-action-switch[data-state="complete"]
+    .download-action-switch__check-icon,
+  .download-action-switch[data-state="complete"]
+    .download-action-switch__label--complete {
+    @apply opacity-100;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .download-action-switch,
+    .download-action-switch__orb,
+    .download-action-switch__orb::before,
+    .download-action-switch__download-icon,
+    .download-action-switch__stop-icon,
+    .download-action-switch__check-icon,
+    .download-action-switch__label {
+      animation-duration: 1ms;
+      transition-duration: 1ms;
+    }
+  }
+
   .input {
     @apply flex h-11 w-full min-w-0 rounded-2xl border border-border/70 bg-background/75 px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition-[border-color,background-color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50;
     box-shadow:
       0 18px 42px -34px var(--shadow-color),
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .input--with-leading-icon {
+    padding-left: 2.25rem;
   }
 
   .input:hover {

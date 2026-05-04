@@ -1,38 +1,41 @@
-import { queryOptions } from "@tanstack/react-query";
-
 import type {
-  ClientDetailResponse,
+  ActivityTimelineQuery,
+  ActivityTimelineResponse,
   CandidatesListResponse,
+  ClientDetailResponse,
   ClientsListResponse,
   DocumentsListResponse,
   JobDetailResponse,
   JobsListResponse,
+  NotesListQuery,
+  NotesListResponse,
   SubmissionsListResponse,
+  TasksListResponse,
 } from "@recruitflow/contracts";
+import { queryOptions } from "@tanstack/react-query";
 
 import {
-  candidateListFiltersToSearchParams,
   type CandidateListFilters,
+  candidateListFiltersToSearchParams,
 } from "@/lib/candidates/filters";
 import {
-  clientListFiltersToSearchParams,
   type ClientListFilters,
+  clientListFiltersToSearchParams,
 } from "@/lib/clients/filters";
 import {
-  documentListFiltersToSearchParams,
   type DocumentListFilters,
+  documentListFiltersToSearchParams,
 } from "@/lib/documents/filters";
 import {
-  jobListFiltersToSearchParams,
   type JobListFilters,
+  jobListFiltersToSearchParams,
 } from "@/lib/jobs/filters";
-import {
-  EMPTY_SUBMISSION_PIPELINE_FILTERS,
-  submissionPipelineFiltersToSearchParams,
-  type SubmissionPipelineFilters,
-} from "@/lib/submissions/filters";
 import { fetchJson } from "@/lib/query/fetcher";
 import type { CurrentUserDto, CurrentWorkspaceDto } from "@/lib/query/types";
+import {
+  type TaskListFilters,
+  taskListFiltersToSearchParams,
+} from "@/lib/tasks/filters";
 
 export const userQueryKey = ["user"] as const;
 export const workspaceQueryKey = ["workspace"] as const;
@@ -154,30 +157,69 @@ export const documentsListQueryOptions = (filters: DocumentListFilters) =>
 
 export const submissionsListRootQueryKey = ["submissions", "list"] as const;
 
-export const submissionsListQueryKey = (
-  filters: SubmissionPipelineFilters = EMPTY_SUBMISSION_PIPELINE_FILTERS,
-) =>
-  [
-    ...submissionsListRootQueryKey,
-    submissionPipelineFiltersToSearchParams(filters, {
-      target: "api",
-    }).toString(),
-  ] as const;
-
-export const submissionsListQueryOptions = (
-  filters: SubmissionPipelineFilters = EMPTY_SUBMISSION_PIPELINE_FILTERS,
-) =>
+export const submissionsListQueryOptions = () =>
   queryOptions({
-    queryKey: submissionsListQueryKey(filters),
+    queryKey: submissionsListRootQueryKey,
+    queryFn: () => fetchJson<SubmissionsListResponse>("/api/submissions"),
+  });
+
+export const tasksListRootQueryKey = ["tasks", "list"] as const;
+
+export const tasksListQueryKey = (filters: TaskListFilters) =>
+  [...tasksListRootQueryKey, filters] as const;
+
+export const tasksListQueryOptions = (filters: TaskListFilters) =>
+  queryOptions({
+    queryKey: tasksListQueryKey(filters),
     queryFn: () => {
-      const params = submissionPipelineFiltersToSearchParams(filters, {
+      const params = taskListFiltersToSearchParams(filters, {
         includePageSize: true,
-        target: "api",
       });
       const queryString = params.toString();
 
-      return fetchJson<SubmissionsListResponse>(
-        `/api/submissions${queryString ? `?${queryString}` : ""}`,
+      return fetchJson<TasksListResponse>(
+        `/api/tasks${queryString ? `?${queryString}` : ""}`,
       );
+    },
+  });
+
+export const activityTimelineRootQueryKey = ["activity", "timeline"] as const;
+
+export const activityTimelineQueryKey = (query: ActivityTimelineQuery) =>
+  [...activityTimelineRootQueryKey, query] as const;
+
+export const activityTimelineQueryOptions = (query: ActivityTimelineQuery) =>
+  queryOptions({
+    queryKey: activityTimelineQueryKey(query),
+    queryFn: () => {
+      const params = new URLSearchParams({
+        entityId: query.entityId,
+        entityType: query.entityType,
+        pageSize: String(query.pageSize),
+      });
+
+      return fetchJson<ActivityTimelineResponse>(
+        `/api/activity/timeline?${params.toString()}`,
+      );
+    },
+  });
+
+export const notesListRootQueryKey = ["notes", "list"] as const;
+
+export const notesListQueryKey = (query: NotesListQuery) =>
+  [...notesListRootQueryKey, query] as const;
+
+export const notesListQueryOptions = (query: NotesListQuery) =>
+  queryOptions({
+    queryKey: notesListQueryKey(query),
+    queryFn: () => {
+      const params = new URLSearchParams({
+        entityId: query.entityId,
+        entityType: query.entityType,
+        page: String(query.page),
+        pageSize: String(query.pageSize),
+      });
+
+      return fetchJson<NotesListResponse>(`/api/notes?${params.toString()}`);
     },
   });

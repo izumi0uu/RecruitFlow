@@ -1,7 +1,7 @@
 "use client";
 
-import { type FormEvent, useActionState, useRef } from "react";
 import { Loader2, Lock, Trash2 } from "lucide-react";
+import { type FormEvent, useActionState, useRef } from "react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -57,6 +57,11 @@ const SecurityPage = () => {
   return (
     <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
       <WorkspacePageHeader
+        backHref="/settings"
+        breadcrumbItems={[
+          { label: "Settings", href: "/settings" },
+          { label: "Security" },
+        ]}
         kicker="Security"
         title="Security settings"
         description="Keep sign-in details up to date and control what happens when an account should be removed from the workspace entirely."
@@ -116,9 +121,7 @@ const SecurityPage = () => {
               </div>
 
               {passwordError ? (
-                <p className="status-message status-error">
-                  {passwordError}
-                </p>
+                <p className="status-message status-error">{passwordError}</p>
               ) : null}
               {passwordSuccess ? (
                 <p className="status-message status-success">

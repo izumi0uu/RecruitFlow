@@ -3,13 +3,13 @@ import {
   CheckCircle,
   Lock,
   LogOut,
+  type LucideIcon,
   Mail,
   Settings,
   ShieldCheck,
   UserCog,
   UserMinus,
   UserPlus,
-  type LucideIcon,
 } from "lucide-react";
 
 import {
@@ -87,6 +87,11 @@ const ActivityPage = async () => {
   return (
     <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
       <WorkspacePageHeader
+        backHref="/settings"
+        breadcrumbItems={[
+          { label: "Settings", href: "/settings" },
+          { label: "Activity" },
+        ]}
         kicker="Workspace history"
         title="Activity log"
         description="Review recent account and workspace actions in the same subdued surface as the rest of the product."

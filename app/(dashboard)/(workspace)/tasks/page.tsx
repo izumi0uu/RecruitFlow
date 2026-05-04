@@ -1,40 +1,48 @@
+import type { TasksListResponse } from "@recruitflow/contracts";
+import { redirect } from "next/navigation";
+
+import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import {
-  ModulePlaceholderPage,
-  getPlaceholderViewState,
-} from "@/components/workspace/ModulePlaceholderPage";
-import { getWorkspaceDemoOverview } from "@/lib/db/queries";
+  parseTaskListFiltersFromRecord,
+  type TaskListFilters,
+  taskListFiltersToSearchParams,
+} from "@/lib/tasks/filters";
+
+import { TasksListSurface } from "./components/TasksListSurface";
 
 type PageProps = {
-  searchParams?: Promise<{ state?: string }> | { state?: string };
+  searchParams?:
+    | Promise<Record<string, string | string[] | undefined>>
+    | Record<string, string | string[] | undefined>;
+};
+
+const buildTasksApiPath = (filters: TaskListFilters) => {
+  const queryString = taskListFiltersToSearchParams(filters, {
+    includePageSize: true,
+  }).toString();
+
+  return `/tasks${queryString ? `?${queryString}` : ""}`;
+};
+
+const getTasksList = async (filters: TaskListFilters) => {
+  try {
+    return await requestApiJson<TasksListResponse>(buildTasksApiPath(filters));
+  } catch (error) {
+    if (isApiRequestError(error) && error.status === 401) {
+      redirect("/sign-in");
+    }
+
+    throw error;
+  }
 };
 
 const TasksPage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
-  const overview = await getWorkspaceDemoOverview();
+  const initialFilters = parseTaskListFiltersFromRecord(params);
+  const tasksList = await getTasksList(initialFilters);
 
   return (
-    <ModulePlaceholderPage
-      demoState={
-        overview?.taskCount
-          ? {
-              title: `${overview.taskCount} seeded tasks ready to triage`,
-              description: `${overview.overdueTaskCount} overdue follow-up${overview.overdueTaskCount === 1 ? "" : "s"} are included so execution views can verify urgency states against realistic data.`,
-            }
-          : undefined
-      }
-      kicker="Execution rhythm"
-      title="Tasks"
-      description="Tasks now have a protected top-level destination, which keeps follow-up work, ownership, and overdue queues from being scattered across later branches."
-      emptyTitle="No tasks to review yet"
-      emptyDescription="My Tasks, workspace queues, overdue slices, and snoozed work will appear here once feature-tasks-activity implements the task system."
-      ownerBranch="feature-tasks-activity"
-      plannedCapabilities={[
-        "Mine, workspace, overdue, snoozed, and done task perspectives",
-        "Shared route entry from dashboard reminders and pipeline follow-ups",
-        "A stable empty-state pattern for future execution workflows",
-      ]}
-      state={getPlaceholderViewState(params.state)}
-    />
+    <TasksListSurface initialData={tasksList} initialFilters={initialFilters} />
   );
 };
 

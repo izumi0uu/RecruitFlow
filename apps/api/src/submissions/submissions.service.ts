@@ -5,6 +5,19 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type {
+  ApiJobStatus,
+  ApiRiskFlag,
+  ApiSubmissionStage,
+  ApiUserReference,
+  SubmissionFollowUpUpdateRequest,
+  SubmissionMutationRequest,
+  SubmissionMutationResponse,
+  SubmissionRecord,
+  SubmissionStageTransitionRequest,
+  SubmissionsListQuery,
+  SubmissionsListResponse,
+} from "@recruitflow/contracts";
 import {
   and,
   asc,
@@ -13,25 +26,9 @@ import {
   ilike,
   isNull,
   or,
-  sql,
   type SQL,
+  sql,
 } from "drizzle-orm";
-
-import {
-  type ApiJobStatus,
-  type ApiRiskFlag,
-  type ApiSubmissionStage,
-  type ApiUserReference,
-  type SubmissionMutationRequest,
-  type SubmissionMutationResponse,
-  type SubmissionRecord,
-  type SubmissionsListQuery,
-  type SubmissionsListResponse,
-} from "@recruitflow/contracts";
-
-import { db } from "../db/database";
-import type { ApiWorkspaceContext } from "../workspace/workspace.service";
-
 import {
   AuditAction,
   auditLogs,
@@ -41,11 +38,17 @@ import {
   submissions,
   users,
 } from "@/lib/db/schema";
+import { db } from "../db/database";
+import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
 const countValue = sql<number>`cast(count(${submissions.id}) as int)`;
 
 const restrictedSubmissionMutationMessage =
   "Only owners and recruiters can create submissions";
+const restrictedSubmissionStageTransitionMessage =
+  "Only owners and recruiters can change submission stages";
+const restrictedSubmissionFollowUpUpdateMessage =
+  "Only owners and recruiters can update submission follow-up fields";
 
 type SubmissionRecordRow = {
   candidateCurrentCompany: string | null;
@@ -85,7 +88,9 @@ const normalizeTextFilter = (value: string | undefined) => {
   return normalizedValue ? normalizedValue : null;
 };
 
-const getOwnerReference = (row: SubmissionRecordRow): ApiUserReference | null => {
+const getOwnerReference = (
+  row: SubmissionRecordRow,
+): ApiUserReference | null => {
   if (!row.ownerUserId || !row.ownerEmail) {
     return null;
   }
@@ -153,6 +158,30 @@ export class SubmissionsService {
     }
 
     throw new ForbiddenException(restrictedSubmissionMutationMessage);
+  }
+
+  private assertCanChangeSubmissionStage(context: ApiWorkspaceContext) {
+    if (context.membership.role === "owner") {
+      return;
+    }
+
+    if (context.membership.role === "recruiter") {
+      return;
+    }
+
+    throw new ForbiddenException(restrictedSubmissionStageTransitionMessage);
+  }
+
+  private assertCanUpdateSubmissionFollowUp(context: ApiWorkspaceContext) {
+    if (context.membership.role === "owner") {
+      return;
+    }
+
+    if (context.membership.role === "recruiter") {
+      return;
+    }
+
+    throw new ForbiddenException(restrictedSubmissionFollowUpUpdateMessage);
   }
 
   private getOwnerOptions(context: ApiWorkspaceContext): ApiUserReference[] {
@@ -309,9 +338,7 @@ export class SubmissionsService {
     const page = query.page;
     const pageSize = query.pageSize;
     const offset = (page - 1) * pageSize;
-    const whereClauses: SQL[] = [
-      eq(submissions.workspaceId, workspaceId),
-    ];
+    const whereClauses: SQL[] = [eq(submissions.workspaceId, workspaceId)];
 
     if (!query.includeArchived) {
       whereClauses.push(isNull(jobs.archivedAt));
@@ -320,15 +347,16 @@ export class SubmissionsService {
 
     if (q) {
       const searchPattern = `%${q}%`;
-
-      whereClauses.push(
-        or(
-          ilike(candidates.fullName, searchPattern),
-          ilike(jobs.title, searchPattern),
-          ilike(clients.name, searchPattern),
-          ilike(submissions.nextStep, searchPattern),
-        )!,
+      const searchCondition = or(
+        ilike(candidates.fullName, searchPattern),
+        ilike(jobs.title, searchPattern),
+        ilike(clients.name, searchPattern),
+        ilike(submissions.nextStep, searchPattern),
       );
+
+      if (searchCondition) {
+        whereClauses.push(searchCondition);
+      }
     }
 
     if (query.candidateId) {
@@ -523,6 +551,181 @@ export class SubmissionsService {
         context,
         createdSubmission.id,
       ),
+      workspaceScoped: true,
+    };
+  }
+
+  async updateSubmissionStage(
+    context: ApiWorkspaceContext,
+    submissionId: string,
+    input: SubmissionStageTransitionRequest,
+  ): Promise<SubmissionMutationResponse> {
+    this.assertCanChangeSubmissionStage(context);
+
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const existingSubmission = await this.selectSubmissionRecord(
+      context,
+      submissionId,
+    );
+
+    if (existingSubmission.stage === input.stage) {
+      return {
+        context: {
+          role: context.membership.role,
+          workspaceId,
+        },
+        contractVersion: "phase-1",
+        message: "Submission stage unchanged",
+        submission: existingSubmission,
+        workspaceScoped: true,
+      };
+    }
+
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(submissions)
+        .set({
+          lastTouchAt: now,
+          stage: input.stage,
+          submittedAt:
+            isSubmittedStage(input.stage) && !existingSubmission.submittedAt
+              ? now
+              : undefined,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(submissions.id, submissionId),
+            eq(submissions.workspaceId, workspaceId),
+          ),
+        );
+
+      await tx.insert(auditLogs).values({
+        action: AuditAction.SUBMISSION_STAGE_CHANGED,
+        actorUserId,
+        entityId: submissionId,
+        entityType: "submission",
+        metadataJson: {
+          actorRole: context.membership.role,
+          candidateId: existingSubmission.candidateId,
+          fromStage: existingSubmission.stage,
+          jobId: existingSubmission.jobId,
+          source: "api",
+          toStage: input.stage,
+        },
+        workspaceId,
+      });
+    });
+
+    return {
+      context: {
+        role: context.membership.role,
+        workspaceId,
+      },
+      contractVersion: "phase-1",
+      message: "Submission stage updated successfully",
+      submission: await this.selectSubmissionRecord(context, submissionId),
+      workspaceScoped: true,
+    };
+  }
+
+  async updateSubmissionFollowUp(
+    context: ApiWorkspaceContext,
+    submissionId: string,
+    input: SubmissionFollowUpUpdateRequest,
+  ): Promise<SubmissionMutationResponse> {
+    this.assertCanUpdateSubmissionFollowUp(context);
+
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const existingSubmission = await this.selectSubmissionRecord(
+      context,
+      submissionId,
+    );
+    const riskChanged =
+      input.riskFlag !== undefined &&
+      input.riskFlag !== existingSubmission.riskFlag;
+    const nextStepChanged =
+      input.nextStep !== undefined &&
+      input.nextStep !== existingSubmission.nextStep;
+
+    if (!riskChanged && !nextStepChanged) {
+      return {
+        context: {
+          role: context.membership.role,
+          workspaceId,
+        },
+        contractVersion: "phase-1",
+        message: "Submission follow-up unchanged",
+        submission: existingSubmission,
+        workspaceScoped: true,
+      };
+    }
+
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(submissions)
+        .set({
+          lastTouchAt: now,
+          nextStep: nextStepChanged ? input.nextStep : undefined,
+          riskFlag: riskChanged ? input.riskFlag : undefined,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(submissions.id, submissionId),
+            eq(submissions.workspaceId, workspaceId),
+          ),
+        );
+
+      if (riskChanged) {
+        await tx.insert(auditLogs).values({
+          action: AuditAction.SUBMISSION_RISK_UPDATED,
+          actorUserId,
+          entityId: submissionId,
+          entityType: "submission",
+          metadataJson: {
+            actorRole: context.membership.role,
+            candidateId: existingSubmission.candidateId,
+            fromRiskFlag: existingSubmission.riskFlag,
+            jobId: existingSubmission.jobId,
+            source: "api",
+            toRiskFlag: input.riskFlag,
+          },
+          workspaceId,
+        });
+      }
+
+      if (nextStepChanged) {
+        await tx.insert(auditLogs).values({
+          action: AuditAction.SUBMISSION_NEXT_STEP_UPDATED,
+          actorUserId,
+          entityId: submissionId,
+          entityType: "submission",
+          metadataJson: {
+            actorRole: context.membership.role,
+            candidateId: existingSubmission.candidateId,
+            fromNextStep: existingSubmission.nextStep,
+            jobId: existingSubmission.jobId,
+            source: "api",
+            toNextStep: input.nextStep,
+          },
+          workspaceId,
+        });
+      }
+    });
+
+    return {
+      context: {
+        role: context.membership.role,
+        workspaceId,
+      },
+      contractVersion: "phase-1",
+      message: "Submission follow-up updated successfully",
+      submission: await this.selectSubmissionRecord(context, submissionId),
       workspaceScoped: true,
     };
   }

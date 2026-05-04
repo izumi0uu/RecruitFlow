@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { Check, ChevronDown } from "lucide-react";
-
+import * as React from "react";
+import { Button } from "@/components/ui/Button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type FilterSelectOption = {
+  disabled?: boolean;
   label: string;
   value: string;
 };
@@ -20,9 +21,10 @@ type FilterSelectProps = {
   className?: string;
   defaultValue?: string | null;
   disabled?: boolean;
+  id?: string;
   name?: string;
   onValueChange?: (value: string) => void;
-  options: FilterSelectOption[];
+  options: ReadonlyArray<FilterSelectOption>;
   placeholder: string;
   value?: string | null;
 };
@@ -31,6 +33,7 @@ const FilterSelect = ({
   className,
   defaultValue,
   disabled = false,
+  id,
   name,
   onValueChange,
   options,
@@ -56,19 +59,26 @@ const FilterSelect = ({
       {name ? <input name={name} type="hidden" value={value} /> : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
+          <Button
+            id={id}
             type="button"
             disabled={disabled}
             className={cn(
-              "input cursor-pointer items-center justify-between gap-3 pr-3 text-left disabled:cursor-not-allowed disabled:opacity-60",
+              "group input cursor-pointer items-center justify-between gap-3 pr-3 text-left disabled:cursor-not-allowed disabled:opacity-60",
               className,
             )}
+            variant="outline"
           >
-            <span className={cn(!selectedOption && "text-muted-foreground")}>
+            <span
+              className={cn(
+                "min-w-0 truncate",
+                !selectedOption && "text-muted-foreground",
+              )}
+            >
               {selectedOption?.label ?? placeholder}
             </span>
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180" />
-          </button>
+            <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
@@ -80,6 +90,7 @@ const FilterSelect = ({
             return (
               <DropdownMenuItem
                 key={option.value || "__all__"}
+                disabled={option.disabled}
                 className={cn(
                   "cursor-pointer gap-2.5 px-3 py-2.5 text-sm",
                   isSelected &&
@@ -99,7 +110,7 @@ const FilterSelect = ({
                     isSelected && "opacity-100",
                   )}
                 />
-                <span>{option.label}</span>
+                <span className="min-w-0 truncate">{option.label}</span>
               </DropdownMenuItem>
             );
           })}
