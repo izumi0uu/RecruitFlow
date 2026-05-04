@@ -29,6 +29,10 @@ import {
 
 import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
+import {
+  canDeleteNote,
+  getNoteLifecyclePermissions,
+} from "./notes.permissions";
 
 const countValue = sql<number>`cast(count(${notes.id}) as int)`;
 const noteCreators = alias(users, "note_creators");
@@ -58,8 +62,6 @@ type NoteRecordRow = {
   visibility: string;
 };
 
-const managerNoteRoles = new Set(["owner", "recruiter"]);
-
 const getUserReference = (input: {
   email: string | null;
   name: string | null;
@@ -76,10 +78,6 @@ const getUserReference = (input: {
   };
 };
 
-const canDeleteNote = (context: ApiWorkspaceContext, row: NoteRecordRow) =>
-  managerNoteRoles.has(context.membership.role) ||
-  row.createdByUserId === context.membership.userId;
-
 const serializeNoteRecord = (
   context: ApiWorkspaceContext,
   row: NoteRecordRow,
@@ -89,7 +87,13 @@ const serializeNoteRecord = (
   }
 
   const isArchived = Boolean(row.archivedAt);
-  const canDelete = canDeleteNote(context, row);
+  const permissions = getNoteLifecyclePermissions(
+    {
+      role: context.membership.role,
+      userId: context.membership.userId,
+    },
+    row,
+  );
 
   return {
     archivedAt: row.archivedAt?.toISOString() ?? null,
@@ -100,8 +104,8 @@ const serializeNoteRecord = (
     }),
     archivedByUserId: row.archivedByUserId,
     body: isArchived ? null : row.body,
-    canArchive: !isArchived && canDelete,
-    canFinalDelete: isArchived && canDelete,
+    canArchive: permissions.canArchive,
+    canFinalDelete: permissions.canFinalDelete,
     createdAt: row.createdAt.toISOString(),
     createdBy: getUserReference({
       email: row.createdByEmail,
@@ -429,7 +433,15 @@ export class NotesService {
     const workspaceId = context.workspace.id;
     const actorUserId = context.membership.userId;
 
-    if (!canDeleteNote(context, existingNote)) {
+    if (
+      !canDeleteNote(
+        {
+          role: context.membership.role,
+          userId: actorUserId,
+        },
+        existingNote,
+      )
+    ) {
       await writeAuditLog({
         action: AuditAction.NOTE_PERMISSION_DENIED,
         actorRole: context.membership.role,
