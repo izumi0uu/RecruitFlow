@@ -232,6 +232,10 @@ export const apiTaskEntityTypeValues = [
 
 export type ApiTaskEntityType = (typeof apiTaskEntityTypeValues)[number];
 
+export const apiNoteEntityTypeValues = apiTaskEntityTypeValues;
+
+export type ApiNoteEntityType = (typeof apiNoteEntityTypeValues)[number];
+
 export const apiActivityTimelineEntityTypeValues = [
   "workspace",
   ...apiTaskEntityTypeValues,
@@ -1048,6 +1052,60 @@ export interface TaskMutationResponse {
   message: string;
   ownerOptions: ApiUserReference[];
   task: TaskRecord;
+  workspaceScoped: true;
+}
+
+export const notesListQuerySchema = z.object({
+  entityId: z.string().uuid("Note entity id is required"),
+  entityType: z.enum(apiNoteEntityTypeValues),
+  page: listPageSchema.default(1),
+  pageSize: listPageSizeSchema.default(8),
+});
+
+export type NotesListQuery = z.infer<typeof notesListQuerySchema>;
+
+export const noteMutationRequestSchema = z.object({
+  body: z.string().trim().min(1, "Note body is required").max(4000),
+  entityId: z.string().uuid("Linked entity is required"),
+  entityType: z.enum(apiNoteEntityTypeValues),
+});
+
+export type NoteMutationRequest = z.infer<typeof noteMutationRequestSchema>;
+
+export interface NoteRecord {
+  body: string;
+  createdAt: string;
+  createdBy: ApiUserReference | null;
+  createdByUserId: string | null;
+  entityId: string;
+  entityType: ApiNoteEntityType;
+  id: string;
+  updatedAt: string;
+  visibility: "workspace";
+}
+
+export interface NotesListResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    entityId: string;
+    entityType: ApiNoteEntityType;
+  };
+  items: NoteRecord[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  workspaceScoped: true;
+}
+
+export interface NoteMutationResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  message: string;
+  note: NoteRecord;
   workspaceScoped: true;
 }
 

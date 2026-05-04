@@ -10,6 +10,7 @@ import { DocumentsModule } from "./documents/documents.module";
 import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { MembersModule } from "./members/members.module";
+import { NotesModule } from "./notes/notes.module";
 import { SubmissionsModule } from "./submissions/submissions.module";
 import { TasksModule } from "./tasks/tasks.module";
 import { WorkspaceModule } from "./workspace/workspace.module";
@@ -26,6 +27,7 @@ import { WorkspaceModule } from "./workspace/workspace.module";
     HealthModule,
     JobsModule,
     MembersModule,
+    NotesModule,
     SubmissionsModule,
     TasksModule,
     WorkspaceModule,

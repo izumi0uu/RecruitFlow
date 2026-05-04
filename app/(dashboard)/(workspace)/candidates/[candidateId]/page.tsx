@@ -33,6 +33,7 @@ import type { ReactNode } from "react";
 
 import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -848,6 +849,17 @@ const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
             }}
             ownerOptions={ownerOptions}
             title="Candidate tasks"
+          />
+
+          <EntityNotesPanel
+            canCreateNote={!candidate.archivedAt}
+            entity={{
+              entityId: candidate.id,
+              entityType: "candidate",
+              label: candidate.fullName,
+              secondaryLabel: formatCandidateFocus(candidate),
+            }}
+            title="Candidate notes"
           />
 
           <ActivityTimelinePanel

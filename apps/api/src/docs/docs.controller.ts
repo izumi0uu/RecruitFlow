@@ -350,6 +350,22 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     owner: "api",
     path: "/activity/timeline",
   },
+  {
+    auth: "session",
+    description:
+      "Return workspace-visible notes for one client, job, candidate, or submission.",
+    method: "GET",
+    owner: "api",
+    path: "/notes",
+  },
+  {
+    auth: "session",
+    description:
+      "Create a workspace-visible note linked to a client, job, candidate, or submission and audit the action.",
+    method: "POST",
+    owner: "api",
+    path: "/notes",
+  },
 ];
 
 const localApiUrl = (path: string) => {
