@@ -221,6 +221,46 @@ const createReference = ({
   type,
 });
 
+const buildTaskListHref = (task: TaskScopeRow | undefined) => {
+  const params = new URLSearchParams({ view: "workspace" });
+
+  if (task?.entityId && task.entityType) {
+    params.set("entityType", task.entityType);
+    params.set("entityId", task.entityId);
+  }
+
+  return `/tasks?${params.toString()}`;
+};
+
+const buildDocumentListHref = (document: DocumentScopeRow | undefined) => {
+  const params = new URLSearchParams();
+
+  if (document?.entityId && document.entityType) {
+    params.set("entityType", document.entityType);
+    params.set("entityId", document.entityId);
+  }
+
+  const queryString = params.toString();
+
+  return `/documents${queryString ? `?${queryString}` : ""}`;
+};
+
+const buildSubmissionHref = (
+  submission: Pick<SubmissionScopeRow, "candidateId" | "jobId"> | undefined,
+) => {
+  if (!submission) {
+    return "/pipeline?view=list";
+  }
+
+  const params = new URLSearchParams({
+    candidateId: submission.candidateId,
+    jobId: submission.jobId,
+    view: "list",
+  });
+
+  return `/pipeline?${params.toString()}`;
+};
+
 const getActorReference = (row: {
   actorEmail: string | null;
   actorName: string | null;
@@ -537,9 +577,11 @@ export class ActivityService {
 
     const [submission] = await db
       .select({
+        candidateId: submissions.candidateId,
         candidateName: candidates.fullName,
         clientName: clients.name,
         id: submissions.id,
+        jobId: submissions.jobId,
         jobTitle: jobs.title,
       })
       .from(submissions)
@@ -559,7 +601,7 @@ export class ActivityService {
     }
 
     return createReference({
-      href: "/pipeline",
+      href: buildSubmissionHref(submission),
       id: submission.id,
       label: submission.candidateName,
       secondaryLabel: compact([
@@ -981,7 +1023,7 @@ export class ActivityService {
       const task = taskMap.get(row.entityId);
 
       return createReference({
-        href: "/tasks",
+        href: buildTaskListHref(task),
         id: row.entityId,
         label: task?.title ?? "Unknown task",
         secondaryLabel: task ? humanizeToken(task.status) : null,
@@ -993,7 +1035,7 @@ export class ActivityService {
       const document = documentMap.get(row.entityId);
 
       return createReference({
-        href: "/documents",
+        href: buildDocumentListHref(document),
         id: row.entityId,
         label:
           document?.title ??
@@ -1009,7 +1051,7 @@ export class ActivityService {
       const submission = submissionMap.get(row.entityId);
 
       return createReference({
-        href: "/pipeline",
+        href: buildSubmissionHref(submission),
         id: row.entityId,
         label: submission?.candidateName ?? "Unknown submission",
         secondaryLabel: submission
@@ -1087,7 +1129,7 @@ export class ActivityService {
 
     if (submission) {
       return createReference({
-        href: "/pipeline",
+        href: buildSubmissionHref(submission),
         id: submission.id,
         label: submission.candidateName,
         secondaryLabel: compact([

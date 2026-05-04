@@ -12,7 +12,10 @@ import { useCallback, useState } from "react";
 
 import { isApiRequestError } from "@/lib/api/errors";
 import { fetchJson } from "@/lib/query/fetcher";
-import { tasksListRootQueryKey } from "@/lib/query/options";
+import {
+  activityTimelineRootQueryKey,
+  tasksListRootQueryKey,
+} from "@/lib/query/options";
 
 import type { TaskFormValues } from "../../utils";
 import { parseTaskEntityKey } from "../../utils";
@@ -109,6 +112,13 @@ export const useTasksCacheActions = () => {
     });
   }, [queryClient]);
 
+  const invalidateActivityTimeline = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: activityTimelineRootQueryKey,
+      refetchType: "active",
+    });
+  }, [queryClient]);
+
   const removeInactiveTasksListCache = useCallback(() => {
     queryClient.removeQueries({
       queryKey: tasksListRootQueryKey,
@@ -117,6 +127,7 @@ export const useTasksCacheActions = () => {
   }, [queryClient]);
 
   return {
+    invalidateActivityTimeline,
     invalidateTasksList,
     removeInactiveTasksListCache,
   };
@@ -128,8 +139,11 @@ export const useTaskMutation = ({
   taskId,
 }: UseTaskMutationOptions) => {
   const router = useRouter();
-  const { invalidateTasksList, removeInactiveTasksListCache } =
-    useTasksCacheActions();
+  const {
+    invalidateActivityTimeline,
+    invalidateTasksList,
+    removeInactiveTasksListCache,
+  } = useTasksCacheActions();
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: (values: TaskFormValues) =>
@@ -139,7 +153,7 @@ export const useTaskMutation = ({
     },
     onSuccess: async (response) => {
       removeInactiveTasksListCache();
-      await invalidateTasksList();
+      await Promise.all([invalidateTasksList(), invalidateActivityTimeline()]);
       await onSuccess?.(response);
     },
     onError: (mutationError) => {
@@ -172,8 +186,11 @@ export const useTaskStatusActionMutation = ({
   onSuccess,
 }: UseTaskStatusActionOptions = {}) => {
   const router = useRouter();
-  const { invalidateTasksList, removeInactiveTasksListCache } =
-    useTasksCacheActions();
+  const {
+    invalidateActivityTimeline,
+    invalidateTasksList,
+    removeInactiveTasksListCache,
+  } = useTasksCacheActions();
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: requestTaskStatusAction,
@@ -182,7 +199,7 @@ export const useTaskStatusActionMutation = ({
     },
     onSuccess: async (response) => {
       removeInactiveTasksListCache();
-      await invalidateTasksList();
+      await Promise.all([invalidateTasksList(), invalidateActivityTimeline()]);
       await onSuccess?.(response);
     },
     onError: (mutationError) => {

@@ -21,7 +21,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useId, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useId, useMemo } from "react";
 
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
@@ -110,6 +111,16 @@ const filterOrder: ActivityFilterValue[] = [
   "member",
   "record",
 ];
+
+const activityFilterSearchParam = "activityFilter";
+
+const getActivityFilterValue = (value: string | null): ActivityFilterValue => {
+  if (filterOrder.includes(value as ActivityFilterValue)) {
+    return value as ActivityFilterValue;
+  }
+
+  return "all";
+};
 
 const formatEventTime = (value: string) => {
   const date = new Date(value);
@@ -204,14 +215,14 @@ const ActivityLensFilter = ({
               : eventTypeConfig[filterValue].shortLabel;
 
           return (
-            <button
+            <Button
               key={filterValue}
               type="button"
+              variant="ghost"
               aria-pressed={isActive}
               disabled={disabled || (count === 0 && filterValue !== "all")}
               className={cn(
                 "relative flex min-h-10 shrink-0 items-center gap-2 rounded-[0.9rem] px-3 text-xs font-semibold text-muted-foreground transition-colors",
-                "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20",
                 "disabled:cursor-not-allowed disabled:opacity-35",
                 isActive && "text-foreground",
               )}
@@ -238,7 +249,7 @@ const ActivityLensFilter = ({
                   {count}
                 </span>
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -353,7 +364,13 @@ const ActivityTimelinePanel = ({
   pageSize = 24,
   title = "Activity timeline",
 }: ActivityTimelinePanelProps) => {
-  const [activeFilter, setActiveFilter] = useState<ActivityFilterValue>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchParamsString = searchParams.toString();
+  const activeFilter = getActivityFilterValue(
+    searchParams.get(activityFilterSearchParam),
+  );
   const shouldReduceMotion = useReducedMotion() ?? false;
   const transition = getTransition(shouldReduceMotion);
   const { data, error, isError, isFetching, refetch } = useQuery(
@@ -380,6 +397,24 @@ const ActivityTimelinePanel = ({
   const isEmpty = !isFetching && items.length === 0 && !isError;
   const isFilteredEmpty =
     !isFetching && items.length > 0 && filteredItems.length === 0;
+  const handleFilterChange = useCallback(
+    (nextFilter: ActivityFilterValue) => {
+      const params = new URLSearchParams(searchParamsString);
+
+      if (nextFilter === "all") {
+        params.delete(activityFilterSearchParam);
+      } else {
+        params.set(activityFilterSearchParam, nextFilter);
+      }
+
+      const queryString = params.toString();
+
+      router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, {
+        scroll: false,
+      });
+    },
+    [pathname, router, searchParamsString],
+  );
 
   return (
     <section
@@ -410,7 +445,7 @@ const ActivityTimelinePanel = ({
           <ActivityLensFilter
             counts={counts}
             disabled={isFetching && items.length === 0}
-            onChange={setActiveFilter}
+            onChange={handleFilterChange}
             totalCount={totalCount}
             value={activeFilter}
           />
