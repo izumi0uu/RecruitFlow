@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
-
 import { getInternalApiOrigin, loadRootEnv } from "@recruitflow/config";
+import { cookies } from "next/headers";
 
 import {
   ApiRequestError,
@@ -24,22 +23,17 @@ const getCookieHeader = async () => {
     .join("; ");
 };
 
-export async function requestApiJson<T>(
-  pathname: string,
-  init: Omit<RequestInit, "body"> & {
-    body?: BodyInit | null;
-    json?: unknown;
-  } = {},
-) {
+type ApiRequestInit = Omit<RequestInit, "body"> & {
+  body?: BodyInit | null;
+  json?: unknown;
+};
+
+const buildApiRequestInit = async (init: ApiRequestInit = {}) => {
   const headers = new Headers(init.headers);
   const cookieHeader = await getCookieHeader();
 
   if (cookieHeader && !headers.has("cookie")) {
     headers.set("cookie", cookieHeader);
-  }
-
-  if (!headers.has("accept")) {
-    headers.set("accept", "application/json");
   }
 
   let body = init.body ?? null;
@@ -52,10 +46,37 @@ export async function requestApiJson<T>(
     }
   }
 
-  const response = await fetch(toApiUrl(pathname), {
-    ...init,
+  return {
     body,
+    headers,
+  };
+};
+
+export async function requestApiResponse(
+  pathname: string,
+  init: ApiRequestInit = {},
+) {
+  const preparedInit = await buildApiRequestInit(init);
+
+  return fetch(toApiUrl(pathname), {
+    ...init,
+    ...preparedInit,
     cache: "no-store",
+  });
+}
+
+export async function requestApiJson<T>(
+  pathname: string,
+  init: ApiRequestInit = {},
+) {
+  const headers = new Headers(init.headers);
+
+  if (!headers.has("accept")) {
+    headers.set("accept", "application/json");
+  }
+
+  const response = await requestApiResponse(pathname, {
+    ...init,
     headers,
   });
 

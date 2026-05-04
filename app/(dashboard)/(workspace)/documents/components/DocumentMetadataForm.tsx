@@ -158,8 +158,9 @@ export const DocumentMetadataForm = ({
             required
           />
           <p className="text-xs leading-5 text-muted-foreground">
-            RF-35 stores metadata only. This key represents where the uploaded
-            file is or will be stored once real storage transport lands.
+            This internal key is used only by the API delivery boundary. It is
+            not shown on list/detail surfaces and represents where the file is
+            or will be stored once real storage transport lands.
           </p>
         </div>
 
@@ -201,9 +202,9 @@ export const DocumentMetadataForm = ({
       {error ? <p className="status-message status-error">{error}</p> : null}
 
       <p className="status-message border-border/70 bg-surface-1/70 text-muted-foreground">
-        This is a non-destructive metadata registration flow. File deletion,
-        document archive, and destructive storage operations are intentionally
-        not exposed in this candidate/document slice.
+        This is a non-destructive metadata registration flow. Resolvable files
+        can be downloaded through the API-owned delivery boundary; unresolved
+        keys show a controlled unavailable state until real storage exists.
       </p>
 
       <div className="flex flex-wrap items-center gap-3">

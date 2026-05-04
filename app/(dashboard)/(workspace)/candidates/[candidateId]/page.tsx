@@ -32,6 +32,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
+import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
 import { Button } from "@/components/ui/Button";
@@ -256,6 +257,14 @@ const LinkedDocumentRow = ({ document }: { document: DocumentRecord }) => (
     <p className="mt-1 text-xs leading-5 text-muted-foreground">
       Added {formatDate(document.createdAt)}
     </p>
+    <div className="mt-4">
+      <DocumentDownloadButton
+        documentId={document.id}
+        deliveryStatus={document.deliveryStatus}
+        fileName={document.sourceFilename}
+        sourceSurface="candidate_detail"
+      />
+    </div>
   </div>
 );
 
@@ -273,8 +282,8 @@ const DocumentsSection = ({
         Documents
       </CardTitle>
       <CardDescription>
-        Register metadata against this profile now; richer document lists and
-        upload transport stay downstream.
+        Keep candidate-linked documents in context while downloads move through
+        the shared API-owned delivery boundary.
       </CardDescription>
     </CardHeader>
     <CardContent className="space-y-4">
@@ -298,8 +307,8 @@ const DocumentsSection = ({
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {candidate.hasResume
-            ? "The list/detail surfaces reflect resume presence from document metadata. RF-37 will make the linked rows visible here."
-            : "Add metadata for a resume, call note, or interview note so this profile can carry document context before the full documents hub lands."}
+            ? "Resume presence is metadata-derived, and linked rows now consume the same secure delivery boundary as the documents hub."
+            : "Add metadata for a resume, call note, or interview note so this profile can carry document context before full binary upload transport lands."}
         </p>
         <Button asChild className="mt-4 rounded-full" variant="outline">
           <TrackedLink
@@ -330,7 +339,7 @@ const DocumentsSection = ({
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Add metadata from this page or filter the documents hub by this
-            candidate once files are registered.
+            candidate once files are registered for secure delivery.
           </p>
         </div>
       )}

@@ -90,7 +90,7 @@ const NewDocumentPage = async ({ searchParams }: PageProps) => {
         ]}
         kicker="Document metadata"
         title="Add document metadata"
-        description="Register a resume, JD, call note, or interview note against a workspace entity without taking ownership of binary upload transport yet."
+        description="Register a resume, JD, call note, or interview note against a workspace entity without taking ownership of upload transport beyond the secure API delivery boundary."
       />
 
       <Card className="w-full">
