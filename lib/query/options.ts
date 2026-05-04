@@ -1,4 +1,6 @@
 import type {
+  ActivityTimelineQuery,
+  ActivityTimelineResponse,
   CandidatesListResponse,
   ClientDetailResponse,
   ClientsListResponse,
@@ -175,6 +177,27 @@ export const tasksListQueryOptions = (filters: TaskListFilters) =>
 
       return fetchJson<TasksListResponse>(
         `/api/tasks${queryString ? `?${queryString}` : ""}`,
+      );
+    },
+  });
+
+export const activityTimelineRootQueryKey = ["activity", "timeline"] as const;
+
+export const activityTimelineQueryKey = (query: ActivityTimelineQuery) =>
+  [...activityTimelineRootQueryKey, query] as const;
+
+export const activityTimelineQueryOptions = (query: ActivityTimelineQuery) =>
+  queryOptions({
+    queryKey: activityTimelineQueryKey(query),
+    queryFn: () => {
+      const params = new URLSearchParams({
+        entityId: query.entityId,
+        entityType: query.entityType,
+        pageSize: String(query.pageSize),
+      });
+
+      return fetchJson<ActivityTimelineResponse>(
+        `/api/activity/timeline?${params.toString()}`,
       );
     },
   });

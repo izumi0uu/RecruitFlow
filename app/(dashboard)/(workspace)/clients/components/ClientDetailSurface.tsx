@@ -5,14 +5,13 @@ import {
   Archive,
   BriefcaseBusiness,
   Building2,
-  Clock3,
   ContactRound,
   Loader2,
   Mail,
   Plus,
-  RadioTower,
   RotateCcw,
 } from "lucide-react";
+import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import {
@@ -515,36 +514,12 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
             </Card>
           ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RadioTower className="size-4" />
-                Recent activity
-              </CardTitle>
-              <CardDescription>
-                Placeholder for the activity aggregation surface.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-[1.35rem] border border-dashed border-border bg-surface-1/60 p-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full border border-border/70 bg-background">
-                    <Clock3 className="size-4 text-muted-foreground" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Latest account update:{" "}
-                      {formatClientDate(client.updatedAt)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      CRM create, update, archive, and contact events are
-                      audited by the API; the full timeline lands downstream.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ActivityTimelinePanel
+            entityId={client.id}
+            entityType="client"
+            title="Client activity"
+            description="Client changes, contact updates, related submission movement, tasks, documents, and notes in one scan-friendly trail."
+          />
         </aside>
       </div>
     </section>

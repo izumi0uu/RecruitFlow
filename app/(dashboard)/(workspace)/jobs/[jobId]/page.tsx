@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 
+import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import {
@@ -721,34 +722,12 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarClock className="size-4" />
-                Timeline
-              </CardTitle>
-              <CardDescription>
-                Lightweight date context before activity aggregation lands.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <DetailTile
-                icon={<CalendarClock className="size-3.5" />}
-                label="Opened"
-                value={formatJobDetailDate(job.openedAt)}
-              />
-              <DetailTile
-                icon={<CalendarClock className="size-3.5" />}
-                label="Updated"
-                value={formatJobDetailDate(job.updatedAt)}
-              />
-              <DetailTile
-                icon={<CalendarClock className="size-3.5" />}
-                label="Created"
-                value={formatJobDetailDate(job.createdAt)}
-              />
-            </CardContent>
-          </Card>
+          <ActivityTimelinePanel
+            entityId={job.id}
+            entityType="job"
+            title="Job activity"
+            description="Role edits, stage template repairs, related submissions, tasks, documents, and notes without leaving the job context."
+          />
 
           <Card>
             <CardHeader>
