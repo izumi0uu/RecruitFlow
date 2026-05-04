@@ -4,7 +4,6 @@ import {
   Controller,
   Delete,
   Param,
-  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
@@ -12,11 +11,8 @@ import {
 import {
   memberInvitationRequestSchema,
   memberRemovalParamsSchema,
-  memberRoleUpdateParamsSchema,
-  memberRoleUpdateRequestSchema,
   type MemberInvitationResponse,
   type MemberRemovalResponse,
-  type MemberRoleUpdateResponse,
 } from "@recruitflow/contracts";
 
 import { AuthGuard } from "../auth/auth.guard";
@@ -64,34 +60,5 @@ export class MembersController {
     }
 
     return this.membersService.removeMember(context, parsedParams.data.memberId);
-  }
-
-  @Patch(":memberId/role")
-  async updateMemberRole(
-    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
-    @Param("memberId") memberId: string,
-    @Body() body: unknown,
-  ): Promise<MemberRoleUpdateResponse> {
-    const parsedParams = memberRoleUpdateParamsSchema.safeParse({ memberId });
-
-    if (!parsedParams.success) {
-      throw new BadRequestException(
-        parsedParams.error.issues[0]?.message ?? "Invalid member id",
-      );
-    }
-
-    const parsedBody = memberRoleUpdateRequestSchema.safeParse(body);
-
-    if (!parsedBody.success) {
-      throw new BadRequestException(
-        parsedBody.error.issues[0]?.message ?? "Invalid role payload",
-      );
-    }
-
-    return this.membersService.updateMemberRole(
-      context,
-      parsedParams.data.memberId,
-      parsedBody.data,
-    );
   }
 }

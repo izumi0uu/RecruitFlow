@@ -7,12 +7,9 @@ import {
 import { and, eq, ne } from "drizzle-orm";
 
 import type {
-  CurrentWorkspaceMemberResponse,
   MemberInvitationRequest,
   MemberInvitationResponse,
   MemberRemovalResponse,
-  MemberRoleUpdateRequest,
-  MemberRoleUpdateResponse,
 } from "@recruitflow/contracts";
 
 import { db } from "../db/database";
@@ -28,26 +25,6 @@ import {
   users,
   type NewActivityLog,
 } from "@/lib/db/schema";
-
-const toMemberDto = (member: {
-  id: string;
-  joinedAt: Date | null;
-  role: "owner" | "recruiter" | "coordinator";
-  user: {
-    email: string;
-    id: string;
-    name: string | null;
-  };
-  userId: string;
-  workspaceId: string;
-}): CurrentWorkspaceMemberResponse => ({
-  id: member.id,
-  joinedAt: member.joinedAt?.toISOString() ?? null,
-  role: member.role,
-  user: member.user,
-  userId: member.userId,
-  workspaceId: member.workspaceId,
-});
 
 @Injectable()
 export class MembersService {
@@ -219,92 +196,6 @@ export class MembersService {
       memberId,
       message: "Workspace member removed successfully",
       removed: true,
-    };
-  }
-
-  async updateMemberRole(
-    context: ApiWorkspaceContext,
-    memberId: string,
-    input: MemberRoleUpdateRequest,
-  ): Promise<MemberRoleUpdateResponse> {
-    const workspaceId = context.workspace.id;
-    const actorUserId = context.membership.userId;
-    const [existingMembership] = await db
-      .select({
-        id: teamMembers.id,
-        joinedAt: teamMembers.joinedAt,
-        role: teamMembers.role,
-        user: {
-          email: users.email,
-          id: users.id,
-          name: users.name,
-        },
-        userId: teamMembers.userId,
-        workspaceId: teamMembers.teamId,
-      })
-      .from(teamMembers)
-      .innerJoin(users, eq(teamMembers.userId, users.id))
-      .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)))
-      .limit(1);
-
-    if (!existingMembership) {
-      throw new NotFoundException("Workspace member not found");
-    }
-
-    if (existingMembership.role === input.role) {
-      return {
-        member: toMemberDto(existingMembership),
-        message: "Workspace member role is already up to date",
-      };
-    }
-
-    if (existingMembership.role === "owner" && input.role !== "owner") {
-      const [remainingOwner] = await db
-        .select({ id: teamMembers.id })
-        .from(teamMembers)
-        .where(
-          and(
-            eq(teamMembers.teamId, workspaceId),
-            eq(teamMembers.role, "owner"),
-            ne(teamMembers.id, memberId),
-          ),
-        )
-        .limit(1);
-
-      if (!remainingOwner) {
-        throw new ForbiddenException("A workspace must keep at least one owner");
-      }
-    }
-
-    await db
-      .update(teamMembers)
-      .set({
-        role: input.role,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, workspaceId)));
-
-    await writeAuditLog({
-      workspaceId,
-      actorUserId,
-      actorRole: context.membership.role,
-      action: AuditAction.MEMBER_ROLE_CHANGED,
-      entityType: "membership",
-      entityId: memberId,
-      source: "api",
-      metadata: {
-        previousRole: existingMembership.role,
-        nextRole: input.role,
-        targetUserId: existingMembership.userId,
-      },
-    });
-
-    return {
-      member: toMemberDto({
-        ...existingMembership,
-        role: input.role,
-      }),
-      message: "Workspace member role updated successfully",
     };
   }
 }
