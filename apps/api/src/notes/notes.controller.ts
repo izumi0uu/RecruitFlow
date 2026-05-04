@@ -2,17 +2,21 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
 
 import {
-  noteMutationRequestSchema,
+  type NoteDeleteResponse,
   type NoteMutationResponse,
-  notesListQuerySchema,
   type NotesListResponse,
+  noteMutationRequestSchema,
+  noteParamsSchema,
+  notesListQuerySchema,
 } from "@recruitflow/contracts";
 
 import { AuthGuard } from "../auth/auth.guard";
@@ -62,5 +66,21 @@ export class NotesController {
     }
 
     return this.notesService.createNote(context, parsedBody.data);
+  }
+
+  @Delete(":noteId")
+  deleteNote(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+  ): Promise<NoteDeleteResponse> {
+    const parsedParams = noteParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid note id",
+      );
+    }
+
+    return this.notesService.deleteNote(context, parsedParams.data.noteId);
   }
 }

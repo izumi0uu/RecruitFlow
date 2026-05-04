@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type {
   ApiNoteEntityType,
   ApiUserReference,
+  NoteDeleteResponse,
   NoteMutationRequest,
   NoteMutationResponse,
   NoteRecord,
@@ -9,6 +14,7 @@ import type {
   NotesListResponse,
 } from "@recruitflow/contracts";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { writeAuditLog } from "@/lib/db/audit";
 import {
@@ -25,6 +31,8 @@ import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
 const countValue = sql<number>`cast(count(${notes.id}) as int)`;
+const noteCreators = alias(users, "note_creators");
+const noteArchivers = alias(users, "note_archivers");
 
 type LinkedNoteEntity = {
   id: string;
@@ -34,11 +42,15 @@ type LinkedNoteEntity = {
 };
 
 type NoteRecordRow = {
-  actorEmail: string | null;
-  actorName: string | null;
-  actorUserId: string | null;
+  archivedAt: Date | null;
+  archivedByEmail: string | null;
+  archivedByName: string | null;
+  archivedByUserId: string | null;
   body: string;
   createdAt: Date;
+  createdByEmail: string | null;
+  createdByName: string | null;
+  createdByUserId: string | null;
   entityId: string | null;
   entityType: string;
   id: string;
@@ -46,31 +58,61 @@ type NoteRecordRow = {
   visibility: string;
 };
 
-const getActorReference = (row: NoteRecordRow): ApiUserReference | null => {
-  if (!row.actorUserId || !row.actorEmail) {
+const managerNoteRoles = new Set(["owner", "recruiter"]);
+
+const getUserReference = (input: {
+  email: string | null;
+  name: string | null;
+  userId: string | null;
+}): ApiUserReference | null => {
+  if (!input.userId || !input.email) {
     return null;
   }
 
   return {
-    email: row.actorEmail,
-    id: row.actorUserId,
-    name: row.actorName,
+    email: input.email,
+    id: input.userId,
+    name: input.name,
   };
 };
 
-const serializeNoteRecord = (row: NoteRecordRow): NoteRecord => {
+const canDeleteNote = (context: ApiWorkspaceContext, row: NoteRecordRow) =>
+  managerNoteRoles.has(context.membership.role) ||
+  row.createdByUserId === context.membership.userId;
+
+const serializeNoteRecord = (
+  context: ApiWorkspaceContext,
+  row: NoteRecordRow,
+): NoteRecord => {
   if (!row.entityId) {
     throw new NotFoundException("Note entity link is incomplete");
   }
 
+  const isArchived = Boolean(row.archivedAt);
+  const canDelete = canDeleteNote(context, row);
+
   return {
-    body: row.body,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+    archivedBy: getUserReference({
+      email: row.archivedByEmail,
+      name: row.archivedByName,
+      userId: row.archivedByUserId,
+    }),
+    archivedByUserId: row.archivedByUserId,
+    body: isArchived ? null : row.body,
+    canArchive: !isArchived && canDelete,
+    canFinalDelete: isArchived && canDelete,
     createdAt: row.createdAt.toISOString(),
-    createdBy: getActorReference(row),
-    createdByUserId: row.actorUserId,
+    createdBy: getUserReference({
+      email: row.createdByEmail,
+      name: row.createdByName,
+      userId: row.createdByUserId,
+    }),
+    createdByUserId: row.createdByUserId,
     entityId: row.entityId,
     entityType: row.entityType as ApiNoteEntityType,
     id: row.id,
+    lifecycleStatus: isArchived ? "archived" : "active",
     updatedAt: row.updatedAt.toISOString(),
     visibility: "workspace",
   };
@@ -216,14 +258,18 @@ export class NotesService {
   private async selectNoteRecord(
     context: ApiWorkspaceContext,
     noteId: string,
-  ): Promise<NoteRecord> {
+  ): Promise<NoteRecordRow> {
     const [row] = await db
       .select({
-        actorEmail: users.email,
-        actorName: users.name,
-        actorUserId: notes.createdByUserId,
+        archivedAt: notes.archivedAt,
+        archivedByEmail: noteArchivers.email,
+        archivedByName: noteArchivers.name,
+        archivedByUserId: notes.archivedByUserId,
         body: notes.body,
         createdAt: notes.createdAt,
+        createdByEmail: noteCreators.email,
+        createdByName: noteCreators.name,
+        createdByUserId: notes.createdByUserId,
         entityId: notes.entityId,
         entityType: notes.entityType,
         id: notes.id,
@@ -231,9 +277,14 @@ export class NotesService {
         visibility: notes.visibility,
       })
       .from(notes)
-      .leftJoin(users, eq(notes.createdByUserId, users.id))
+      .leftJoin(noteCreators, eq(notes.createdByUserId, noteCreators.id))
+      .leftJoin(noteArchivers, eq(notes.archivedByUserId, noteArchivers.id))
       .where(
-        and(eq(notes.workspaceId, context.workspace.id), eq(notes.id, noteId)),
+        and(
+          eq(notes.workspaceId, context.workspace.id),
+          eq(notes.id, noteId),
+          isNull(notes.finalDeletedAt),
+        ),
       )
       .limit(1);
 
@@ -241,7 +292,7 @@ export class NotesService {
       throw new NotFoundException("Note not found");
     }
 
-    return serializeNoteRecord(row);
+    return row;
   }
 
   async listNotes(
@@ -258,6 +309,7 @@ export class NotesService {
       eq(notes.entityType, query.entityType),
       eq(notes.entityId, query.entityId),
       eq(notes.visibility, "workspace"),
+      isNull(notes.finalDeletedAt),
     );
     const [totalRow] = await db
       .select({ count: countValue })
@@ -265,11 +317,15 @@ export class NotesService {
       .where(whereClause);
     const rows = await db
       .select({
-        actorEmail: users.email,
-        actorName: users.name,
-        actorUserId: notes.createdByUserId,
+        archivedAt: notes.archivedAt,
+        archivedByEmail: noteArchivers.email,
+        archivedByName: noteArchivers.name,
+        archivedByUserId: notes.archivedByUserId,
         body: notes.body,
         createdAt: notes.createdAt,
+        createdByEmail: noteCreators.email,
+        createdByName: noteCreators.name,
+        createdByUserId: notes.createdByUserId,
         entityId: notes.entityId,
         entityType: notes.entityType,
         id: notes.id,
@@ -277,7 +333,8 @@ export class NotesService {
         visibility: notes.visibility,
       })
       .from(notes)
-      .leftJoin(users, eq(notes.createdByUserId, users.id))
+      .leftJoin(noteCreators, eq(notes.createdByUserId, noteCreators.id))
+      .leftJoin(noteArchivers, eq(notes.archivedByUserId, noteArchivers.id))
       .where(whereClause)
       .orderBy(desc(notes.createdAt), asc(notes.id))
       .limit(pageSize)
@@ -294,7 +351,7 @@ export class NotesService {
         entityId: query.entityId,
         entityType: query.entityType,
       },
-      items: rows.map(serializeNoteRecord),
+      items: rows.map((row) => serializeNoteRecord(context, row)),
       pagination: {
         page,
         pageSize,
@@ -356,7 +413,132 @@ export class NotesService {
       },
       contractVersion: "phase-1",
       message: "Note added",
-      note: await this.selectNoteRecord(context, note.id),
+      note: serializeNoteRecord(
+        context,
+        await this.selectNoteRecord(context, note.id),
+      ),
+      workspaceScoped: true,
+    };
+  }
+
+  async deleteNote(
+    context: ApiWorkspaceContext,
+    noteId: string,
+  ): Promise<NoteDeleteResponse> {
+    const existingNote = await this.selectNoteRecord(context, noteId);
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+
+    if (!canDeleteNote(context, existingNote)) {
+      throw new ForbiddenException("You can delete only your own notes");
+    }
+
+    if (!existingNote.archivedAt) {
+      const archivedAt = new Date();
+
+      const [archivedNote] = await db
+        .update(notes)
+        .set({
+          archivedAt,
+          archivedByUserId: actorUserId,
+          updatedAt: archivedAt,
+        })
+        .where(
+          and(
+            eq(notes.id, noteId),
+            eq(notes.workspaceId, workspaceId),
+            isNull(notes.archivedAt),
+            isNull(notes.finalDeletedAt),
+          ),
+        )
+        .returning({ id: notes.id });
+
+      if (!archivedNote) {
+        throw new NotFoundException("Note not found");
+      }
+
+      await writeAuditLog({
+        action: AuditAction.NOTE_ARCHIVED,
+        actorRole: context.membership.role,
+        actorUserId,
+        entityId: noteId,
+        entityType: "note",
+        metadata: {
+          archivedAt: archivedAt.toISOString(),
+          entityId: existingNote.entityId,
+          entityType: existingNote.entityType,
+          noteId,
+          originalAuthorUserId: existingNote.createdByUserId,
+        },
+        source: "api",
+        workspaceId,
+      });
+
+      return {
+        action: "archived",
+        context: {
+          role: context.membership.role,
+          workspaceId,
+        },
+        contractVersion: "phase-1",
+        message: "Note deleted",
+        note: serializeNoteRecord(
+          context,
+          await this.selectNoteRecord(context, noteId),
+        ),
+        workspaceScoped: true,
+      };
+    }
+
+    const finalDeletedAt = new Date();
+
+    const [deletedNote] = await db
+      .update(notes)
+      .set({
+        finalDeletedAt,
+        finalDeletedByUserId: actorUserId,
+        updatedAt: finalDeletedAt,
+      })
+      .where(
+        and(
+          eq(notes.id, noteId),
+          eq(notes.workspaceId, workspaceId),
+          isNull(notes.finalDeletedAt),
+        ),
+      )
+      .returning({ id: notes.id });
+
+    if (!deletedNote) {
+      throw new NotFoundException("Note not found");
+    }
+
+    await writeAuditLog({
+      action: AuditAction.NOTE_DELETED,
+      actorRole: context.membership.role,
+      actorUserId,
+      entityId: noteId,
+      entityType: "note",
+      metadata: {
+        archivedAt: existingNote.archivedAt.toISOString(),
+        entityId: existingNote.entityId,
+        entityType: existingNote.entityType,
+        finalDeletedAt: finalDeletedAt.toISOString(),
+        noteId,
+        originalAuthorUserId: existingNote.createdByUserId,
+      },
+      source: "api",
+      workspaceId,
+    });
+
+    return {
+      action: "final_deleted",
+      context: {
+        role: context.membership.role,
+        workspaceId,
+      },
+      contractVersion: "phase-1",
+      message: "Deleted note hidden",
+      note: null,
       workspaceScoped: true,
     };
   }

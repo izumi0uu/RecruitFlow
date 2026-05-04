@@ -366,6 +366,14 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
     owner: "api",
     path: "/notes",
   },
+  {
+    auth: "session",
+    description:
+      "Archive an active note or final-delete an already archived note with API-enforced permissions.",
+    method: "DELETE",
+    owner: "api",
+    path: "/notes/:noteId",
+  },
 ];
 
 const localApiUrl = (path: string) => {

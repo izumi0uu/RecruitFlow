@@ -1064,6 +1064,12 @@ export const notesListQuerySchema = z.object({
 
 export type NotesListQuery = z.infer<typeof notesListQuerySchema>;
 
+export const noteParamsSchema = z.object({
+  noteId: z.string().uuid("Note id is required"),
+});
+
+export type NoteParams = z.infer<typeof noteParamsSchema>;
+
 export const noteMutationRequestSchema = z.object({
   body: z.string().trim().min(1, "Note body is required").max(4000),
   entityId: z.string().uuid("Linked entity is required"),
@@ -1072,14 +1078,22 @@ export const noteMutationRequestSchema = z.object({
 
 export type NoteMutationRequest = z.infer<typeof noteMutationRequestSchema>;
 
+export type ApiNoteLifecycleStatus = "active" | "archived";
+
 export interface NoteRecord {
-  body: string;
+  archivedAt: string | null;
+  archivedBy: ApiUserReference | null;
+  archivedByUserId: string | null;
+  body: string | null;
+  canArchive: boolean;
+  canFinalDelete: boolean;
   createdAt: string;
   createdBy: ApiUserReference | null;
   createdByUserId: string | null;
   entityId: string;
   entityType: ApiNoteEntityType;
   id: string;
+  lifecycleStatus: ApiNoteLifecycleStatus;
   updatedAt: string;
   visibility: "workspace";
 }
@@ -1106,6 +1120,15 @@ export interface NoteMutationResponse {
   contractVersion: "phase-1";
   message: string;
   note: NoteRecord;
+  workspaceScoped: true;
+}
+
+export interface NoteDeleteResponse {
+  action: "archived" | "final_deleted";
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  message: string;
+  note: NoteRecord | null;
   workspaceScoped: true;
 }
 
