@@ -344,6 +344,10 @@ export const notes = pgTable("notes", {
     .notNull()
     .default("workspace"),
   createdByUserId: userIdColumn("created_by_user_id"),
+  archivedAt: timestamp("archived_at"),
+  archivedByUserId: userIdColumn("archived_by_user_id"),
+  finalDeletedAt: timestamp("final_deleted_at"),
+  finalDeletedByUserId: userIdColumn("final_deleted_by_user_id"),
   ...timestamps(),
 });
 
@@ -553,6 +557,8 @@ export enum AuditAction {
   TASK_COMPLETED = "TASK_COMPLETED",
   TASK_REOPENED = "TASK_REOPENED",
   NOTE_ADDED = "NOTE_ADDED",
+  NOTE_ARCHIVED = "NOTE_ARCHIVED",
+  NOTE_DELETED = "NOTE_DELETED",
   ACCOUNT_UPDATED = "ACCOUNT_UPDATED",
   PASSWORD_UPDATED = "PASSWORD_UPDATED",
   ACCOUNT_DELETED = "ACCOUNT_DELETED",

@@ -36,6 +36,13 @@
       "when": 1777690513000,
       "tag": "0004_submission_unique_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777865941402,
+      "tag": "0005_note_archive_lifecycle",
+      "breakpoints": true
     }
   ]
 }

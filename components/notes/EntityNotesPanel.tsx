@@ -2,12 +2,14 @@
 
 import {
   type ApiNoteEntityType,
+  type NoteDeleteResponse,
   type NoteMutationResponse,
   type NoteRecord,
   noteMutationRequestSchema,
 } from "@recruitflow/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArchiveX,
   Clock3,
   Loader2,
   MessageSquareText,
@@ -16,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   StickyNote,
+  Trash2,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -30,6 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { PopConfirm } from "@/components/ui/PopConfirm";
 import { isApiRequestError } from "@/lib/api/errors";
 import { fetchJson } from "@/lib/query/fetcher";
 import {
@@ -89,8 +93,19 @@ const formatNoteTime = (value: string) => {
   }).format(date);
 };
 
-const getActorLabel = (note: NoteRecord) =>
-  note.createdBy?.name ?? note.createdBy?.email ?? "System";
+const getVisibleActor = (note: NoteRecord) =>
+  note.lifecycleStatus === "archived"
+    ? (note.archivedBy ?? note.createdBy)
+    : note.createdBy;
+
+const getActorLabel = (note: NoteRecord) => {
+  const actor = getVisibleActor(note);
+
+  return actor?.name ?? actor?.email ?? "System";
+};
+
+const getOriginalAuthorLabel = (note: NoteRecord) =>
+  note.createdBy?.name ?? note.createdBy?.email ?? "Unknown author";
 
 const getActorInitials = (note: NoteRecord) => {
   const label = getActorLabel(note);
@@ -106,36 +121,119 @@ const getActorInitials = (note: NoteRecord) => {
     .join("");
 };
 
-const EntityNoteRow = ({ note }: { note: NoteRecord }) => (
-  <motion.li
-    layout
-    initial={{ opacity: 0, y: 6 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -6 }}
-    transition={noteMotionTransition}
-    className="rounded-[1.1rem] border border-border/70 bg-surface-1/68 p-3"
-  >
-    <div className="flex items-start gap-3">
-      <Avatar className="size-8">
-        <AvatarFallback>{getActorInitials(note)}</AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="truncate text-sm font-semibold text-foreground">
-            {getActorLabel(note)}
-          </p>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock3 className="size-3.5" />
-            {formatNoteTime(note.createdAt)}
-          </span>
+type EntityNoteRowProps = {
+  isPending: boolean;
+  note: NoteRecord;
+  onDelete: (note: NoteRecord) => void;
+};
+
+const EntityNoteRow = ({ isPending, note, onDelete }: EntityNoteRowProps) => {
+  const isArchived = note.lifecycleStatus === "archived";
+  const canDelete = isArchived ? note.canFinalDelete : note.canArchive;
+  const actionLabel = isArchived ? "Hide deleted note" : "Delete note";
+  const confirmText = isArchived ? "Hide forever" : "Delete note";
+  const confirmTitle = isArchived
+    ? "Hide this deleted note?"
+    : "Delete this note?";
+  const confirmDescription = isArchived
+    ? "This removes the tombstone from the note feed and timeline."
+    : "This hides the note body and leaves a deleted-note tombstone.";
+  const occurredAt = isArchived
+    ? (note.archivedAt ?? note.updatedAt)
+    : note.createdAt;
+
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={noteMotionTransition}
+      className={cn(
+        "rounded-[1.1rem] border border-border/70 bg-surface-1/68 p-3",
+        isArchived && "border-dashed bg-muted/35",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar className="size-8">
+          <AvatarFallback>{getActorInitials(note)}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {getActorLabel(note)}
+                </p>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock3 className="size-3.5" />
+                  {formatNoteTime(occurredAt)}
+                </span>
+              </div>
+              {isArchived ? (
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Original note by {getOriginalAuthorLabel(note)}
+                </p>
+              ) : null}
+            </div>
+            {canDelete ? (
+              <PopConfirm
+                align="end"
+                cancelText="Cancel"
+                confirmButtonProps={{
+                  children: isPending ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Working
+                    </>
+                  ) : (
+                    confirmText
+                  ),
+                  disabled: isPending,
+                  onClick: () => {
+                    onDelete(note);
+                  },
+                  type: "button",
+                }}
+                description={confirmDescription}
+                title={confirmTitle}
+                variant="destructive"
+              >
+                {({ open }) => (
+                  <Button
+                    aria-label={actionLabel}
+                    className="size-8 rounded-full"
+                    disabled={isPending}
+                    size="icon"
+                    title={actionLabel}
+                    type="button"
+                    variant={open ? "outline" : "ghost"}
+                  >
+                    {isPending ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-3.5" />
+                    )}
+                  </Button>
+                )}
+              </PopConfirm>
+            ) : null}
+          </div>
+          {isArchived ? (
+            <div className="mt-3 flex items-start gap-2 rounded-[0.9rem] border border-border/60 bg-background/55 px-3 py-2 text-sm text-muted-foreground">
+              <ArchiveX className="mt-0.5 size-4 shrink-0" />
+              <p className="leading-6">Note deleted. Content hidden.</p>
+            </div>
+          ) : (
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/88">
+              {note.body}
+            </p>
+          )}
         </div>
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/88">
-          {note.body}
-        </p>
       </div>
-    </div>
-  </motion.li>
-);
+    </motion.li>
+  );
+};
 
 const EntityNotesPanel = ({
   canCreateNote = true,
@@ -146,6 +244,7 @@ const EntityNotesPanel = ({
   title = "Notes",
 }: EntityNotesPanelProps) => {
   const [body, setBody] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const textareaId = useId();
   const router = useRouter();
@@ -173,6 +272,22 @@ const EntityNotesPanel = ({
   const trimmedBody = body.trim();
   const remainingCharacters = maxNoteLength - body.length;
   const isEmpty = !isFetching && items.length === 0 && !isError;
+  const invalidateNoteSurfaces = async () => {
+    queryClient.removeQueries({
+      queryKey: notesListRootQueryKey,
+      type: "inactive",
+    });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: notesListRootQueryKey,
+        refetchType: "active",
+      }),
+      queryClient.invalidateQueries({
+        queryKey: activityTimelineRootQueryKey,
+        refetchType: "active",
+      }),
+    ]);
+  };
   const mutation = useMutation({
     mutationFn: async (nextBody: string) => {
       const parsedPayload = noteMutationRequestSchema.safeParse({
@@ -197,24 +312,12 @@ const EntityNotesPanel = ({
       });
     },
     onMutate: () => {
+      setDeleteError(null);
       setSubmitError(null);
     },
     onSuccess: async () => {
       setBody("");
-      queryClient.removeQueries({
-        queryKey: notesListRootQueryKey,
-        type: "inactive",
-      });
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: notesListRootQueryKey,
-          refetchType: "active",
-        }),
-        queryClient.invalidateQueries({
-          queryKey: activityTimelineRootQueryKey,
-          refetchType: "active",
-        }),
-      ]);
+      await invalidateNoteSurfaces();
     },
     onError: (mutationError) => {
       if (isApiRequestError(mutationError) && mutationError.status === 401) {
@@ -226,6 +329,34 @@ const EntityNotesPanel = ({
         mutationError instanceof Error
           ? mutationError.message
           : "Unable to add note.",
+      );
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: async (note: NoteRecord) =>
+      fetchJson<NoteDeleteResponse>(`/api/notes/${note.id}`, {
+        headers: {
+          accept: "application/json",
+        },
+        method: "DELETE",
+      }),
+    onMutate: () => {
+      setDeleteError(null);
+      setSubmitError(null);
+    },
+    onSuccess: async () => {
+      await invalidateNoteSurfaces();
+    },
+    onError: (mutationError) => {
+      if (isApiRequestError(mutationError) && mutationError.status === 401) {
+        router.push("/sign-in");
+        return;
+      }
+
+      setDeleteError(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Unable to delete note.",
       );
     },
   });
@@ -318,6 +449,10 @@ const EntityNotesPanel = ({
           <p className="status-message status-error">{submitError}</p>
         ) : null}
 
+        {deleteError ? (
+          <p className="status-message status-error">{deleteError}</p>
+        ) : null}
+
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-surface-1/70 px-2.5 py-1 text-xs font-medium text-muted-foreground">
             <Sparkles className="size-3.5" />
@@ -398,7 +533,17 @@ const EntityNotesPanel = ({
             >
               <AnimatePresence mode="popLayout">
                 {items.map((note) => (
-                  <EntityNoteRow key={note.id} note={note} />
+                  <EntityNoteRow
+                    key={note.id}
+                    isPending={
+                      deleteMutation.isPending &&
+                      deleteMutation.variables?.id === note.id
+                    }
+                    note={note}
+                    onDelete={(nextNote) => {
+                      deleteMutation.mutate(nextNote);
+                    }}
+                  />
                 ))}
               </AnimatePresence>
             </motion.ul>

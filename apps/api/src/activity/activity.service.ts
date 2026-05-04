@@ -37,6 +37,7 @@ import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
 const auditActors = alias(users, "activity_audit_actors");
 const noteActors = alias(users, "activity_note_actors");
+const noteArchiveActors = alias(users, "activity_note_archive_actors");
 const scopeJobs = alias(jobs, "activity_scope_jobs");
 const scopeSubmissions = alias(submissions, "activity_scope_submissions");
 const scopeSubmissionJobs = alias(jobs, "activity_scope_submission_jobs");
@@ -109,6 +110,10 @@ type NoteTimelineRow = {
   actorEmail: string | null;
   actorName: string | null;
   actorUserId: string | null;
+  archivedAt: Date | null;
+  archivedByEmail: string | null;
+  archivedByName: string | null;
+  archivedByUserId: string | null;
   body: string;
   createdAt: Date;
   entityId: string | null;
@@ -301,6 +306,10 @@ const getActionTitle = (action: string) => {
       return "Task snoozed";
     case "TASK_REOPENED":
       return "Task reopened";
+    case "NOTE_ARCHIVED":
+      return "Note deleted";
+    case "NOTE_DELETED":
+      return "Deleted note hidden";
     default:
       return humanizeToken(action);
   }
@@ -947,6 +956,10 @@ export class ActivityService {
         actorEmail: noteActors.email,
         actorName: noteActors.name,
         actorUserId: notes.createdByUserId,
+        archivedAt: notes.archivedAt,
+        archivedByEmail: noteArchiveActors.email,
+        archivedByName: noteArchiveActors.name,
+        archivedByUserId: notes.archivedByUserId,
         body: notes.body,
         createdAt: notes.createdAt,
         entityId: notes.entityId,
@@ -955,8 +968,21 @@ export class ActivityService {
       })
       .from(notes)
       .leftJoin(noteActors, eq(notes.createdByUserId, noteActors.id))
-      .where(and(eq(notes.workspaceId, context.workspace.id), whereClause))
-      .orderBy(desc(notes.createdAt), asc(notes.id))
+      .leftJoin(
+        noteArchiveActors,
+        eq(notes.archivedByUserId, noteArchiveActors.id),
+      )
+      .where(
+        and(
+          eq(notes.workspaceId, context.workspace.id),
+          isNull(notes.finalDeletedAt),
+          whereClause,
+        ),
+      )
+      .orderBy(
+        desc(sql`coalesce(${notes.archivedAt}, ${notes.createdAt})`),
+        asc(notes.id),
+      )
       .limit(Math.max(query.pageSize * 2, 40));
   }
 
@@ -1115,6 +1141,36 @@ export class ActivityService {
   ): ActivityTimelineEvent {
     const actor = getActorReference(row);
     const entity = this.getNoteEntityReference(row, scope);
+
+    if (row.archivedAt) {
+      const archiveActor = getActorReference({
+        actorEmail: row.archivedByEmail,
+        actorName: row.archivedByName,
+        actorUserId: row.archivedByUserId,
+      });
+      const originalAuthorLabel = actor?.name ?? actor?.email ?? null;
+      const metadata = compact([originalAuthorLabel]).map((value) => ({
+        label: "Original author",
+        value,
+      }));
+
+      return {
+        action: "NOTE_ARCHIVED",
+        actor: archiveActor,
+        actorLabel: archiveActor?.name ?? archiveActor?.email ?? "System",
+        description: "A workspace note was deleted. Its content is hidden.",
+        entity,
+        id: `note-archived-${row.id}`,
+        metadata,
+        occurredAt: row.archivedAt.toISOString(),
+        relatedEntity: entity?.id === scope.target.id ? null : scope.target,
+        source: "note",
+        title: "Note deleted",
+        tone: eventTypeToneMap.note,
+        type: "note",
+      };
+    }
+
     const trimmedBody = row.body.trim();
     const description =
       trimmedBody.length > 140
