@@ -5,6 +5,7 @@ import type {
   TaskFormEntityOption,
   TaskMutationResponse,
   TaskRecord,
+  TaskWorkspacePermissions,
 } from "@recruitflow/contracts";
 import {
   CalendarClock,
@@ -41,6 +42,7 @@ import { useTaskMutation } from "./hooks/useTaskMutations";
 type TaskMutationMode = "create" | "edit";
 
 type TaskMutationDialogProps = {
+  assigneeOptions?: ApiUserReference[];
   defaultAssignedToUserId?: string | null;
   defaultEntityOption?: TaskFormEntityOption | null;
   description?: string;
@@ -51,6 +53,7 @@ type TaskMutationDialogProps = {
   onTaskSaved: (response: TaskMutationResponse) => void;
   open: boolean;
   ownerOptions: ApiUserReference[];
+  permissions?: TaskWorkspacePermissions;
   seedTask?: TaskRecord | null;
   task?: TaskRecord | null;
 };
@@ -63,6 +66,7 @@ const getDefaultDueDate = () => {
 };
 
 const getInitialTaskValues = ({
+  assigneeOptions,
   defaultAssignedToUserId,
   defaultEntityOption,
   entityOptions,
@@ -72,6 +76,7 @@ const getInitialTaskValues = ({
   task,
 }: Pick<
   TaskMutationDialogProps,
+  | "assigneeOptions"
   | "defaultAssignedToUserId"
   | "defaultEntityOption"
   | "entityOptions"
@@ -84,6 +89,9 @@ const getInitialTaskValues = ({
     return buildTaskFormValuesFromRecord(task);
   }
 
+  const availableAssigneeOptions = assigneeOptions?.length
+    ? assigneeOptions
+    : ownerOptions;
   const seededEntityKey = seedTask
     ? getTaskEntityKey(seedTask.entityType, seedTask.entityId)
     : defaultEntityOption
@@ -100,15 +108,24 @@ const getInitialTaskValues = ({
     : "";
   const defaultAssignee =
     defaultAssignedToUserId &&
-    ownerOptions.some((owner) => owner.id === defaultAssignedToUserId)
+    availableAssigneeOptions.some(
+      (owner) => owner.id === defaultAssignedToUserId,
+    )
       ? defaultAssignedToUserId
+      : null;
+  const seededAssignee =
+    seedTask?.assignedToUserId &&
+    availableAssigneeOptions.some(
+      (owner) => owner.id === seedTask.assignedToUserId,
+    )
+      ? seedTask.assignedToUserId
       : null;
 
   return buildTaskFormValues({
     assignedToUserId:
-      seedTask?.assignedToUserId ??
+      seededAssignee ??
       defaultAssignee ??
-      ownerOptions[0]?.id ??
+      availableAssigneeOptions[0]?.id ??
       "",
     dueAt: getDefaultDueDate(),
     entityKey,
@@ -119,6 +136,7 @@ const getEntityOptionLabel = (option: TaskFormEntityOption) =>
   `${option.label}${option.secondaryLabel ? ` / ${option.secondaryLabel}` : ""}`;
 
 const TaskMutationDialog = ({
+  assigneeOptions,
   defaultAssignedToUserId,
   defaultEntityOption,
   description,
@@ -129,11 +147,13 @@ const TaskMutationDialog = ({
   onTaskSaved,
   open,
   ownerOptions,
+  permissions,
   seedTask,
   task,
 }: TaskMutationDialogProps) => {
   const [values, setValues] = useState<TaskFormValues>(() =>
     getInitialTaskValues({
+      assigneeOptions,
       defaultAssignedToUserId,
       defaultEntityOption,
       entityOptions,
@@ -143,13 +163,18 @@ const TaskMutationDialog = ({
       task,
     }),
   );
+  const availableAssigneeOptions = useMemo(
+    () => (assigneeOptions?.length ? assigneeOptions : ownerOptions),
+    [assigneeOptions, ownerOptions],
+  );
+  const canAssignTasks = permissions?.canAssignTasks ?? true;
   const ownerSelectOptions = useMemo(
     () =>
-      ownerOptions.map((owner) => ({
+      availableAssigneeOptions.map((owner) => ({
         label: owner.name ?? owner.email,
         value: owner.id,
       })),
-    [ownerOptions],
+    [availableAssigneeOptions],
   );
   const entitySelectOptions = useMemo(
     () =>
@@ -177,6 +202,7 @@ const TaskMutationDialog = ({
     resetError();
     setValues(
       getInitialTaskValues({
+        assigneeOptions,
         defaultAssignedToUserId,
         defaultEntityOption,
         entityOptions,
@@ -187,6 +213,7 @@ const TaskMutationDialog = ({
       }),
     );
   }, [
+    assigneeOptions,
     defaultAssignedToUserId,
     defaultEntityOption,
     entityOptions,
@@ -279,10 +306,16 @@ const TaskMutationDialog = ({
                   value={values.assignedToUserId}
                   options={ownerSelectOptions}
                   placeholder="Select owner"
+                  disabled={!canAssignTasks}
                   onValueChange={(assignedToUserId) => {
                     updateValue("assignedToUserId", assignedToUserId);
                   }}
                 />
+                {!canAssignTasks ? (
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Coordinator tasks stay assigned to you.
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">

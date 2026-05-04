@@ -955,9 +955,18 @@ export interface TaskFormEntityOption {
   trail: string[];
 }
 
+export interface TaskWorkspacePermissions {
+  canAssignTasks: boolean;
+  canCreateTask: boolean;
+}
+
 export interface TaskRecord {
   assignedTo: ApiUserReference | null;
   assignedToUserId: string | null;
+  canComplete: boolean;
+  canEdit: boolean;
+  canReopen: boolean;
+  canSnooze: boolean;
   completedAt: string | null;
   createdAt: string;
   description: string | null;
@@ -975,6 +984,7 @@ export interface TaskRecord {
 }
 
 export interface TasksListResponse {
+  assigneeOptions: ApiUserReference[];
   context: ApiCrmPlaceholderContext;
   contractVersion: "phase-1";
   entityOptions: TaskFormEntityOption[];
@@ -988,6 +998,7 @@ export interface TasksListResponse {
   };
   items: TaskRecord[];
   ownerOptions: ApiUserReference[];
+  permissions: TaskWorkspacePermissions;
   pagination: {
     page: number;
     pageSize: number;
@@ -1046,11 +1057,13 @@ export type TaskStatusActionRequest = z.infer<
 >;
 
 export interface TaskMutationResponse {
+  assigneeOptions: ApiUserReference[];
   context: ApiCrmPlaceholderContext;
   contractVersion: "phase-1";
   entityOptions: TaskFormEntityOption[];
   message: string;
   ownerOptions: ApiUserReference[];
+  permissions: TaskWorkspacePermissions;
   task: TaskRecord;
   workspaceScoped: true;
 }

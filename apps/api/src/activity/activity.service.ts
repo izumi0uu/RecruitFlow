@@ -346,10 +346,14 @@ const getActionTitle = (action: string) => {
       return "Task snoozed";
     case "TASK_REOPENED":
       return "Task reopened";
+    case "TASK_PERMISSION_DENIED":
+      return "Task action blocked";
     case "NOTE_ARCHIVED":
       return "Note deleted";
     case "NOTE_DELETED":
       return "Deleted note hidden";
+    case "NOTE_PERMISSION_DENIED":
+      return "Note action blocked";
     default:
       return humanizeToken(action);
   }
@@ -394,6 +398,9 @@ const getAuditDescription = (
         entity?.label,
         formatDateTime(getString(metadata, "snoozedUntil")),
       ]).join(" · ");
+    case "TASK_PERMISSION_DENIED":
+    case "NOTE_PERMISSION_DENIED":
+      return getString(metadata, "reason") ?? entity?.label ?? null;
     case "DOCUMENT_UPLOADED":
     case "DOCUMENT_LINKED":
       return (
