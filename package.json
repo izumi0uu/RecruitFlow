@@ -15,6 +15,7 @@
     "check:all": "biome check .",
     "check:staged": "biome check --staged --no-errors-on-unmatched .",
     "check:write": "biome check --write --changed --no-errors-on-unmatched .",
+    "test:tasks-activity": "tsx apps/api/src/tasks/tasks.permissions.test.ts && tsx apps/api/src/notes/notes.permissions.test.ts && tsx lib/tasks/filters.test.ts",
     "typecheck": "pnpm exec tsc --noEmit -p tsconfig.json --pretty false && pnpm --filter @recruitflow/api check",
     "verify": "pnpm check && pnpm typecheck && pnpm build:web",
     "build": "pnpm build:web",
@@ -32,6 +33,9 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@number-flow/react": "^0.6.0",
     "@recruitflow/config": "workspace:*",
     "@tailwindcss/postcss": "4.1.7",

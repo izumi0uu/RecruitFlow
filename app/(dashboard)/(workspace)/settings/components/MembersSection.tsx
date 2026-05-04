@@ -1,6 +1,12 @@
 "use client";
 
+import {
+  type ApiWorkspaceRole,
+  apiWorkspaceRoleValues,
+} from "@recruitflow/contracts";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { Loader2, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -17,9 +23,20 @@ import {
 } from "@/lib/query/options";
 import type { CurrentUserDto } from "@/lib/query/types";
 
-import { useWorkspaceMemberRemoveMutation } from "./hooks/useWorkspaceMemberMutations";
+import {
+  useWorkspaceMemberRemoveMutation,
+  useWorkspaceMemberRoleUpdateMutation,
+} from "./hooks/useWorkspaceMemberMutations";
 
 type UserIdentity = Pick<NonNullable<CurrentUserDto>, "name" | "email">;
+
+type WorkspaceMemberListItem = {
+  id: string;
+  joinedAt: string | null;
+  role: ApiWorkspaceRole;
+  user: UserIdentity;
+  userId: string;
+};
 
 const getUserDisplayName = (user: UserIdentity) => {
   return user.name || user.email || "Unknown User";
@@ -31,6 +48,118 @@ const getUserInitials = (user: UserIdentity) => {
     .slice(0, 2)
     .map((part) => part[0])
     .join("");
+};
+
+const toRoleLabel = (role: ApiWorkspaceRole) => {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+};
+
+const formatJoinedAt = (joinedAt?: string | null) => {
+  if (!joinedAt) {
+    return "Invitation pending";
+  }
+
+  const formattedDate = new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(joinedAt));
+
+  return `Joined ${formattedDate}`;
+};
+
+type MemberRoleControlProps = {
+  isOwner: boolean;
+  member: WorkspaceMemberListItem;
+  ownerCount: number;
+};
+
+const MemberRoleControl = ({
+  isOwner,
+  member,
+  ownerCount,
+}: MemberRoleControlProps) => {
+  const [role, setRole] = useState<ApiWorkspaceRole>(member.role);
+  const {
+    error,
+    isPending,
+    success,
+    updateMemberRole,
+    variables: pendingVariables,
+  } = useWorkspaceMemberRoleUpdateMutation({
+    onSuccess: (response) => {
+      setRole(response.member.role);
+    },
+  });
+  const isDirty = role !== member.role;
+  const isLastOwnerDemotion =
+    member.role === "owner" && role !== "owner" && ownerCount <= 1;
+  const isSavingThisMember = pendingVariables?.memberId === member.id;
+
+  useEffect(() => {
+    setRole(member.role);
+  }, [member.role]);
+
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        updateMemberRole({ memberId: member.id, role });
+      }}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <label className="sr-only" htmlFor={`member-role-${member.id}`}>
+          Role for {getUserDisplayName(member.user)}
+        </label>
+        <select
+          id={`member-role-${member.id}`}
+          className="input h-10 min-w-36"
+          value={role}
+          disabled={!isOwner || isPending}
+          onChange={(event) => {
+            setRole(event.target.value as ApiWorkspaceRole);
+          }}
+        >
+          {apiWorkspaceRoleValues.map((nextRole) => (
+            <option key={nextRole} value={nextRole}>
+              {toRoleLabel(nextRole)}
+            </option>
+          ))}
+        </select>
+
+        <Button
+          type="submit"
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          disabled={!isOwner || !isDirty || isPending || isLastOwnerDemotion}
+        >
+          {isPending && isSavingThisMember ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="size-4" />
+              Save role
+            </>
+          )}
+        </Button>
+      </div>
+
+      {isLastOwnerDemotion ? (
+        <p className="text-xs leading-5 text-muted-foreground">
+          Add another owner before changing this owner role.
+        </p>
+      ) : null}
+      {error ? <p className="status-message status-error">{error}</p> : null}
+      {success ? (
+        <p className="status-message status-success">{success}</p>
+      ) : null}
+    </form>
+  );
 };
 
 const MembersSectionSkeleton = () => (
@@ -64,6 +193,12 @@ const MembersSection = () => {
     currentWorkspaceQueryOptions(),
   );
   const isOwner = user?.role === "owner";
+  const ownerCount = useMemo(() => {
+    return (
+      workspaceData?.memberships?.filter((member) => member.role === "owner")
+        .length ?? 0
+    );
+  }, [workspaceData?.memberships]);
   const {
     error,
     isPending: isRemovePending,
@@ -100,45 +235,78 @@ const MembersSection = () => {
       </CardHeader>
       <CardContent className="min-h-0 flex-1 overflow-y-auto">
         <ul className="space-y-3">
-          {workspaceData.memberships.map((member, index) => (
-            <li
-              key={member.id}
-              className="flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex items-center gap-4">
-                <Avatar className="size-11">
-                  <AvatarFallback>
-                    {getUserInitials(member.user)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium text-foreground">
-                    {getUserDisplayName(member.user)}
-                  </p>
-                  <p className="mt-1 text-sm capitalize text-muted-foreground">
-                    {member.role}
-                  </p>
-                </div>
-              </div>
+          {workspaceData.memberships.map((member) => {
+            const isCurrentUser = member.userId === user?.id;
+            const isLastOwner = member.role === "owner" && ownerCount <= 1;
+            const canRemove = isOwner && !isCurrentUser && !isLastOwner;
 
-              {isOwner && index > 1 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full"
-                  disabled={isRemovePending}
-                  onClick={() => {
-                    removeMember(member.id);
-                  }}
-                >
-                  {isRemovePending && pendingMemberId === member.id
-                    ? "Removing..."
-                    : "Remove"}
-                </Button>
-              ) : null}
-            </li>
-          ))}
+            return (
+              <li
+                key={member.id}
+                className="flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-surface-1/70 px-4 py-4"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <Avatar className="size-11">
+                      <AvatarFallback>
+                        {getUserInitials(member.user)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">
+                        {getUserDisplayName(member.user)}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {member.user.email}
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span className="status-message border-border/70 bg-background text-muted-foreground">
+                          {toRoleLabel(member.role)}
+                        </span>
+                        <span>{formatJoinedAt(member.joinedAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isOwner ? (
+                    <div className="flex flex-col gap-3 lg:items-end">
+                      <MemberRoleControl
+                        isOwner={isOwner}
+                        member={member}
+                        ownerCount={ownerCount}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={!canRemove || isRemovePending}
+                        onClick={() => {
+                          removeMember(member.id);
+                        }}
+                      >
+                        {isRemovePending && pendingMemberId === member.id ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" />
+                            Removing...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="size-4" />
+                            {isCurrentUser
+                              ? "Current user"
+                              : isLastOwner
+                                ? "Last owner"
+                                : "Remove"}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
         </ul>
 
         {error ? (

@@ -1,20 +1,19 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   Archive,
   BriefcaseBusiness,
   Building2,
-  Clock3,
   ContactRound,
   Loader2,
   Mail,
   Plus,
-  RadioTower,
   RotateCcw,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-
+import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
+import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -23,22 +22,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
-import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
+import { isApiRequestError } from "@/lib/api/errors";
 import { clientDetailQueryOptions } from "@/lib/query/options";
 import { cn } from "@/lib/utils";
-import { isApiRequestError } from "@/lib/api/errors";
-
-import { ArchiveClientControl } from "./ArchiveClientControl";
-import { ClientContactCreateAction } from "./ClientContactCreateAction";
-import { ClientDetailEditAction } from "./ClientDetailEditAction";
-import { RestoreClientControl } from "./RestoreClientControl";
+import { QuickTaskPanel } from "../../tasks/components/QuickTaskPanel";
 import {
   clientDetailPriorityToneMap,
   clientStatusToneMap,
   formatClientDate,
   formatClientLabel,
 } from "../utils";
+import { ArchiveClientControl } from "./ArchiveClientControl";
+import { ClientContactCreateAction } from "./ClientContactCreateAction";
+import { ClientDetailEditAction } from "./ClientDetailEditAction";
+import { RestoreClientControl } from "./RestoreClientControl";
 
 type ClientDetailSurfaceProps = {
   clientId: string;
@@ -47,6 +45,11 @@ type ClientDetailSurfaceProps = {
 const ClientDetailLoadingState = () => (
   <section className="space-y-6 px-0 py-1 lg:py-2">
     <WorkspacePageHeader
+      backHref="/clients"
+      breadcrumbItems={[
+        { label: "Clients", href: "/clients" },
+        { label: "Loading client" },
+      ]}
       kicker="Client overview"
       title="Loading client"
       description="The client detail is loading through the client query cache."
@@ -75,15 +78,25 @@ const ClientDetailErrorState = ({
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
-      <Button asChild variant="ghost" className="rounded-full">
-        <TrackedLink href="/clients">
-          <ArrowLeft className="size-4" />
-          Back to clients
-        </TrackedLink>
-      </Button>
+      <WorkspacePageHeader
+        backHref="/clients"
+        breadcrumbItems={[
+          { label: "Clients", href: "/clients" },
+          { label: isNotFound ? "Client not found" : "Unable to load client" },
+        ]}
+        kicker="Client overview"
+        title={isNotFound ? "Client not found" : "Unable to load client"}
+        description={
+          isNotFound
+            ? "This client may have been removed or may not belong to the current workspace."
+            : "The client detail query returned an error."
+        }
+      />
       <Card className="max-w-4xl">
         <CardHeader>
-          <CardTitle>{isNotFound ? "Client not found" : "Unable to load client"}</CardTitle>
+          <CardTitle>
+            {isNotFound ? "Client not found" : "Unable to load client"}
+          </CardTitle>
           <CardDescription>
             {isNotFound
               ? "This client may have been removed or may not belong to the current workspace."
@@ -154,16 +167,12 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild variant="ghost" className="rounded-full">
-          <TrackedLink href="/clients">
-            <ArrowLeft className="size-4" />
-            Back to clients
-          </TrackedLink>
-        </Button>
-      </div>
-
       <WorkspacePageHeader
+        backHref="/clients"
+        breadcrumbItems={[
+          { label: "Clients", href: "/clients" },
+          { label: client.name },
+        ]}
         kicker="Client overview"
         title={client.name}
         description="The stable account handoff page for future contacts, jobs, activity, and task entry points."
@@ -257,8 +266,8 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
             <CardHeader>
               <CardTitle>Relationship notes</CardTitle>
               <CardDescription>
-                A lightweight account readout before the notes/activity branch
-                adds richer collaboration records.
+                A lightweight account readout kept separate from the
+                collaborative note feed in the side rail.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -447,6 +456,31 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
             </CardContent>
           </Card>
 
+          <QuickTaskPanel
+            canCreateTask={!isArchived}
+            defaultAssignedToUserId={client.ownerUserId}
+            entity={{
+              entityId: client.id,
+              entityType: "client",
+              label: client.name,
+              secondaryLabel: client.industry,
+              trail: ["Client", client.name],
+            }}
+            ownerOptions={ownerOptions}
+            title="Client tasks"
+          />
+
+          <EntityNotesPanel
+            canCreateNote={!isArchived}
+            entity={{
+              entityId: client.id,
+              entityType: "client",
+              label: client.name,
+              secondaryLabel: client.industry,
+            }}
+            title="Client notes"
+          />
+
           {isArchived || canArchive ? (
             <Card
               className={cn(
@@ -492,35 +526,12 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
             </Card>
           ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RadioTower className="size-4" />
-                Recent activity
-              </CardTitle>
-              <CardDescription>
-                Placeholder for the activity aggregation surface.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-[1.35rem] border border-dashed border-border bg-surface-1/60 p-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full border border-border/70 bg-background">
-                    <Clock3 className="size-4 text-muted-foreground" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Latest account update: {formatClientDate(client.updatedAt)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      CRM create, update, archive, and contact events are
-                      audited by the API; the full timeline lands downstream.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ActivityTimelinePanel
+            entityId={client.id}
+            entityType="client"
+            title="Client activity"
+            description="Client changes, contact updates, related submission movement, tasks, documents, and notes in one scan-friendly trail."
+          />
         </aside>
       </div>
     </section>

@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
-
 import type {
   CandidatesListResponse,
   CurrentMembershipResponse,
 } from "@recruitflow/contracts";
+import { redirect } from "next/navigation";
 
 import {
   Card,
@@ -14,12 +13,11 @@ import {
 } from "@/components/ui/Card";
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
-
+import { CandidateFormController } from "../components/CandidateFormController";
 import {
   buildCandidateFormValues,
   emptyCandidateFormValues,
 } from "../components/candidateFormValues";
-import { CandidateFormController } from "../components/CandidateFormController";
 
 const getCreateCandidateContext = async () => {
   try {
@@ -47,17 +45,22 @@ const NewCandidatePage = async () => {
     (owner) => owner.id === membership.userId,
   )
     ? membership.userId
-    : ownerOptions[0]?.id ?? "";
+    : (ownerOptions[0]?.id ?? "");
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref="/candidates"
+        breadcrumbItems={[
+          { label: "Candidates", href: "/candidates" },
+          { label: "Create candidate" },
+        ]}
         kicker="New candidate"
         title="Create candidate"
         description="Capture the candidate profile baseline that submissions, resume metadata, and future AI summaries will reuse."
       />
 
-      <Card className="max-w-5xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Candidate profile baseline</CardTitle>
           <CardDescription>

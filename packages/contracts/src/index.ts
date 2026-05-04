@@ -211,6 +211,61 @@ export const apiRiskFlagValues = [
 
 export type ApiRiskFlag = (typeof apiRiskFlagValues)[number];
 
+export const apiTaskStatusValues = ["open", "snoozed", "done"] as const;
+
+export type ApiTaskStatus = (typeof apiTaskStatusValues)[number];
+
+export const apiTaskStatusActionValues = [
+  "complete",
+  "snooze",
+  "reopen",
+] as const;
+
+export type ApiTaskStatusAction = (typeof apiTaskStatusActionValues)[number];
+
+export const apiTaskEntityTypeValues = [
+  "client",
+  "job",
+  "candidate",
+  "submission",
+] as const;
+
+export type ApiTaskEntityType = (typeof apiTaskEntityTypeValues)[number];
+
+export const apiNoteEntityTypeValues = apiTaskEntityTypeValues;
+
+export type ApiNoteEntityType = (typeof apiNoteEntityTypeValues)[number];
+
+export const apiActivityTimelineEntityTypeValues = [
+  "workspace",
+  ...apiTaskEntityTypeValues,
+] as const;
+
+export type ApiActivityTimelineEntityType =
+  (typeof apiActivityTimelineEntityTypeValues)[number];
+
+export const apiActivityTimelineEventTypeValues = [
+  "record",
+  "task",
+  "submission",
+  "document",
+  "note",
+  "member",
+] as const;
+
+export type ApiActivityTimelineEventType =
+  (typeof apiActivityTimelineEventTypeValues)[number];
+
+export const apiTaskViewValues = [
+  "mine",
+  "workspace",
+  "overdue",
+  "snoozed",
+  "done",
+] as const;
+
+export type ApiTaskView = (typeof apiTaskViewValues)[number];
+
 export const apiDocumentTypeValues = [
   "jd",
   "resume",
@@ -236,8 +291,7 @@ export const apiAutomationStatusValues = [
   "failed",
 ] as const;
 
-export type ApiAutomationStatus =
-  (typeof apiAutomationStatusValues)[number];
+export type ApiAutomationStatus = (typeof apiAutomationStatusValues)[number];
 
 export const apiCrmDomainValues = [
   "clients",
@@ -253,36 +307,30 @@ const listPageSizeSchema = z.coerce.number().int().min(1).max(100);
 const optionalUuidSchema = z.string().uuid().optional();
 
 const optionalTrimmedTextSchema = (maxLength: number) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value !== "string") {
-        return value;
-      }
+  z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
 
-      const trimmedValue = value.trim();
+    const trimmedValue = value.trim();
 
-      return trimmedValue.length > 0 ? trimmedValue : null;
-    },
-    z.string().max(maxLength).nullable().optional(),
-  );
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  }, z.string().max(maxLength).nullable().optional());
 
 const optionalIntegerSchema = (message: string) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value === "string") {
-        const trimmedValue = value.trim();
+  z.preprocess((value) => {
+    if (typeof value === "string") {
+      const trimmedValue = value.trim();
 
-        if (!trimmedValue) {
-          return null;
-        }
-
-        return Number(trimmedValue);
+      if (!trimmedValue) {
+        return null;
       }
 
-      return value ?? null;
-    },
-    z.number().int(message).min(0, message).nullable().optional(),
-  );
+      return Number(trimmedValue);
+    }
+
+    return value ?? null;
+  }, z.number().int(message).min(0, message).nullable().optional());
 
 const optionalCurrencyCodeSchema = z.preprocess(
   (value) => {
@@ -330,8 +378,31 @@ const optionalQueryBooleanSchema = z.preprocess((value) => {
   return undefined;
 }, z.boolean().optional());
 
-const optionalWebsiteSchema = z.preprocess(
-  (value) => {
+const optionalWebsiteSchema = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  return `https://${trimmedValue}`;
+}, z
+  .string()
+  .url("Website must be a valid URL")
+  .max(2048)
+  .nullable()
+  .optional());
+
+const optionalUrlSchema = (message: string) =>
+  z.preprocess((value) => {
     if (typeof value !== "string") {
       return value;
     }
@@ -347,31 +418,7 @@ const optionalWebsiteSchema = z.preprocess(
     }
 
     return `https://${trimmedValue}`;
-  },
-  z.string().url("Website must be a valid URL").max(2048).nullable().optional(),
-);
-
-const optionalUrlSchema = (message: string) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value !== "string") {
-        return value;
-      }
-
-      const trimmedValue = value.trim();
-
-      if (!trimmedValue) {
-        return null;
-      }
-
-      if (/^https?:\/\//i.test(trimmedValue)) {
-        return trimmedValue;
-      }
-
-      return `https://${trimmedValue}`;
-    },
-    z.string().url(message).max(2048).nullable().optional(),
-  );
+  }, z.string().url(message).max(2048).nullable().optional());
 
 export const apiCollectionQuerySchema = z.object({
   includeArchived: z.coerce.boolean().default(false),
@@ -466,9 +513,7 @@ export const clientContactParamsSchema = clientParamsSchema.extend({
   contactId: z.string().uuid(),
 });
 
-export type ClientContactParams = z.infer<
-  typeof clientContactParamsSchema
->;
+export type ClientContactParams = z.infer<typeof clientContactParamsSchema>;
 
 export const clientMutationRequestSchema = z.object({
   hqLocation: optionalTrimmedTextSchema(160),
@@ -481,9 +526,7 @@ export const clientMutationRequestSchema = z.object({
   website: optionalWebsiteSchema,
 });
 
-export type ClientMutationRequest = z.infer<
-  typeof clientMutationRequestSchema
->;
+export type ClientMutationRequest = z.infer<typeof clientMutationRequestSchema>;
 
 export interface ClientDetailResponse {
   client: ClientRecord;
@@ -874,6 +917,286 @@ export interface DocumentsListResponse {
   workspaceScoped: true;
 }
 
+export const tasksListQuerySchema = apiCollectionQuerySchema.extend({
+  assignedToUserId: optionalUuidSchema,
+  entityId: optionalUuidSchema,
+  entityType: z.enum(apiTaskEntityTypeValues).optional(),
+  owner: optionalUuidSchema,
+  q: z.string().trim().max(200).optional(),
+  status: z.enum(apiTaskStatusValues).optional(),
+  view: z.enum(apiTaskViewValues).default("mine"),
+});
+
+export type TasksListQuery = z.infer<typeof tasksListQuerySchema>;
+
+export interface TaskEntityReference {
+  id: string;
+  label: string;
+  secondaryLabel: string | null;
+  trail: string[];
+  type: ApiTaskEntityType;
+}
+
+export interface TaskSubmissionReference {
+  candidateId: string;
+  candidateName: string;
+  clientName: string | null;
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  stage: ApiSubmissionStage;
+}
+
+export interface TaskFormEntityOption {
+  entityId: string;
+  entityType: ApiTaskEntityType;
+  label: string;
+  secondaryLabel: string | null;
+  trail: string[];
+}
+
+export interface TaskWorkspacePermissions {
+  canAssignTasks: boolean;
+  canCreateTask: boolean;
+}
+
+export interface TaskRecord {
+  assignedTo: ApiUserReference | null;
+  assignedToUserId: string | null;
+  canComplete: boolean;
+  canEdit: boolean;
+  canReopen: boolean;
+  canSnooze: boolean;
+  completedAt: string | null;
+  createdAt: string;
+  description: string | null;
+  dueAt: string | null;
+  entityId: string | null;
+  entityType: ApiTaskEntityType | null;
+  id: string;
+  isOverdue: boolean;
+  linkedEntity: TaskEntityReference | null;
+  snoozedUntil: string | null;
+  status: ApiTaskStatus;
+  submission: TaskSubmissionReference | null;
+  title: string;
+  updatedAt: string;
+}
+
+export interface TasksListResponse {
+  assigneeOptions: ApiUserReference[];
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  entityOptions: TaskFormEntityOption[];
+  filters: {
+    assignedToUserId: string | null;
+    entityId: string | null;
+    entityType: ApiTaskEntityType | null;
+    q: string | null;
+    status: ApiTaskStatus | null;
+    view: ApiTaskView;
+  };
+  items: TaskRecord[];
+  ownerOptions: ApiUserReference[];
+  permissions: TaskWorkspacePermissions;
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  summary: {
+    doneCount: number;
+    mineCount: number;
+    openCount: number;
+    overdueCount: number;
+    snoozedCount: number;
+    workspaceActiveCount: number;
+  };
+  workspaceScoped: true;
+}
+
+export const taskParamsSchema = z.object({
+  taskId: z.string().uuid(),
+});
+
+export type TaskParams = z.infer<typeof taskParamsSchema>;
+
+export const taskMutationRequestSchema = z.object({
+  assignedToUserId: z.string().uuid("Task owner is required"),
+  description: optionalTrimmedTextSchema(2000),
+  dueAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must use YYYY-MM-DD format"),
+  entityId: z.string().uuid("Linked entity is required"),
+  entityType: z.enum(apiTaskEntityTypeValues),
+  title: z.string().trim().min(1, "Task title is required").max(180),
+});
+
+export type TaskMutationRequest = z.infer<typeof taskMutationRequestSchema>;
+
+const taskReminderDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Reminder date must use YYYY-MM-DD format");
+
+export const taskStatusActionRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("complete"),
+  }),
+  z.object({
+    action: z.literal("snooze"),
+    snoozedUntil: taskReminderDateSchema,
+  }),
+  z.object({
+    action: z.literal("reopen"),
+  }),
+]);
+
+export type TaskStatusActionRequest = z.infer<
+  typeof taskStatusActionRequestSchema
+>;
+
+export interface TaskMutationResponse {
+  assigneeOptions: ApiUserReference[];
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  entityOptions: TaskFormEntityOption[];
+  message: string;
+  ownerOptions: ApiUserReference[];
+  permissions: TaskWorkspacePermissions;
+  task: TaskRecord;
+  workspaceScoped: true;
+}
+
+export const notesListQuerySchema = z.object({
+  entityId: z.string().uuid("Note entity id is required"),
+  entityType: z.enum(apiNoteEntityTypeValues),
+  page: listPageSchema.default(1),
+  pageSize: listPageSizeSchema.default(8),
+});
+
+export type NotesListQuery = z.infer<typeof notesListQuerySchema>;
+
+export const noteParamsSchema = z.object({
+  noteId: z.string().uuid("Note id is required"),
+});
+
+export type NoteParams = z.infer<typeof noteParamsSchema>;
+
+export const noteMutationRequestSchema = z.object({
+  body: z.string().trim().min(1, "Note body is required").max(4000),
+  entityId: z.string().uuid("Linked entity is required"),
+  entityType: z.enum(apiNoteEntityTypeValues),
+});
+
+export type NoteMutationRequest = z.infer<typeof noteMutationRequestSchema>;
+
+export type ApiNoteLifecycleStatus = "active" | "archived";
+
+export interface NoteRecord {
+  archivedAt: string | null;
+  archivedBy: ApiUserReference | null;
+  archivedByUserId: string | null;
+  body: string | null;
+  canArchive: boolean;
+  createdAt: string;
+  createdBy: ApiUserReference | null;
+  createdByUserId: string | null;
+  entityId: string;
+  entityType: ApiNoteEntityType;
+  id: string;
+  lifecycleStatus: ApiNoteLifecycleStatus;
+  updatedAt: string;
+  visibility: "workspace";
+}
+
+export interface NotesListResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    entityId: string;
+    entityType: ApiNoteEntityType;
+  };
+  items: NoteRecord[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  workspaceScoped: true;
+}
+
+export interface NoteMutationResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  message: string;
+  note: NoteRecord;
+  workspaceScoped: true;
+}
+
+export interface NoteDeleteResponse {
+  action: "archived";
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  message: string;
+  note: NoteRecord;
+  workspaceScoped: true;
+}
+
+export const activityTimelineQuerySchema = z.object({
+  entityId: z.string().uuid("Timeline entity id is required"),
+  entityType: z.enum(apiActivityTimelineEntityTypeValues),
+  pageSize: z.coerce.number().int().min(1).max(50).default(24),
+});
+
+export type ActivityTimelineQuery = z.infer<typeof activityTimelineQuerySchema>;
+
+export interface ActivityTimelineEntityReference {
+  href: string | null;
+  id: string | null;
+  label: string;
+  secondaryLabel: string | null;
+  type: string;
+}
+
+export interface ActivityTimelineEventMetadata {
+  label: string;
+  value: string;
+}
+
+export interface ActivityTimelineEvent {
+  action: string;
+  actor: ApiUserReference | null;
+  actorLabel: string;
+  description: string | null;
+  entity: ActivityTimelineEntityReference | null;
+  id: string;
+  metadata: ActivityTimelineEventMetadata[];
+  occurredAt: string;
+  relatedEntity: ActivityTimelineEntityReference | null;
+  source: "audit" | "note";
+  title: string;
+  tone: "muted" | "primary" | "secondary" | "accent" | "strong";
+  type: ApiActivityTimelineEventType;
+}
+
+export interface ActivityTimelineResponse {
+  context: ApiCrmPlaceholderContext;
+  contractVersion: "phase-1";
+  filters: {
+    entityId: string;
+    entityType: ApiActivityTimelineEntityType;
+  };
+  items: ActivityTimelineEvent[];
+  summary: {
+    countsByType: Record<ApiActivityTimelineEventType, number>;
+    totalCount: number;
+  };
+  target: ActivityTimelineEntityReference;
+  workspaceScoped: true;
+}
+
 export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
   candidateId: optionalUuidSchema,
   clientId: optionalUuidSchema,
@@ -885,9 +1208,7 @@ export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
   stage: z.enum(apiSubmissionStageValues).optional(),
 });
 
-export type SubmissionsListQuery = z.infer<
-  typeof submissionsListQuerySchema
->;
+export type SubmissionsListQuery = z.infer<typeof submissionsListQuerySchema>;
 
 export const submissionParamsSchema = z.object({
   submissionId: z.string().uuid(),
@@ -906,6 +1227,30 @@ export const submissionMutationRequestSchema = z.object({
 
 export type SubmissionMutationRequest = z.infer<
   typeof submissionMutationRequestSchema
+>;
+
+export const submissionStageTransitionRequestSchema = z.object({
+  stage: z.enum(apiSubmissionStageValues),
+});
+
+export type SubmissionStageTransitionRequest = z.infer<
+  typeof submissionStageTransitionRequestSchema
+>;
+
+export const submissionFollowUpUpdateRequestSchema = z
+  .object({
+    nextStep: optionalTrimmedTextSchema(500),
+    riskFlag: z.enum(apiRiskFlagValues).optional(),
+  })
+  .refine(
+    (value) => value.nextStep !== undefined || value.riskFlag !== undefined,
+    {
+      message: "At least one follow-up field is required",
+    },
+  );
+
+export type SubmissionFollowUpUpdateRequest = z.infer<
+  typeof submissionFollowUpUpdateRequestSchema
 >;
 
 export interface SubmissionJobReference {
@@ -1055,6 +1400,7 @@ export interface CurrentWorkspaceSummaryResponse {
   id: string;
   name: string;
   planName: string | null;
+  slug: string | null;
   stripeCustomerId: string | null;
   stripeProductId: string | null;
   stripeSubscriptionId: string | null;
@@ -1074,6 +1420,29 @@ export interface CurrentMembershipResponse {
   userId: string;
   workspace: CurrentWorkspaceSummaryResponse;
   workspaceId: string;
+}
+
+export const workspaceProfileUpdateRequestSchema = z.object({
+  name: z.string().trim().min(1, "Workspace name is required").max(100),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Workspace slug must be at least 3 characters")
+    .max(120, "Workspace slug must be 120 characters or fewer")
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Workspace slug can only use lowercase letters, numbers, and hyphens",
+    ),
+});
+
+export type WorkspaceProfileUpdateRequest = z.infer<
+  typeof workspaceProfileUpdateRequestSchema
+>;
+
+export interface WorkspaceProfileUpdateResponse {
+  message: string;
+  workspace: CurrentWorkspaceResponse;
 }
 
 export const authSignUpRequestSchema = z.object({
@@ -1178,6 +1547,57 @@ export interface MemberRemovalResponse {
   memberId: string;
   message: string;
   removed: true;
+}
+
+export const memberRoleUpdateParamsSchema = z.object({
+  memberId: z.string().uuid(),
+});
+
+export type MemberRoleUpdateParams = z.infer<
+  typeof memberRoleUpdateParamsSchema
+>;
+
+export const memberRoleUpdateRequestSchema = z.object({
+  role: z.enum(apiWorkspaceRoleValues),
+});
+
+export type MemberRoleUpdateRequest = z.infer<
+  typeof memberRoleUpdateRequestSchema
+>;
+
+export interface MemberRoleUpdateResponse {
+  member: CurrentWorkspaceMemberResponse;
+  message: string;
+}
+
+export const settingsAuditListQuerySchema = z.object({
+  action: z.string().trim().max(120).optional(),
+  actorUserId: z.string().uuid().optional(),
+  entityType: z.string().trim().max(50).optional(),
+});
+
+export type SettingsAuditListQuery = z.infer<
+  typeof settingsAuditListQuerySchema
+>;
+
+export interface SettingsAuditLogItemResponse {
+  action: string;
+  actor: {
+    email: string;
+    id: string;
+    name: string | null;
+  } | null;
+  actorUserId: string | null;
+  createdAt: string;
+  entityId: string | null;
+  entityType: string | null;
+  id: string;
+  ipAddress: string | null;
+}
+
+export interface SettingsAuditListResponse {
+  filters: SettingsAuditListQuery;
+  items: SettingsAuditLogItemResponse[];
 }
 
 export const billingCheckoutRequestSchema = z.object({

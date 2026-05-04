@@ -37,6 +37,9 @@
     }
   },
   "javascript": {
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    },
     "formatter": {
       "quoteStyle": "double",
       "semicolons": "always",
@@ -52,5 +55,21 @@
     "parser": {
       "tailwindDirectives": true
     }
-  }
+  },
+  // Nest constructor injection needs runtime class tokens from ordinary imports.
+  // Biome's useImportType caveat explicitly calls out NestJS/Angular decorators:
+  // https://biomejs.dev/linter/rules/use-import-type/#caveat-with-typescript-experimental-decorators
+  // Nest DI docs: https://docs.nestjs.com/fundamentals/dependency-injection
+  "overrides": [
+    {
+      "includes": ["apps/api/src/**/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useImportType": "off"
+          }
+        }
+      }
+    }
+  ]
 }

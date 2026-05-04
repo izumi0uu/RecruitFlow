@@ -1,8 +1,30 @@
-import { getCurrentWorkspace } from "@/lib/db/queries";
-import { toQueryDto } from "@/lib/query/types";
+import type {
+  CurrentWorkspaceResponse,
+  WorkspaceProfileUpdateResponse,
+} from "@recruitflow/contracts";
 
-export const GET = async () => {
-  const workspace = await getCurrentWorkspace();
+import { withBffApiErrorResponse } from "@/lib/api/bff";
+import { requestApiJson } from "@/lib/api/client";
 
-  return Response.json(toQueryDto(workspace));
-};
+export const GET = () =>
+  withBffApiErrorResponse(async () => {
+    const workspace = await requestApiJson<CurrentWorkspaceResponse>(
+      "/workspaces/current",
+    );
+
+    return Response.json(workspace);
+  });
+
+export const PATCH = (request: Request) =>
+  withBffApiErrorResponse(async () => {
+    const payload = await request.json();
+    const workspace = await requestApiJson<WorkspaceProfileUpdateResponse>(
+      "/workspaces/current",
+      {
+        method: "PATCH",
+        json: payload,
+      },
+    );
+
+    return Response.json(workspace);
+  });

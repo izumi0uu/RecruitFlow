@@ -1,9 +1,8 @@
-import { redirect } from "next/navigation";
-
 import type {
   CurrentMembershipResponse,
   JobsListResponse,
 } from "@recruitflow/contracts";
+import { redirect } from "next/navigation";
 
 import {
   Card,
@@ -63,6 +62,11 @@ const NewJobPage = async ({ searchParams }: PageProps) => {
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref="/jobs"
+        breadcrumbItems={[
+          { label: "Jobs", href: "/jobs" },
+          { label: "Create job" },
+        ]}
         kicker="New requisition"
         title="Create job"
         description="Capture the structured role intake fields and automatically prepare the default submission-stage container."
@@ -74,7 +78,7 @@ const NewJobPage = async ({ searchParams }: PageProps) => {
           title="Create job is restricted"
         />
       ) : (
-        <Card className="max-w-5xl">
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>Job intake baseline</CardTitle>
             <CardDescription>

@@ -1,11 +1,10 @@
-import { redirect } from "next/navigation";
-
 import type {
   CandidatesListResponse,
   CurrentMembershipResponse,
   JobsListResponse,
   SubmissionsListResponse,
 } from "@recruitflow/contracts";
+import { redirect } from "next/navigation";
 
 import {
   Card,
@@ -17,12 +16,11 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 
-import {
-  buildSubmissionFormValues,
-  emptySubmissionFormValues,
-  type SubmissionCandidateOption,
-  type SubmissionExistingOption,
-  type SubmissionJobOption,
+import type {
+  SubmissionCandidateOption,
+  SubmissionExistingOption,
+  SubmissionFormValues,
+  SubmissionJobOption,
 } from "../components/SubmissionForm";
 import { SubmissionFormController } from "../components/SubmissionFormController";
 
@@ -143,17 +141,35 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
   )
     ? requestedCandidateId
     : "";
+  const initialValues: SubmissionFormValues = {
+    candidateId: initialCandidateId,
+    jobId: initialJobId,
+    nextStep: "",
+    ownerUserId: initialOwnerUserId,
+    riskFlag: "none",
+    stage: "sourced",
+  };
+  const cancelHref = getCancelHref(
+    redirectTarget,
+    initialJobId,
+    initialCandidateId,
+  );
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
       <WorkspacePageHeader
+        backHref={cancelHref}
+        breadcrumbItems={[
+          { label: "Pipeline", href: "/pipeline" },
+          { label: "Launch opportunity" },
+        ]}
         kicker="Pipeline launch"
         title="Launch opportunity"
         description="Start a trackable candidate-role opportunity with owner, risk, stage, and next action already in place."
       />
 
       {membership.role === "coordinator" ? (
-        <Card className="max-w-4xl">
+        <Card className="w-full">
           <CardHeader>
             <CardTitle>Launch opportunity is restricted</CardTitle>
             <CardDescription>
@@ -169,24 +185,14 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="max-w-6xl">
+        <div className="w-full">
           <SubmissionFormController
-            cancelHref={getCancelHref(
-              redirectTarget,
-              initialJobId,
-              initialCandidateId,
-            )}
+            cancelHref={cancelHref}
             candidateOptions={candidateOptions}
             existingSubmissions={existingSubmissions}
-            initialValues={buildSubmissionFormValues({
-              ...emptySubmissionFormValues,
-              candidateId: initialCandidateId,
-              jobId: initialJobId,
-              ownerUserId: initialOwnerUserId,
-            })}
+            initialValues={initialValues}
             jobOptions={jobOptions}
             ownerOptions={ownerOptions}
-            redirectTarget={redirectTarget}
           />
         </div>
       )}

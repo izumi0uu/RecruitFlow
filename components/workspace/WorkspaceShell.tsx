@@ -1,13 +1,13 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BriefcaseBusiness,
   Building2,
   FileText,
   HelpCircle,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Menu,
   Settings,
@@ -16,14 +16,24 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { signOut } from "@/app/(login)/actions";
 import { BrandLockup, BrandMark } from "@/components/Brand";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/Button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/Dialog";
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
+import { appendWorkspaceRouteHistory } from "@/components/workspace/workspaceRouteHistory";
 import { userQueryKey, workspaceQueryKey } from "@/lib/query/options";
 import { startRouteLoading } from "@/lib/route-loading";
 import { cn } from "@/lib/utils";
@@ -52,6 +62,15 @@ const isRouteActive = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
+const getCurrentWorkspaceHref = (
+  pathname: string,
+  searchParams: { toString: () => string },
+) => {
+  const query = searchParams.toString();
+
+  return query ? `${pathname}?${query}` : pathname;
+};
+
 type WorkspaceShellProps = {
   children: React.ReactNode;
   contextPanel?: React.ReactNode;
@@ -66,20 +85,38 @@ const WorkspaceShell = ({
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
+  const [isSignOutPending, setIsSignOutPending] = useState(false);
+  const currentHref = getCurrentWorkspaceHref(pathname, searchParams);
 
   const activeItem =
     allNavItems.find((item) => isRouteActive(pathname, item.href)) ||
     navItems[0];
 
-  const handleSignOut = async () => {
-    await signOut();
-    queryClient.setQueryData(userQueryKey, null);
-    queryClient.setQueryData(workspaceQueryKey, null);
-    queryClient.removeQueries({ queryKey: userQueryKey, exact: true });
-    queryClient.removeQueries({ queryKey: workspaceQueryKey, exact: true });
-    startRouteLoading();
-    router.push("/");
+  useEffect(() => {
+    appendWorkspaceRouteHistory(currentHref);
+  }, [currentHref]);
+
+  const openSignOutDialog = () => {
+    setIsSidebarOpen(false);
+    setIsSignOutDialogOpen(true);
+  };
+
+  const handleConfirmSignOut = async () => {
+    setIsSignOutPending(true);
+    try {
+      await signOut();
+      queryClient.setQueryData(userQueryKey, null);
+      queryClient.setQueryData(workspaceQueryKey, null);
+      queryClient.removeQueries({ queryKey: userQueryKey, exact: true });
+      queryClient.removeQueries({ queryKey: workspaceQueryKey, exact: true });
+      startRouteLoading();
+      router.push("/");
+    } finally {
+      setIsSignOutPending(false);
+    }
   };
 
   return (
@@ -199,8 +236,8 @@ const WorkspaceShell = ({
             <Button
               type="button"
               variant="ghost"
-              className="h-10 w-full justify-start gap-3 rounded-[0.95rem] px-3 text-sm text-muted-foreground hover:bg-workspace-muted-surface hover:text-foreground"
-              onClick={handleSignOut}
+              className="h-10 w-full cursor-pointer justify-start gap-3 rounded-[0.95rem] px-3 text-sm text-muted-foreground hover:bg-workspace-muted-surface hover:text-foreground"
+              onClick={openSignOutDialog}
             >
               <LogOut className="size-4" />
               Sign out
@@ -235,7 +272,7 @@ const WorkspaceShell = ({
                   className={cn(
                     "group flex size-12 items-center justify-center rounded-[1rem] text-white/62 transition-all hover:bg-white/10 hover:text-white",
                     isActive &&
-                      "bg-[oklch(0.91_0.04_205)] text-slate-950 shadow-[0_18px_34px_-26px_rgba(180,230,240,0.8)] hover:bg-[oklch(0.91_0.04_205)] hover:text-slate-950"
+                      "bg-[oklch(0.91_0.04_205)] text-slate-950 shadow-[0_18px_34px_-26px_rgba(180,230,240,0.8)] hover:bg-[oklch(0.91_0.04_205)] hover:text-slate-950",
                   )}
                   href={item.href}
                   title={item.label}
@@ -258,7 +295,7 @@ const WorkspaceShell = ({
                   className={cn(
                     "flex size-12 items-center justify-center rounded-[1rem] text-white/62 transition-all hover:bg-white/10 hover:text-white",
                     isActive &&
-                      "bg-white/13 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                      "bg-white/13 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
                   )}
                   href={item.href}
                   title={item.label}
@@ -282,8 +319,8 @@ const WorkspaceShell = ({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-12 rounded-[1rem] border-0 bg-transparent p-0 text-white/62 shadow-none hover:bg-white/10 hover:text-white"
-              onClick={handleSignOut}
+              className="size-12 cursor-pointer rounded-[1rem] border-0 bg-transparent p-0 text-white/62 shadow-none hover:bg-white/10 hover:text-white"
+              onClick={openSignOutDialog}
               title="Sign out"
             >
               <LogOut className="size-5" />
@@ -292,6 +329,51 @@ const WorkspaceShell = ({
           </div>
         </div>
       </aside>
+
+      <Dialog
+        open={isSignOutDialogOpen}
+        onOpenChange={(open) => {
+          if (!isSignOutPending) {
+            setIsSignOutDialogOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sign out of RecruitFlow?</DialogTitle>
+            <DialogDescription>
+              You will leave this workspace and return to the public home page.
+              Any unsaved form changes in the current browser tab may be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap justify-end gap-2">
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                disabled={isSignOutPending}
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-full"
+              disabled={isSignOutPending}
+              onClick={handleConfirmSignOut}
+            >
+              {isSignOutPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <LogOut className="size-4" />
+              )}
+              Sign out
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <main className="min-w-0 flex-1 py-0 md:py-5 xl:py-6">
         <WorkspaceTopBar />

@@ -1,8 +1,8 @@
 "use client";
 
-import { type FormEvent, Suspense } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { type FormEvent, Suspense } from "react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -18,6 +18,10 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { getFormString } from "@/lib/form-data";
 import { currentUserQueryOptions } from "@/lib/query/options";
 
+import {
+  WorkspaceProfileFormSkeleton,
+  WorkspaceProfileSection,
+} from "../components/WorkspaceProfileSection";
 import { useAccountUpdateMutation } from "../hooks/useAccountSettingsMutations";
 
 type AccountFormProps = {
@@ -62,8 +66,7 @@ const AccountForm = ({
 
 const AccountSettingsForm = () => {
   const { data: user } = useSuspenseQuery(currentUserQueryOptions());
-  const { error, isPending, saveAccount, success } =
-    useAccountUpdateMutation();
+  const { error, isPending, saveAccount, success } = useAccountUpdateMutation();
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -105,14 +108,19 @@ const AccountSettingsForm = () => {
 
 const GeneralPage = () => {
   return (
-    <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
+    <section className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto px-0 py-1 pr-1 lg:py-0">
       <WorkspacePageHeader
+        backHref="/settings"
+        breadcrumbItems={[
+          { label: "Settings", href: "/settings" },
+          { label: "General" },
+        ]}
         kicker="Account details"
         title="General settings"
         description="Keep your workspace identity current so collaborators always know who owns the next decision."
       />
 
-      <Card className="w-full max-w-3xl">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Account information</CardTitle>
           <CardDescription>
@@ -125,6 +133,24 @@ const GeneralPage = () => {
           </Suspense>
         </CardContent>
       </Card>
+
+      <Suspense
+        fallback={
+          <Card className="w-full max-w-3xl">
+            <CardHeader>
+              <CardTitle>Workspace profile</CardTitle>
+              <CardDescription>
+                Loading the current workspace identity.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WorkspaceProfileFormSkeleton />
+            </CardContent>
+          </Card>
+        }
+      >
+        <WorkspaceProfileSection />
+      </Suspense>
     </section>
   );
 };

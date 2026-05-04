@@ -1,6 +1,5 @@
-import { eq, inArray } from "drizzle-orm";
-
 import { apiDefaultJobStageTemplate } from "@recruitflow/contracts";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { hashPassword } from "@/lib/auth/session";
 import { ensureDevTestAccounts } from "@/lib/dev/test-accounts";
@@ -11,14 +10,15 @@ import {
   ActivityType,
   AuditAction,
   activityLogs,
+  auditLogs,
   automationRuns,
   candidates,
   clientContacts,
   clients,
   documents,
   invitations,
-  jobs,
   jobStages,
+  jobs,
   notes,
   submissions,
   tasks,
@@ -105,13 +105,17 @@ const cleanupDemoBaseline = async () => {
     await db
       .delete(automationRuns)
       .where(eq(automationRuns.workspaceId, existingWorkspace.id));
-    await db.delete(documents).where(eq(documents.workspaceId, existingWorkspace.id));
+    await db
+      .delete(documents)
+      .where(eq(documents.workspaceId, existingWorkspace.id));
     await db.delete(notes).where(eq(notes.workspaceId, existingWorkspace.id));
     await db.delete(tasks).where(eq(tasks.workspaceId, existingWorkspace.id));
     await db
       .delete(submissions)
       .where(eq(submissions.workspaceId, existingWorkspace.id));
-    await db.delete(jobStages).where(eq(jobStages.workspaceId, existingWorkspace.id));
+    await db
+      .delete(jobStages)
+      .where(eq(jobStages.workspaceId, existingWorkspace.id));
     await db.delete(jobs).where(eq(jobs.workspaceId, existingWorkspace.id));
     await db
       .delete(clientContacts)
@@ -119,7 +123,9 @@ const cleanupDemoBaseline = async () => {
     await db
       .delete(candidates)
       .where(eq(candidates.workspaceId, existingWorkspace.id));
-    await db.delete(clients).where(eq(clients.workspaceId, existingWorkspace.id));
+    await db
+      .delete(clients)
+      .where(eq(clients.workspaceId, existingWorkspace.id));
     await db
       .delete(invitations)
       .where(eq(invitations.teamId, existingWorkspace.id));
@@ -127,14 +133,20 @@ const cleanupDemoBaseline = async () => {
       .delete(activityLogs)
       .where(eq(activityLogs.teamId, existingWorkspace.id));
     await db
+      .delete(auditLogs)
+      .where(eq(auditLogs.workspaceId, existingWorkspace.id));
+    await db
       .delete(teamMembers)
       .where(eq(teamMembers.teamId, existingWorkspace.id));
     await db.delete(teams).where(eq(teams.id, existingWorkspace.id));
   }
 
-  await db
-    .delete(users)
-    .where(inArray(users.email, DEMO_USERS.map((user) => user.email)));
+  await db.delete(users).where(
+    inArray(
+      users.email,
+      DEMO_USERS.map((user) => user.email),
+    ),
+  );
 };
 
 const seed = async () => {
@@ -210,7 +222,9 @@ const seed = async () => {
     ])
     .returning();
 
-  const ownerMembership = memberships.find((membership) => membership.userId === owner.id);
+  const ownerMembership = memberships.find(
+    (membership) => membership.userId === owner.id,
+  );
   const recruiterMembership = memberships.find(
     (membership) => membership.userId === recruiter.id,
   );
@@ -257,15 +271,100 @@ const seed = async () => {
         createdAt: relativeDate(-12, 10),
         updatedAt: relativeDate(-5, 11, 0),
       },
+      {
+        workspaceId: workspace.id,
+        name: "Quantum Works",
+        industry: "AI infrastructure",
+        website: "https://quantumworks.example",
+        hqLocation: "Seattle, WA",
+        status: "active",
+        priority: "high",
+        ownerUserId: recruiter.id,
+        lastContactedAt: relativeDate(-1, 14, 20),
+        notesPreview:
+          "CTO is moving quickly on infrastructure leadership and wants technically credible candidates.",
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-11, 13),
+        updatedAt: relativeDate(-1, 14, 20),
+      },
+      {
+        workspaceId: workspace.id,
+        name: "BrightLayer Energy",
+        industry: "Climate SaaS",
+        website: "https://brightlayer.example",
+        hqLocation: "Denver, CO",
+        status: "active",
+        priority: "medium",
+        ownerUserId: owner.id,
+        lastContactedAt: relativeDate(-2, 10, 45),
+        notesPreview:
+          "Revenue leadership wants operator profiles who can clean up process without slowing sales.",
+        createdByUserId: owner.id,
+        createdAt: relativeDate(-16, 12),
+        updatedAt: relativeDate(-2, 10, 45),
+      },
+      {
+        workspaceId: workspace.id,
+        name: "Cedar Bank",
+        industry: "Fintech",
+        website: "https://cedarbank.example",
+        hqLocation: "Charlotte, NC",
+        status: "paused",
+        priority: "low",
+        ownerUserId: coordinator.id,
+        lastContactedAt: relativeDate(-9, 16, 15),
+        notesPreview:
+          "Search is paused while compliance scope is reapproved by the business sponsor.",
+        createdByUserId: coordinator.id,
+        createdAt: relativeDate(-18, 9),
+        updatedAt: relativeDate(-9, 16, 15),
+      },
+      {
+        workspaceId: workspace.id,
+        name: "Northstar Commerce",
+        industry: "B2B commerce",
+        website: "https://northstarcommerce.example",
+        hqLocation: "Chicago, IL",
+        status: "prospect",
+        priority: "high",
+        ownerUserId: recruiter.id,
+        lastContactedAt: relativeDate(-4, 12, 5),
+        notesPreview:
+          "Founder is testing whether the agency can help with GTM leadership and enterprise sales.",
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-13, 15),
+        updatedAt: relativeDate(-4, 12, 5),
+      },
     ])
     .returning();
 
-  const latticeLabs = createdClients.find((client) => client.name === "Lattice Labs");
+  const latticeLabs = createdClients.find(
+    (client) => client.name === "Lattice Labs",
+  );
   const harborHealth = createdClients.find(
     (client) => client.name === "Harbor Health",
   );
+  const quantumWorks = createdClients.find(
+    (client) => client.name === "Quantum Works",
+  );
+  const brightLayerEnergy = createdClients.find(
+    (client) => client.name === "BrightLayer Energy",
+  );
+  const cedarBank = createdClients.find(
+    (client) => client.name === "Cedar Bank",
+  );
+  const northstarCommerce = createdClients.find(
+    (client) => client.name === "Northstar Commerce",
+  );
 
-  if (!latticeLabs || !harborHealth) {
+  if (
+    !latticeLabs ||
+    !harborHealth ||
+    !quantumWorks ||
+    !brightLayerEnergy ||
+    !cedarBank ||
+    !northstarCommerce
+  ) {
     throw new Error("Failed to create the demo clients.");
   }
 
@@ -295,6 +394,71 @@ const seed = async () => {
       lastContactedAt: relativeDate(-5, 11, 0),
       createdAt: relativeDate(-12, 11),
       updatedAt: relativeDate(-5, 11, 0),
+    },
+    {
+      workspaceId: workspace.id,
+      clientId: quantumWorks.id,
+      fullName: "Iris Park",
+      title: "Chief Technology Officer",
+      email: "iris@quantumworks.example",
+      phone: "+1-206-555-0162",
+      relationshipType: "executive_sponsor",
+      isPrimary: true,
+      lastContactedAt: relativeDate(-1, 14, 20),
+      createdAt: relativeDate(-11, 14),
+      updatedAt: relativeDate(-1, 14, 20),
+    },
+    {
+      workspaceId: workspace.id,
+      clientId: quantumWorks.id,
+      fullName: "Ben Wallace",
+      title: "Engineering Operations Lead",
+      email: "ben@quantumworks.example",
+      phone: "+1-206-555-0120",
+      relationshipType: "internal_recruiter",
+      isPrimary: false,
+      lastContactedAt: relativeDate(-2, 15, 10),
+      createdAt: relativeDate(-10, 10),
+      updatedAt: relativeDate(-2, 15, 10),
+    },
+    {
+      workspaceId: workspace.id,
+      clientId: brightLayerEnergy.id,
+      fullName: "Leah Brooks",
+      title: "VP Revenue",
+      email: "leah@brightlayer.example",
+      phone: "+1-720-555-0173",
+      relationshipType: "hiring_manager",
+      isPrimary: true,
+      lastContactedAt: relativeDate(-2, 10, 45),
+      createdAt: relativeDate(-16, 13),
+      updatedAt: relativeDate(-2, 10, 45),
+    },
+    {
+      workspaceId: workspace.id,
+      clientId: cedarBank.id,
+      fullName: "Anika Rao",
+      title: "Director of Compliance",
+      email: "anika@cedarbank.example",
+      phone: "+1-980-555-0118",
+      relationshipType: "hiring_manager",
+      isPrimary: true,
+      lastContactedAt: relativeDate(-9, 16, 15),
+      createdAt: relativeDate(-18, 10),
+      updatedAt: relativeDate(-9, 16, 15),
+    },
+    {
+      workspaceId: workspace.id,
+      clientId: northstarCommerce.id,
+      fullName: "Cole Bennett",
+      title: "Founder",
+      email: "cole@northstarcommerce.example",
+      phone: "+1-312-555-0182",
+      relationshipType: "founder",
+      isPrimary: true,
+      lastContactedAt: relativeDate(-4, 12, 5),
+      createdAt: relativeDate(-13, 16),
+      updatedAt: relativeDate(-4, 12, 5),
     },
   ]);
 
@@ -351,6 +515,131 @@ const seed = async () => {
         createdAt: relativeDate(-6, 10),
         updatedAt: relativeDate(-1, 13),
       },
+      {
+        workspaceId: workspace.id,
+        clientId: quantumWorks.id,
+        title: "Principal AI Infrastructure Engineer",
+        department: "Platform",
+        location: "Remote (US or Canada)",
+        employmentType: "full-time",
+        salaryMin: 220000,
+        salaryMax: 275000,
+        currency: "USD",
+        ownerUserId: recruiter.id,
+        status: "open",
+        priority: "urgent",
+        headcount: 1,
+        placementFeePercent: 24,
+        openedAt: relativeDate(-9, 10),
+        targetFillDate: relativeDate(28, 17),
+        description:
+          "Infrastructure lead for model serving, inference reliability, and production developer experience.",
+        intakeSummary:
+          "CTO wants a candidate who can speak deeply about inference cost, platform reliability, and team design.",
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-9, 10),
+        updatedAt: relativeDate(-1, 14),
+      },
+      {
+        workspaceId: workspace.id,
+        clientId: brightLayerEnergy.id,
+        title: "Revenue Operations Lead",
+        department: "Revenue",
+        location: "Denver, CO",
+        employmentType: "full-time",
+        salaryMin: 145000,
+        salaryMax: 175000,
+        currency: "USD",
+        ownerUserId: owner.id,
+        status: "on_hold",
+        priority: "medium",
+        headcount: 1,
+        placementFeePercent: 18,
+        openedAt: relativeDate(-15, 9),
+        targetFillDate: relativeDate(18, 17),
+        description:
+          "Own sales process design, forecasting hygiene, and systems alignment for a climate SaaS team.",
+        intakeSummary:
+          "Search is warm but temporarily held while the client aligns reporting lines with the CRO.",
+        createdByUserId: owner.id,
+        createdAt: relativeDate(-15, 9),
+        updatedAt: relativeDate(-2, 10),
+      },
+      {
+        workspaceId: workspace.id,
+        clientId: harborHealth.id,
+        title: "Clinical Implementation Manager",
+        department: "Customer Success",
+        location: "Remote - East Coast",
+        employmentType: "full-time",
+        salaryMin: 125000,
+        salaryMax: 150000,
+        currency: "USD",
+        ownerUserId: coordinator.id,
+        status: "open",
+        priority: "high",
+        headcount: 2,
+        placementFeePercent: 19,
+        openedAt: relativeDate(-7, 9),
+        targetFillDate: relativeDate(31, 17),
+        description:
+          "Lead enterprise onboarding for provider groups and translate clinical workflows into implementation plans.",
+        intakeSummary:
+          "Client needs healthcare implementation depth and calm executive communication.",
+        createdByUserId: coordinator.id,
+        createdAt: relativeDate(-7, 9),
+        updatedAt: relativeDate(-1, 11),
+      },
+      {
+        workspaceId: workspace.id,
+        clientId: cedarBank.id,
+        title: "Compliance Data Analyst",
+        department: "Risk",
+        location: "Charlotte, NC",
+        employmentType: "contract",
+        salaryMin: 115000,
+        salaryMax: 135000,
+        currency: "USD",
+        ownerUserId: coordinator.id,
+        status: "closed",
+        priority: "low",
+        headcount: 1,
+        placementFeePercent: 15,
+        openedAt: relativeDate(-20, 9),
+        targetFillDate: relativeDate(-2, 17),
+        description:
+          "Analyze compliance workflows and build audit-ready reporting for risk operations.",
+        intakeSummary:
+          "Closed after the sponsor paused budget; retained for pipeline history and disabled launch-state coverage.",
+        createdByUserId: coordinator.id,
+        createdAt: relativeDate(-20, 9),
+        updatedAt: relativeDate(-3, 16),
+      },
+      {
+        workspaceId: workspace.id,
+        clientId: northstarCommerce.id,
+        title: "Enterprise Account Executive",
+        department: "Sales",
+        location: "Chicago, IL",
+        employmentType: "full-time",
+        salaryMin: 120000,
+        salaryMax: 145000,
+        currency: "USD",
+        ownerUserId: recruiter.id,
+        status: "filled",
+        priority: "high",
+        headcount: 1,
+        placementFeePercent: 20,
+        openedAt: relativeDate(-19, 11),
+        targetFillDate: relativeDate(5, 17),
+        description:
+          "Enterprise seller with commerce platform experience and founder-friendly communication.",
+        intakeSummary:
+          "Filled by a warm outbound candidate; kept in the seed to exercise outcome lanes.",
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-19, 11),
+        updatedAt: relativeDate(-1, 16),
+      },
     ])
     .returning();
 
@@ -360,8 +649,31 @@ const seed = async () => {
   const designerJob = createdJobs.find(
     (job) => job.title === "Founding Product Designer",
   );
+  const aiInfraJob = createdJobs.find(
+    (job) => job.title === "Principal AI Infrastructure Engineer",
+  );
+  const revOpsJob = createdJobs.find(
+    (job) => job.title === "Revenue Operations Lead",
+  );
+  const implementationJob = createdJobs.find(
+    (job) => job.title === "Clinical Implementation Manager",
+  );
+  const complianceJob = createdJobs.find(
+    (job) => job.title === "Compliance Data Analyst",
+  );
+  const accountExecutiveJob = createdJobs.find(
+    (job) => job.title === "Enterprise Account Executive",
+  );
 
-  if (!fullStackJob || !designerJob) {
+  if (
+    !fullStackJob ||
+    !designerJob ||
+    !aiInfraJob ||
+    !revOpsJob ||
+    !implementationJob ||
+    !complianceJob ||
+    !accountExecutiveJob
+  ) {
     throw new Error("Failed to create the demo jobs.");
   }
 
@@ -369,6 +681,11 @@ const seed = async () => {
     [
       { job: fullStackJob, timestamp: relativeDate(-10, 9) },
       { job: designerJob, timestamp: relativeDate(-6, 10) },
+      { job: aiInfraJob, timestamp: relativeDate(-9, 10) },
+      { job: revOpsJob, timestamp: relativeDate(-15, 9) },
+      { job: implementationJob, timestamp: relativeDate(-7, 9) },
+      { job: complianceJob, timestamp: relativeDate(-20, 9) },
+      { job: accountExecutiveJob, timestamp: relativeDate(-19, 11) },
     ].flatMap(({ job, timestamp }) =>
       apiDefaultJobStageTemplate.map((stage) => ({
         workspaceId: workspace.id,
@@ -391,7 +708,8 @@ const seed = async () => {
         fullName: "Nina Patel",
         email: "nina.patel@example.com",
         phone: "+1-646-555-0133",
-        headline: "Senior full stack engineer focused on product infrastructure",
+        headline:
+          "Senior full stack engineer focused on product infrastructure",
         currentCompany: "Orbit Cloud",
         currentTitle: "Senior Software Engineer",
         location: "Brooklyn, NY",
@@ -413,7 +731,8 @@ const seed = async () => {
         fullName: "Marcus Lee",
         email: "marcus.lee@example.com",
         phone: "+1-415-555-0144",
-        headline: "Platform-minded engineer with staff-level architecture depth",
+        headline:
+          "Platform-minded engineer with staff-level architecture depth",
         currentCompany: "Delta Forge",
         currentTitle: "Staff Engineer",
         location: "San Francisco, CA",
@@ -472,6 +791,137 @@ const seed = async () => {
         createdAt: relativeDate(-5, 15),
         updatedAt: relativeDate(-1, 10),
       },
+      {
+        workspaceId: workspace.id,
+        fullName: "Priya Nair",
+        email: "priya.nair@example.com",
+        phone: "+1-206-555-0148",
+        headline: "Infrastructure leader for high-throughput AI products",
+        currentCompany: "VectorBay",
+        currentTitle: "Principal Engineer",
+        location: "Seattle, WA",
+        salaryExpectation: "$260k base",
+        noticePeriod: "6 weeks",
+        source: "Outbound",
+        linkedinUrl: "https://linkedin.com/in/priya-nair-demo",
+        portfolioUrl: "https://priya.dev",
+        skillsText:
+          "Kubernetes, model serving, Python, TypeScript, observability",
+        summary:
+          "Deep systems profile with credible leadership stories around inference cost and platform reliability.",
+        ownerUserId: recruiter.id,
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-6, 13),
+        updatedAt: relativeDate(-1, 14),
+      },
+      {
+        workspaceId: workspace.id,
+        fullName: "Theo Brooks",
+        email: "theo.brooks@example.com",
+        phone: "+1-303-555-0179",
+        headline: "Revenue operations builder for technical GTM teams",
+        currentCompany: "Gridline",
+        currentTitle: "Director of RevOps",
+        location: "Denver, CO",
+        salaryExpectation: "$165k base",
+        noticePeriod: "30 days",
+        source: "Referral",
+        linkedinUrl: "https://linkedin.com/in/theo-brooks-demo",
+        skillsText: "Salesforce, forecasting, territory design, process design",
+        summary:
+          "Strong operating cadence and executive communication; wants a tighter mandate before moving.",
+        ownerUserId: owner.id,
+        createdByUserId: owner.id,
+        createdAt: relativeDate(-10, 16),
+        updatedAt: relativeDate(-2, 13),
+      },
+      {
+        workspaceId: workspace.id,
+        fullName: "Lila Chen",
+        email: "lila.chen@example.com",
+        phone: "+1-617-555-0156",
+        headline: "Healthcare implementation leader for enterprise rollouts",
+        currentCompany: "MedBridge",
+        currentTitle: "Senior Implementation Manager",
+        location: "Boston, MA",
+        salaryExpectation: "$142k base",
+        noticePeriod: "3 weeks",
+        source: "Inbound",
+        linkedinUrl: "https://linkedin.com/in/lila-chen-demo",
+        skillsText: "Provider onboarding, change management, EHR workflows",
+        summary:
+          "Excellent client-facing implementation profile with enough clinical context for complex stakeholders.",
+        ownerUserId: coordinator.id,
+        createdByUserId: coordinator.id,
+        createdAt: relativeDate(-4, 11),
+        updatedAt: relativeDate(-1, 12),
+      },
+      {
+        workspaceId: workspace.id,
+        fullName: "Omar Hassan",
+        email: "omar.hassan@example.com",
+        phone: "+1-704-555-0164",
+        headline: "Compliance data analyst with banking risk experience",
+        currentCompany: "Pine Street Bank",
+        currentTitle: "Senior Risk Analyst",
+        location: "Charlotte, NC",
+        salaryExpectation: "$130k base",
+        noticePeriod: "2 weeks",
+        source: "Talent pool",
+        linkedinUrl: "https://linkedin.com/in/omar-hassan-demo",
+        skillsText: "SQL, audit reporting, regulatory workflows, Tableau",
+        summary:
+          "Solid compliance analytics background, but scope alignment depends on how technical the client wants the role.",
+        ownerUserId: coordinator.id,
+        createdByUserId: coordinator.id,
+        createdAt: relativeDate(-12, 9),
+        updatedAt: relativeDate(-3, 16),
+      },
+      {
+        workspaceId: workspace.id,
+        fullName: "Grace Kim",
+        email: "grace.kim@example.com",
+        phone: "+1-312-555-0159",
+        headline: "Enterprise seller for commerce and payments platforms",
+        currentCompany: "MarketDock",
+        currentTitle: "Senior Account Executive",
+        location: "Chicago, IL",
+        salaryExpectation: "$135k base",
+        noticePeriod: "2 weeks",
+        source: "Outbound",
+        linkedinUrl: "https://linkedin.com/in/grace-kim-demo",
+        skillsText:
+          "Enterprise sales, commerce platforms, MEDDICC, founder-led GTM",
+        summary:
+          "Placed candidate with strong founder rapport and enough vertical experience for Northstar Commerce.",
+        ownerUserId: recruiter.id,
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-15, 12),
+        updatedAt: relativeDate(-1, 16),
+      },
+      {
+        workspaceId: workspace.id,
+        fullName: "Rosa Martinez",
+        email: "rosa.martinez@example.com",
+        phone: "+1-917-555-0112",
+        headline: "Product operations designer with systems and research depth",
+        currentCompany: "WellPath",
+        currentTitle: "Product Design Manager",
+        location: "New York, NY",
+        salaryExpectation: "$188k base",
+        noticePeriod: "4 weeks",
+        source: "Referral",
+        linkedinUrl: "https://linkedin.com/in/rosa-martinez-demo",
+        portfolioUrl: "https://rosa.design",
+        skillsText:
+          "Design systems, product ops, research synthesis, healthcare UX",
+        summary:
+          "Strong alternate design slate for Harbor Health; timeline depends on bonus payout.",
+        ownerUserId: owner.id,
+        createdByUserId: owner.id,
+        createdAt: relativeDate(-5, 10),
+        updatedAt: relativeDate(-1, 15),
+      },
     ])
     .returning();
 
@@ -484,8 +934,40 @@ const seed = async () => {
   const elena = createdCandidates.find(
     (candidate) => candidate.fullName === "Elena Garcia",
   );
+  const samir = createdCandidates.find(
+    (candidate) => candidate.fullName === "Samir Shah",
+  );
+  const priya = createdCandidates.find(
+    (candidate) => candidate.fullName === "Priya Nair",
+  );
+  const theo = createdCandidates.find(
+    (candidate) => candidate.fullName === "Theo Brooks",
+  );
+  const lila = createdCandidates.find(
+    (candidate) => candidate.fullName === "Lila Chen",
+  );
+  const omar = createdCandidates.find(
+    (candidate) => candidate.fullName === "Omar Hassan",
+  );
+  const grace = createdCandidates.find(
+    (candidate) => candidate.fullName === "Grace Kim",
+  );
+  const rosa = createdCandidates.find(
+    (candidate) => candidate.fullName === "Rosa Martinez",
+  );
 
-  if (!nina || !marcus || !elena) {
+  if (
+    !nina ||
+    !marcus ||
+    !elena ||
+    !samir ||
+    !priya ||
+    !theo ||
+    !lila ||
+    !omar ||
+    !grace ||
+    !rosa
+  ) {
     throw new Error("Failed to create the demo candidates.");
   }
 
@@ -514,7 +996,8 @@ const seed = async () => {
         ownerUserId: recruiter.id,
         stage: "client_interview",
         riskFlag: "timing_risk",
-        nextStep: "Confirm competing process timeline and keep warm with the client.",
+        nextStep:
+          "Confirm competing process timeline and keep warm with the client.",
         submittedAt: relativeDate(-6, 11, 0),
         lastTouchAt: relativeDate(-1, 9, 30),
         latestFeedbackAt: relativeDate(-1, 10, 0),
@@ -529,13 +1012,130 @@ const seed = async () => {
         ownerUserId: coordinator.id,
         stage: "screening",
         riskFlag: "feedback_risk",
-        nextStep: "Collect founder feedback on portfolio depth before formal submission.",
+        nextStep:
+          "Collect founder feedback on portfolio depth before formal submission.",
         submittedAt: relativeDate(-2, 14, 0),
         lastTouchAt: relativeDate(-1, 15, 0),
         latestFeedbackAt: relativeDate(-1, 15, 30),
         createdByUserId: coordinator.id,
         createdAt: relativeDate(-2, 14, 0),
         updatedAt: relativeDate(-1, 15, 30),
+      },
+      {
+        workspaceId: workspace.id,
+        jobId: fullStackJob.id,
+        candidateId: samir.id,
+        ownerUserId: recruiter.id,
+        stage: "screening",
+        riskFlag: "fit_risk",
+        nextStep: "Validate backend depth before deciding whether to submit.",
+        submittedAt: null,
+        lastTouchAt: relativeDate(-1, 12, 10),
+        latestFeedbackAt: null,
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-3, 15, 20),
+        updatedAt: relativeDate(-1, 12, 10),
+      },
+      {
+        workspaceId: workspace.id,
+        jobId: aiInfraJob.id,
+        candidateId: priya.id,
+        ownerUserId: recruiter.id,
+        stage: "offer",
+        riskFlag: "compensation_risk",
+        nextStep:
+          "Align offer structure with Priya's equity expectations before Friday.",
+        submittedAt: relativeDate(-5, 13, 30),
+        lastTouchAt: relativeDate(-1, 14, 5),
+        latestFeedbackAt: relativeDate(-1, 14, 15),
+        offerAmount: 268000,
+        currency: "USD",
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-5, 13, 30),
+        updatedAt: relativeDate(-1, 14, 15),
+      },
+      {
+        workspaceId: workspace.id,
+        jobId: revOpsJob.id,
+        candidateId: theo.id,
+        ownerUserId: owner.id,
+        stage: "submitted",
+        riskFlag: "feedback_risk",
+        nextStep:
+          "Wait for CRO alignment before scheduling the case interview.",
+        submittedAt: relativeDate(-4, 9, 45),
+        lastTouchAt: relativeDate(-2, 10, 45),
+        latestFeedbackAt: relativeDate(-2, 11, 15),
+        createdByUserId: owner.id,
+        createdAt: relativeDate(-4, 9, 45),
+        updatedAt: relativeDate(-2, 11, 15),
+      },
+      {
+        workspaceId: workspace.id,
+        jobId: implementationJob.id,
+        candidateId: lila.id,
+        ownerUserId: coordinator.id,
+        stage: "sourced",
+        riskFlag: "none",
+        nextStep:
+          "Confirm implementation case examples before recruiter screen.",
+        submittedAt: null,
+        lastTouchAt: relativeDate(-1, 11, 40),
+        latestFeedbackAt: null,
+        createdByUserId: coordinator.id,
+        createdAt: relativeDate(-2, 10, 20),
+        updatedAt: relativeDate(-1, 11, 40),
+      },
+      {
+        workspaceId: workspace.id,
+        jobId: complianceJob.id,
+        candidateId: omar.id,
+        ownerUserId: coordinator.id,
+        stage: "lost",
+        riskFlag: "fit_risk",
+        nextStep:
+          "Keep Omar warm for future analytics-heavy compliance searches.",
+        submittedAt: relativeDate(-10, 11, 0),
+        lastTouchAt: relativeDate(-3, 16, 5),
+        latestFeedbackAt: relativeDate(-3, 16, 5),
+        lostReason:
+          "Client paused budget and wanted deeper model validation experience.",
+        createdByUserId: coordinator.id,
+        createdAt: relativeDate(-10, 11, 0),
+        updatedAt: relativeDate(-3, 16, 5),
+      },
+      {
+        workspaceId: workspace.id,
+        jobId: accountExecutiveJob.id,
+        candidateId: grace.id,
+        ownerUserId: recruiter.id,
+        stage: "placed",
+        riskFlag: "none",
+        nextStep: "Send start-date reminder and close placement paperwork.",
+        submittedAt: relativeDate(-12, 14, 0),
+        lastTouchAt: relativeDate(-1, 16, 30),
+        latestFeedbackAt: relativeDate(-1, 16, 30),
+        offerAmount: 142000,
+        currency: "USD",
+        createdByUserId: recruiter.id,
+        createdAt: relativeDate(-12, 14, 0),
+        updatedAt: relativeDate(-1, 16, 30),
+      },
+      {
+        workspaceId: workspace.id,
+        jobId: designerJob.id,
+        candidateId: rosa.id,
+        ownerUserId: owner.id,
+        stage: "submitted",
+        riskFlag: "timing_risk",
+        nextStep:
+          "Clarify bonus payout timing before founder portfolio review.",
+        submittedAt: relativeDate(-1, 15, 5),
+        lastTouchAt: relativeDate(-1, 15, 25),
+        latestFeedbackAt: null,
+        createdByUserId: owner.id,
+        createdAt: relativeDate(-1, 15, 5),
+        updatedAt: relativeDate(-1, 15, 25),
       },
     ])
     .returning();
@@ -549,8 +1149,40 @@ const seed = async () => {
   const elenaSubmission = createdSubmissions.find(
     (submission) => submission.candidateId === elena.id,
   );
+  const samirSubmission = createdSubmissions.find(
+    (submission) => submission.candidateId === samir.id,
+  );
+  const priyaSubmission = createdSubmissions.find(
+    (submission) => submission.candidateId === priya.id,
+  );
+  const theoSubmission = createdSubmissions.find(
+    (submission) => submission.candidateId === theo.id,
+  );
+  const lilaSubmission = createdSubmissions.find(
+    (submission) => submission.candidateId === lila.id,
+  );
+  const omarSubmission = createdSubmissions.find(
+    (submission) => submission.candidateId === omar.id,
+  );
+  const graceSubmission = createdSubmissions.find(
+    (submission) => submission.candidateId === grace.id,
+  );
+  const rosaSubmission = createdSubmissions.find(
+    (submission) => submission.candidateId === rosa.id,
+  );
 
-  if (!ninaSubmission || !marcusSubmission || !elenaSubmission) {
+  if (
+    !ninaSubmission ||
+    !marcusSubmission ||
+    !elenaSubmission ||
+    !samirSubmission ||
+    !priyaSubmission ||
+    !theoSubmission ||
+    !lilaSubmission ||
+    !omarSubmission ||
+    !graceSubmission ||
+    !rosaSubmission
+  ) {
     throw new Error("Failed to create the demo submissions.");
   }
 
@@ -600,7 +1232,8 @@ const seed = async () => {
     {
       workspaceId: workspace.id,
       title: "Book Elena Garcia portfolio screen",
-      description: "Coordinate founder availability and confirm candidate prep materials.",
+      description:
+        "Coordinate founder availability and confirm candidate prep materials.",
       status: "snoozed",
       dueAt: relativeDate(2, 13, 0),
       snoozedUntil: relativeDate(1, 9, 0),
@@ -612,7 +1245,502 @@ const seed = async () => {
       createdAt: relativeDate(-1, 12, 0),
       updatedAt: relativeDate(-1, 12, 30),
     },
+    {
+      workspaceId: workspace.id,
+      title: "Pressure-test Samir Shah backend examples",
+      description:
+        "Collect two architecture stories before deciding whether he belongs in the full stack slate.",
+      status: "open",
+      dueAt: relativeDate(0, 15, 0),
+      assignedToUserId: recruiter.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: samirSubmission.id,
+      submissionId: samirSubmission.id,
+      createdAt: relativeDate(-1, 12, 15),
+      updatedAt: relativeDate(-1, 12, 15),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Model Priya Nair offer scenarios",
+      description:
+        "Prepare base, bonus, and equity tradeoffs before the CTO call.",
+      status: "open",
+      dueAt: relativeDate(0, 16, 30),
+      assignedToUserId: owner.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: priyaSubmission.id,
+      submissionId: priyaSubmission.id,
+      createdAt: relativeDate(-1, 14, 30),
+      updatedAt: relativeDate(-1, 14, 30),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Check BrightLayer hold status",
+      description:
+        "Ask Leah whether the CRO reporting-line decision has a firm date.",
+      status: "snoozed",
+      dueAt: relativeDate(3, 10, 0),
+      snoozedUntil: relativeDate(2, 9, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: owner.id,
+      entityType: "submission",
+      entityId: theoSubmission.id,
+      submissionId: theoSubmission.id,
+      createdAt: relativeDate(-2, 11, 30),
+      updatedAt: relativeDate(-2, 11, 30),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Send Lila Chen implementation screen brief",
+      description:
+        "Include provider-group rollout context and stakeholder map.",
+      status: "open",
+      dueAt: relativeDate(1, 14, 0),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "submission",
+      entityId: lilaSubmission.id,
+      submissionId: lilaSubmission.id,
+      createdAt: relativeDate(-1, 11, 45),
+      updatedAt: relativeDate(-1, 11, 45),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Archive Cedar Bank closeout note",
+      description:
+        "Capture why the compliance analyst search closed and tag Omar for future risk analytics roles.",
+      status: "done",
+      dueAt: relativeDate(-2, 12, 0),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "submission",
+      entityId: omarSubmission.id,
+      submissionId: omarSubmission.id,
+      completedAt: relativeDate(-2, 11, 30),
+      createdAt: relativeDate(-3, 16, 20),
+      updatedAt: relativeDate(-2, 11, 30),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Send Grace Kim start-date reminder",
+      description:
+        "Confirm onboarding paperwork and first-week calendar with Northstar Commerce.",
+      status: "open",
+      dueAt: relativeDate(4, 10, 0),
+      assignedToUserId: recruiter.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: graceSubmission.id,
+      submissionId: graceSubmission.id,
+      createdAt: relativeDate(-1, 16, 40),
+      updatedAt: relativeDate(-1, 16, 40),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Confirm Rosa Martinez bonus timing",
+      description:
+        "Decide whether to push founder review or frame the timing risk directly.",
+      status: "open",
+      dueAt: relativeDate(1, 12, 30),
+      assignedToUserId: owner.id,
+      createdByUserId: owner.id,
+      entityType: "submission",
+      entityId: rosaSubmission.id,
+      submissionId: rosaSubmission.id,
+      createdAt: relativeDate(-1, 15, 35),
+      updatedAt: relativeDate(-1, 15, 35),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Map Lattice Labs stakeholder follow-up",
+      description:
+        "Confirm who owns the final engineering loop and where Mia wants async feedback captured.",
+      status: "open",
+      dueAt: relativeDate(-1, 13, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: recruiter.id,
+      entityType: "client",
+      entityId: latticeLabs.id,
+      createdAt: relativeDate(-2, 9, 15),
+      updatedAt: relativeDate(-1, 8, 45),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Confirm Harbor Health decision cadence",
+      description:
+        "Ask Rafael whether design feedback will land before the next founder sync.",
+      status: "open",
+      dueAt: relativeDate(0, 12, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: owner.id,
+      entityType: "client",
+      entityId: harborHealth.id,
+      createdAt: relativeDate(-1, 9, 20),
+      updatedAt: relativeDate(-1, 9, 20),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Send Quantum Works reliability story examples",
+      description:
+        "Package two production incident narratives before Iris reviews the AI infra slate.",
+      status: "open",
+      dueAt: relativeDate(1, 10, 30),
+      assignedToUserId: recruiter.id,
+      createdByUserId: recruiter.id,
+      entityType: "client",
+      entityId: quantumWorks.id,
+      createdAt: relativeDate(-1, 14, 40),
+      updatedAt: relativeDate(-1, 14, 40),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Recheck Cedar Bank budget unlock",
+      description:
+        "Hold until Anika confirms whether compliance funding returns this month.",
+      status: "snoozed",
+      dueAt: relativeDate(5, 11, 30),
+      snoozedUntil: relativeDate(2, 9, 30),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "client",
+      entityId: cedarBank.id,
+      createdAt: relativeDate(-3, 10, 10),
+      updatedAt: relativeDate(-1, 10, 10),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Close BrightLayer weekly recap",
+      description:
+        "Log the reporting-line dependency and archive the stale RevOps follow-up note.",
+      status: "done",
+      dueAt: relativeDate(-3, 16, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: owner.id,
+      entityType: "client",
+      entityId: brightLayerEnergy.id,
+      completedAt: relativeDate(-3, 15, 30),
+      createdAt: relativeDate(-4, 11, 0),
+      updatedAt: relativeDate(-3, 15, 30),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Refresh RevOps hold criteria",
+      description:
+        "Separate client-side hold reasons from candidate quality notes before the next pipeline review.",
+      status: "open",
+      dueAt: relativeDate(1, 9, 30),
+      assignedToUserId: owner.id,
+      createdByUserId: owner.id,
+      entityType: "job",
+      entityId: revOpsJob.id,
+      submissionId: theoSubmission.id,
+      createdAt: relativeDate(-2, 10, 50),
+      updatedAt: relativeDate(-1, 11, 10),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Sync Harbor designer scorecard",
+      description:
+        "Tighten systems-design and healthcare UX signals before reviewing Rosa and Elena.",
+      status: "open",
+      dueAt: relativeDate(2, 10, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: coordinator.id,
+      entityType: "job",
+      entityId: designerJob.id,
+      createdAt: relativeDate(-1, 13, 25),
+      updatedAt: relativeDate(-1, 13, 25),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Update AI infra technical rubric",
+      description:
+        "Add inference-cost, deployment safety, and model observability prompts.",
+      status: "open",
+      dueAt: relativeDate(0, 14, 30),
+      assignedToUserId: recruiter.id,
+      createdByUserId: recruiter.id,
+      entityType: "job",
+      entityId: aiInfraJob.id,
+      createdAt: relativeDate(-1, 14, 10),
+      updatedAt: relativeDate(-1, 14, 10),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Prepare implementation manager shortlist",
+      description:
+        "Pick three healthcare rollout profiles that can speak to provider change management.",
+      status: "open",
+      dueAt: relativeDate(1, 15, 0),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "job",
+      entityId: implementationJob.id,
+      createdAt: relativeDate(-1, 11, 20),
+      updatedAt: relativeDate(-1, 11, 20),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Verify Northstar placement fee memo",
+      description:
+        "Return after finance confirms whether the filled AE search needs an updated closeout memo.",
+      status: "snoozed",
+      dueAt: relativeDate(6, 10, 0),
+      snoozedUntil: relativeDate(3, 9, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: recruiter.id,
+      entityType: "job",
+      entityId: accountExecutiveJob.id,
+      createdAt: relativeDate(-2, 16, 50),
+      updatedAt: relativeDate(-1, 16, 50),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Archive compliance analyst intake notes",
+      description:
+        "Mark the old Cedar Bank brief as historical context for future risk analytics searches.",
+      status: "done",
+      dueAt: relativeDate(-4, 12, 0),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "job",
+      entityId: complianceJob.id,
+      completedAt: relativeDate(-4, 11, 40),
+      createdAt: relativeDate(-5, 10, 20),
+      updatedAt: relativeDate(-4, 11, 40),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Call Rosa Martinez reference",
+      description:
+        "Validate product-ops leadership depth before founder portfolio review.",
+      status: "open",
+      dueAt: relativeDate(0, 17, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: owner.id,
+      entityType: "candidate",
+      entityId: rosa.id,
+      submissionId: rosaSubmission.id,
+      createdAt: relativeDate(-1, 15, 50),
+      updatedAt: relativeDate(-1, 15, 50),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Update Nina Patel compensation notes",
+      description:
+        "Capture base, equity, and remote-work constraints before the client panel.",
+      status: "open",
+      dueAt: relativeDate(2, 11, 0),
+      assignedToUserId: recruiter.id,
+      createdByUserId: recruiter.id,
+      entityType: "candidate",
+      entityId: nina.id,
+      submissionId: ninaSubmission.id,
+      createdAt: relativeDate(-1, 16, 10),
+      updatedAt: relativeDate(-1, 16, 10),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Write Theo Brooks warm nurture note",
+      description:
+        "Keep the candidate engaged while BrightLayer resolves the CRO reporting-line question.",
+      status: "open",
+      dueAt: relativeDate(3, 11, 15),
+      assignedToUserId: owner.id,
+      createdByUserId: owner.id,
+      entityType: "candidate",
+      entityId: theo.id,
+      submissionId: theoSubmission.id,
+      createdAt: relativeDate(-2, 11, 50),
+      updatedAt: relativeDate(-2, 11, 50),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Collect Lila Chen credential packet",
+      description:
+        "Wait for updated implementation case artifacts before sending the final packet.",
+      status: "snoozed",
+      dueAt: relativeDate(4, 13, 30),
+      snoozedUntil: relativeDate(1, 9, 45),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "candidate",
+      entityId: lila.id,
+      submissionId: lilaSubmission.id,
+      createdAt: relativeDate(-1, 12, 5),
+      updatedAt: relativeDate(-1, 12, 5),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Review Priya Nair counteroffer risk",
+      description:
+        "Pressure-test equity expectations and competing process timing before offer approval.",
+      status: "open",
+      dueAt: relativeDate(0, 18, 0),
+      assignedToUserId: recruiter.id,
+      createdByUserId: owner.id,
+      entityType: "candidate",
+      entityId: priya.id,
+      submissionId: priyaSubmission.id,
+      createdAt: relativeDate(-1, 14, 45),
+      updatedAt: relativeDate(-1, 14, 45),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Tag Omar Hassan for future analytics roles",
+      description:
+        "Add retained-search labels and close the previous compliance matching task.",
+      status: "done",
+      dueAt: relativeDate(-2, 13, 0),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "candidate",
+      entityId: omar.id,
+      submissionId: omarSubmission.id,
+      completedAt: relativeDate(-2, 12, 45),
+      createdAt: relativeDate(-3, 16, 40),
+      updatedAt: relativeDate(-2, 12, 45),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Update Marcus Lee close plan",
+      description:
+        "Align the next client touch with his competing-process deadline.",
+      status: "open",
+      dueAt: relativeDate(2, 16, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: marcusSubmission.id,
+      submissionId: marcusSubmission.id,
+      createdAt: relativeDate(-1, 10, 25),
+      updatedAt: relativeDate(-1, 10, 25),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Schedule Elena Garcia founder review",
+      description:
+        "Find a slot with Rafael and the founder team before the portfolio packet goes stale.",
+      status: "open",
+      dueAt: relativeDate(1, 16, 30),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "submission",
+      entityId: elenaSubmission.id,
+      submissionId: elenaSubmission.id,
+      createdAt: relativeDate(-1, 12, 45),
+      updatedAt: relativeDate(-1, 12, 45),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Send Samir Shah backend rubric",
+      description:
+        "Give him the architecture prompts before deciding whether to submit.",
+      status: "open",
+      dueAt: relativeDate(-1, 18, 0),
+      assignedToUserId: recruiter.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: samirSubmission.id,
+      submissionId: samirSubmission.id,
+      createdAt: relativeDate(-2, 14, 45),
+      updatedAt: relativeDate(-1, 12, 25),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Set Grace Kim 30-day check-in",
+      description:
+        "Return after the start date lands and confirm whether Northstar needs onboarding support.",
+      status: "snoozed",
+      dueAt: relativeDate(8, 10, 0),
+      snoozedUntil: relativeDate(5, 9, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: graceSubmission.id,
+      submissionId: graceSubmission.id,
+      createdAt: relativeDate(-1, 16, 55),
+      updatedAt: relativeDate(-1, 16, 55),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Confirm Nina Patel panel notes uploaded",
+      description:
+        "Check that the interviewer brief and scorecard are attached to the submission record.",
+      status: "done",
+      dueAt: relativeDate(-1, 15, 0),
+      assignedToUserId: recruiter.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: ninaSubmission.id,
+      submissionId: ninaSubmission.id,
+      completedAt: relativeDate(-1, 14, 35),
+      createdAt: relativeDate(-2, 16, 20),
+      updatedAt: relativeDate(-1, 14, 35),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Draft Priya Nair offer approval memo",
+      description:
+        "Summarize compensation risk, technical feedback, and proposed close sequence.",
+      status: "open",
+      dueAt: relativeDate(0, 19, 0),
+      assignedToUserId: owner.id,
+      createdByUserId: recruiter.id,
+      entityType: "submission",
+      entityId: priyaSubmission.id,
+      submissionId: priyaSubmission.id,
+      createdAt: relativeDate(-1, 14, 55),
+      updatedAt: relativeDate(-1, 14, 55),
+    },
+    {
+      workspaceId: workspace.id,
+      title: "Build Lila Chen stakeholder map",
+      description:
+        "Connect implementation stakeholders, clinical buyer concerns, and rollout success criteria.",
+      status: "open",
+      dueAt: relativeDate(2, 13, 45),
+      assignedToUserId: coordinator.id,
+      createdByUserId: coordinator.id,
+      entityType: "submission",
+      entityId: lilaSubmission.id,
+      submissionId: lilaSubmission.id,
+      createdAt: relativeDate(-1, 12, 10),
+      updatedAt: relativeDate(-1, 12, 10),
+    },
   ]);
+
+  const activityTaskTitles = [
+    "Send panel prep to Nina Patel",
+    "Confirm Nina Patel panel notes uploaded",
+    "Book Elena Garcia portfolio screen",
+    "Map Lattice Labs stakeholder follow-up",
+    "Refresh RevOps hold criteria",
+    "Review Priya Nair counteroffer risk",
+    "Draft Priya Nair offer approval memo",
+  ];
+
+  const createdTasks = await db
+    .select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.workspaceId, workspace.id),
+        inArray(tasks.title, activityTaskTitles),
+      ),
+    );
+
+  const getCreatedTask = (title: string) => {
+    const task = createdTasks.find((item) => item.title === title);
+
+    if (!task) {
+      throw new Error(`Failed to create seed task: ${title}`);
+    }
+
+    return task;
+  };
 
   await db.insert(documents).values([
     {
@@ -627,7 +1755,8 @@ const seed = async () => {
       sourceFilename: "senior-full-stack-engineer-jd.pdf",
       uploadedByUserId: owner.id,
       summaryStatus: "succeeded",
-      summaryText: "Backend-heavy full stack role with strong mentoring expectations.",
+      summaryText:
+        "Backend-heavy full stack role with strong mentoring expectations.",
       embeddingStatus: "succeeded",
       createdAt: relativeDate(-10, 9, 30),
       updatedAt: relativeDate(-10, 9, 30),
@@ -644,7 +1773,8 @@ const seed = async () => {
       sourceFilename: "nina-patel-resume.pdf",
       uploadedByUserId: recruiter.id,
       summaryStatus: "succeeded",
-      summaryText: "Highlights API ownership, product collaboration, and mentoring.",
+      summaryText:
+        "Highlights API ownership, product collaboration, and mentoring.",
       embeddingStatus: "succeeded",
       createdAt: relativeDate(-9, 11, 30),
       updatedAt: relativeDate(-9, 11, 30),
@@ -678,10 +1808,264 @@ const seed = async () => {
       sourceFilename: "marcus-lee-client-interview-notes.md",
       uploadedByUserId: owner.id,
       summaryStatus: "succeeded",
-      summaryText: "Strong system design feedback with some timeline risk due to competing offers.",
+      summaryText:
+        "Strong system design feedback with some timeline risk due to competing offers.",
       embeddingStatus: "succeeded",
       createdAt: relativeDate(-1, 10, 15),
       updatedAt: relativeDate(-1, 10, 15),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "job",
+      entityId: aiInfraJob.id,
+      type: "jd",
+      title: "Principal AI Infrastructure Engineer JD",
+      storageKey: "seed/jobs/principal-ai-infrastructure-engineer-jd.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 284000,
+      sourceFilename: "principal-ai-infrastructure-engineer-jd.pdf",
+      uploadedByUserId: recruiter.id,
+      summaryStatus: "succeeded",
+      summaryText:
+        "Inference platform role requiring production reliability, cost control, and team leadership.",
+      embeddingStatus: "succeeded",
+      createdAt: relativeDate(-9, 10, 30),
+      updatedAt: relativeDate(-9, 10, 30),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "job",
+      entityId: revOpsJob.id,
+      type: "jd",
+      title: "Revenue Operations Lead Intake Notes",
+      storageKey: "seed/jobs/revenue-operations-lead-intake.md",
+      mimeType: "text/markdown",
+      sizeBytes: 21000,
+      sourceFilename: "revenue-operations-lead-intake.md",
+      uploadedByUserId: owner.id,
+      summaryStatus: "running",
+      summaryText: null,
+      embeddingStatus: "queued",
+      createdAt: relativeDate(-15, 9, 30),
+      updatedAt: relativeDate(-2, 10, 50),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "candidate",
+      entityId: priya.id,
+      type: "resume",
+      title: "Priya Nair Resume",
+      storageKey: "seed/candidates/priya-nair-resume.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 166000,
+      sourceFilename: "priya-nair-resume.pdf",
+      uploadedByUserId: recruiter.id,
+      summaryStatus: "succeeded",
+      summaryText:
+        "Production AI infrastructure leadership with model-serving and observability depth.",
+      embeddingStatus: "succeeded",
+      createdAt: relativeDate(-6, 13, 30),
+      updatedAt: relativeDate(-6, 13, 30),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "candidate",
+      entityId: theo.id,
+      type: "resume",
+      title: "Theo Brooks Resume",
+      storageKey: "seed/candidates/theo-brooks-resume.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 121000,
+      sourceFilename: "theo-brooks-resume.pdf",
+      uploadedByUserId: owner.id,
+      summaryStatus: "failed",
+      summaryText: null,
+      embeddingStatus: "failed",
+      createdAt: relativeDate(-10, 16, 30),
+      updatedAt: relativeDate(-2, 12, 0),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "candidate",
+      entityId: lila.id,
+      type: "resume",
+      title: "Lila Chen Resume",
+      storageKey: "seed/candidates/lila-chen-resume.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 118000,
+      sourceFilename: "lila-chen-resume.pdf",
+      uploadedByUserId: coordinator.id,
+      summaryStatus: "queued",
+      summaryText: null,
+      embeddingStatus: "queued",
+      createdAt: relativeDate(-4, 11, 30),
+      updatedAt: relativeDate(-4, 11, 30),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "submission",
+      entityId: priyaSubmission.id,
+      type: "interview_note",
+      title: "Priya Nair Offer Calibration Notes",
+      storageKey: "seed/submissions/priya-nair-offer-calibration.md",
+      mimeType: "text/markdown",
+      sizeBytes: 24000,
+      sourceFilename: "priya-nair-offer-calibration.md",
+      uploadedByUserId: recruiter.id,
+      summaryStatus: "succeeded",
+      summaryText:
+        "Offer risk is mostly compensation mix; technical and leadership feedback are strong.",
+      embeddingStatus: "succeeded",
+      createdAt: relativeDate(-1, 14, 20),
+      updatedAt: relativeDate(-1, 14, 20),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "submission",
+      entityId: graceSubmission.id,
+      type: "call_note",
+      title: "Grace Kim Placement Closeout",
+      storageKey: "seed/submissions/grace-kim-placement-closeout.md",
+      mimeType: "text/markdown",
+      sizeBytes: 15000,
+      sourceFilename: "grace-kim-placement-closeout.md",
+      uploadedByUserId: recruiter.id,
+      summaryStatus: "succeeded",
+      summaryText:
+        "Placement closed after founder reference call and compensation approval.",
+      embeddingStatus: "succeeded",
+      createdAt: relativeDate(-1, 16, 45),
+      updatedAt: relativeDate(-1, 16, 45),
+    },
+  ]);
+
+  const activityDocumentTitles = [
+    "Senior Full Stack Engineer JD",
+    "Nina Patel Resume",
+    "Marcus Lee Client Interview Notes",
+    "Priya Nair Offer Calibration Notes",
+  ];
+
+  const createdDocuments = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.workspaceId, workspace.id),
+        inArray(documents.title, activityDocumentTitles),
+      ),
+    );
+
+  const getCreatedDocument = (title: string) => {
+    const document = createdDocuments.find((item) => item.title === title);
+
+    if (!document) {
+      throw new Error(`Failed to create seed document: ${title}`);
+    }
+
+    return document;
+  };
+
+  await db.insert(notes).values([
+    {
+      workspaceId: workspace.id,
+      entityType: "client",
+      entityId: quantumWorks.id,
+      body: "Iris is prioritizing reliability stories over pure research credentials. Lead with production tradeoffs.",
+      visibility: "workspace",
+      createdByUserId: recruiter.id,
+      createdAt: relativeDate(-2, 15, 15),
+      updatedAt: relativeDate(-2, 15, 15),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "job",
+      entityId: revOpsJob.id,
+      body: "Hold is client-side, not candidate quality. Keep Theo warm but avoid over-promising timeline.",
+      visibility: "workspace",
+      createdByUserId: owner.id,
+      createdAt: relativeDate(-2, 11, 20),
+      updatedAt: relativeDate(-2, 11, 20),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "submission",
+      entityId: samirSubmission.id,
+      body: "Great frontend and accessibility signal; backend depth still needs proof before client handoff.",
+      visibility: "workspace",
+      createdByUserId: recruiter.id,
+      createdAt: relativeDate(-1, 12, 20),
+      updatedAt: relativeDate(-1, 12, 20),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "submission",
+      entityId: priyaSubmission.id,
+      body: "CTO feedback is highly positive. Main gap is whether compensation mix can land without a prolonged counteroffer.",
+      visibility: "workspace",
+      createdByUserId: recruiter.id,
+      createdAt: relativeDate(-1, 14, 25),
+      updatedAt: relativeDate(-1, 14, 25),
+    },
+    {
+      workspaceId: workspace.id,
+      entityType: "submission",
+      entityId: omarSubmission.id,
+      body: "Closeout retained for future fintech analytics searches; Omar was professional and open to re-engagement.",
+      visibility: "workspace",
+      createdByUserId: coordinator.id,
+      createdAt: relativeDate(-3, 16, 15),
+      updatedAt: relativeDate(-3, 16, 15),
+    },
+  ]);
+
+  await db.insert(automationRuns).values([
+    {
+      workspaceId: workspace.id,
+      type: "jd_summary",
+      status: "succeeded",
+      entityType: "job",
+      entityId: aiInfraJob.id,
+      attemptCount: 1,
+      startedAt: relativeDate(-9, 10, 35),
+      finishedAt: relativeDate(-9, 10, 36),
+      createdAt: relativeDate(-9, 10, 35),
+      updatedAt: relativeDate(-9, 10, 36),
+    },
+    {
+      workspaceId: workspace.id,
+      type: "candidate_summary",
+      status: "failed",
+      entityType: "candidate",
+      entityId: theo.id,
+      attemptCount: 2,
+      errorMessage:
+        "Seeded retry example: source document text extraction failed.",
+      startedAt: relativeDate(-2, 11, 55),
+      finishedAt: relativeDate(-2, 12, 0),
+      createdAt: relativeDate(-10, 16, 35),
+      updatedAt: relativeDate(-2, 12, 0),
+    },
+    {
+      workspaceId: workspace.id,
+      type: "document_indexing",
+      status: "queued",
+      entityType: "candidate",
+      entityId: lila.id,
+      attemptCount: 0,
+      createdAt: relativeDate(-4, 11, 35),
+      updatedAt: relativeDate(-4, 11, 35),
+    },
+    {
+      workspaceId: workspace.id,
+      type: "reminder_generation",
+      status: "running",
+      entityType: "submission",
+      entityId: rosaSubmission.id,
+      attemptCount: 1,
+      startedAt: relativeDate(-1, 15, 40),
+      createdAt: relativeDate(-1, 15, 40),
+      updatedAt: relativeDate(-1, 15, 40),
     },
   ]);
 
@@ -717,6 +2101,32 @@ const seed = async () => {
       timestamp: relativeDate(-1, 8, 45),
     },
   ]);
+
+  const ninaPanelPrepTask = getCreatedTask("Send panel prep to Nina Patel");
+  const ninaPanelNotesTask = getCreatedTask(
+    "Confirm Nina Patel panel notes uploaded",
+  );
+  const elenaPortfolioTask = getCreatedTask(
+    "Book Elena Garcia portfolio screen",
+  );
+  const latticeStakeholderTask = getCreatedTask(
+    "Map Lattice Labs stakeholder follow-up",
+  );
+  const revOpsHoldTask = getCreatedTask("Refresh RevOps hold criteria");
+  const priyaRiskTask = getCreatedTask("Review Priya Nair counteroffer risk");
+  const priyaOfferMemoTask = getCreatedTask(
+    "Draft Priya Nair offer approval memo",
+  );
+  const fullStackJdDocument = getCreatedDocument(
+    "Senior Full Stack Engineer JD",
+  );
+  const ninaResumeDocument = getCreatedDocument("Nina Patel Resume");
+  const marcusInterviewDocument = getCreatedDocument(
+    "Marcus Lee Client Interview Notes",
+  );
+  const priyaOfferDocument = getCreatedDocument(
+    "Priya Nair Offer Calibration Notes",
+  );
 
   await Promise.all([
     writeAuditLog({
@@ -757,6 +2167,322 @@ const seed = async () => {
       createdAt: relativeDate(-19, 11, 15),
       metadata: {
         joinedViaInvitation: true,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.CLIENT_UPDATED,
+      entityType: "client",
+      entityId: latticeLabs.id,
+      source: "seed",
+      createdAt: relativeDate(-3, 15, 35),
+      metadata: {
+        changedFields: ["lastContactedAt", "notesPreview", "priority"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.JOB_UPDATED,
+      entityType: "job",
+      entityId: fullStackJob.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 16, 5),
+      metadata: {
+        changedFields: ["intakeSummary", "targetFillDate"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.JOB_STATUS_CHANGED,
+      entityType: "job",
+      entityId: revOpsJob.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 10, 30),
+      metadata: {
+        from: "open",
+        to: "on_hold",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.CANDIDATE_UPDATED,
+      entityType: "candidate",
+      entityId: nina.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 17, 10),
+      metadata: {
+        changedFields: ["summary", "salaryExpectation", "hasResume"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.CANDIDATE_UPDATED,
+      entityType: "candidate",
+      entityId: priya.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 25),
+      metadata: {
+        changedFields: ["summary", "salaryExpectation"],
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.SUBMISSION_CREATED,
+      entityType: "submission",
+      entityId: ninaSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-4, 10, 30),
+      metadata: {
+        candidateId: nina.id,
+        candidateName: nina.fullName,
+        jobId: fullStackJob.id,
+        jobTitle: fullStackJob.title,
+        ownerUserId: recruiter.id,
+        riskFlag: "none",
+        stage: "submitted",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.SUBMISSION_STAGE_CHANGED,
+      entityType: "submission",
+      entityId: marcusSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 10, 0),
+      metadata: {
+        candidateId: marcus.id,
+        fromStage: "submitted",
+        jobId: fullStackJob.id,
+        toStage: "client_interview",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.SUBMISSION_RISK_UPDATED,
+      entityType: "submission",
+      entityId: priyaSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 15),
+      metadata: {
+        candidateId: priya.id,
+        fromRiskFlag: "none",
+        jobId: aiInfraJob.id,
+        toRiskFlag: "compensation_risk",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.SUBMISSION_NEXT_STEP_UPDATED,
+      entityType: "submission",
+      entityId: rosaSubmission.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 15, 25),
+      metadata: {
+        candidateId: rosa.id,
+        fromNextStep: null,
+        jobId: designerJob.id,
+        toNextStep:
+          "Clarify bonus payout timing before founder portfolio review.",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: fullStackJdDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-10, 9, 30),
+      metadata: {
+        documentType: fullStackJdDocument.type,
+        linkedEntityId: fullStackJob.id,
+        linkedEntityType: "job",
+        sourceFilename: fullStackJdDocument.sourceFilename,
+        title: fullStackJdDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: ninaResumeDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-9, 11, 30),
+      metadata: {
+        documentType: ninaResumeDocument.type,
+        linkedEntityId: nina.id,
+        linkedEntityType: "candidate",
+        sourceFilename: ninaResumeDocument.sourceFilename,
+        title: ninaResumeDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: marcusInterviewDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 10, 15),
+      metadata: {
+        documentType: marcusInterviewDocument.type,
+        linkedEntityId: marcusSubmission.id,
+        linkedEntityType: "submission",
+        sourceFilename: marcusInterviewDocument.sourceFilename,
+        title: marcusInterviewDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: "document",
+      entityId: priyaOfferDocument.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 20),
+      metadata: {
+        documentType: priyaOfferDocument.type,
+        linkedEntityId: priyaSubmission.id,
+        linkedEntityType: "submission",
+        sourceFilename: priyaOfferDocument.sourceFilename,
+        title: priyaOfferDocument.title,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: latticeStakeholderTask.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 9, 15),
+      metadata: {
+        assignedToUserId: owner.id,
+        linkedEntityId: latticeLabs.id,
+        linkedEntityType: "client",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: ninaPanelPrepTask.id,
+      source: "seed",
+      createdAt: relativeDate(-2, 16, 0),
+      metadata: {
+        assignedToUserId: recruiter.id,
+        linkedEntityId: ninaSubmission.id,
+        linkedEntityType: "submission",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.TASK_COMPLETED,
+      entityType: "task",
+      entityId: ninaPanelNotesTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 35),
+      metadata: {
+        action: "complete",
+        assignedToUserId: recruiter.id,
+        nextStatus: "done",
+        previousCompletedAt: null,
+        previousSnoozedUntil: null,
+        previousStatus: "open",
+        snoozedUntil: null,
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: coordinator.id,
+      actorRole: "coordinator",
+      action: AuditAction.TASK_SNOOZED,
+      entityType: "task",
+      entityId: elenaPortfolioTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 12, 30),
+      metadata: {
+        action: "snooze",
+        assignedToUserId: coordinator.id,
+        nextStatus: "snoozed",
+        previousCompletedAt: null,
+        previousSnoozedUntil: null,
+        previousStatus: "open",
+        snoozedUntil: relativeDate(1, 9, 0).toISOString(),
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.TASK_UPDATED,
+      entityType: "task",
+      entityId: revOpsHoldTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 11, 10),
+      metadata: {
+        assignedToUserId: owner.id,
+        changedFields: ["description", "dueAt"],
+        linkedEntityId: revOpsJob.id,
+        linkedEntityType: "job",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: recruiter.id,
+      actorRole: "recruiter",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: priyaRiskTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 45),
+      metadata: {
+        assignedToUserId: recruiter.id,
+        linkedEntityId: priya.id,
+        linkedEntityType: "candidate",
+      },
+    }),
+    writeAuditLog({
+      workspaceId: workspace.id,
+      actorUserId: owner.id,
+      actorRole: "owner",
+      action: AuditAction.TASK_CREATED,
+      entityType: "task",
+      entityId: priyaOfferMemoTask.id,
+      source: "seed",
+      createdAt: relativeDate(-1, 14, 55),
+      metadata: {
+        assignedToUserId: owner.id,
+        linkedEntityId: priyaSubmission.id,
+        linkedEntityType: "submission",
       },
     }),
     writeAuditLog({

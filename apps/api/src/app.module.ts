@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 
+import { ActivityModule } from "./activity/activity.module";
+import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { BillingModule } from "./billing/billing.module";
 import { CandidatesModule } from "./candidates/candidates.module";
@@ -9,11 +11,15 @@ import { DocumentsModule } from "./documents/documents.module";
 import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { MembersModule } from "./members/members.module";
+import { NotesModule } from "./notes/notes.module";
 import { SubmissionsModule } from "./submissions/submissions.module";
+import { TasksModule } from "./tasks/tasks.module";
 import { WorkspaceModule } from "./workspace/workspace.module";
 
 @Module({
   imports: [
+    ActivityModule,
+    AuditModule,
     AuthModule,
     BillingModule,
     CandidatesModule,
@@ -23,7 +29,9 @@ import { WorkspaceModule } from "./workspace/workspace.module";
     HealthModule,
     JobsModule,
     MembersModule,
+    NotesModule,
     SubmissionsModule,
+    TasksModule,
     WorkspaceModule,
   ],
 })
