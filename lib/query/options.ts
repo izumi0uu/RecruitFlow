@@ -26,6 +26,11 @@ import {
   jobListFiltersToSearchParams,
   type JobListFilters,
 } from "@/lib/jobs/filters";
+import {
+  EMPTY_SUBMISSION_PIPELINE_FILTERS,
+  submissionPipelineFiltersToSearchParams,
+  type SubmissionPipelineFilters,
+} from "@/lib/submissions/filters";
 import { fetchJson } from "@/lib/query/fetcher";
 import type { CurrentUserDto, CurrentWorkspaceDto } from "@/lib/query/types";
 
@@ -149,8 +154,30 @@ export const documentsListQueryOptions = (filters: DocumentListFilters) =>
 
 export const submissionsListRootQueryKey = ["submissions", "list"] as const;
 
-export const submissionsListQueryOptions = () =>
+export const submissionsListQueryKey = (
+  filters: SubmissionPipelineFilters = EMPTY_SUBMISSION_PIPELINE_FILTERS,
+) =>
+  [
+    ...submissionsListRootQueryKey,
+    submissionPipelineFiltersToSearchParams(filters, {
+      target: "api",
+    }).toString(),
+  ] as const;
+
+export const submissionsListQueryOptions = (
+  filters: SubmissionPipelineFilters = EMPTY_SUBMISSION_PIPELINE_FILTERS,
+) =>
   queryOptions({
-    queryKey: submissionsListRootQueryKey,
-    queryFn: () => fetchJson<SubmissionsListResponse>("/api/submissions"),
+    queryKey: submissionsListQueryKey(filters),
+    queryFn: () => {
+      const params = submissionPipelineFiltersToSearchParams(filters, {
+        includePageSize: true,
+        target: "api",
+      });
+      const queryString = params.toString();
+
+      return fetchJson<SubmissionsListResponse>(
+        `/api/submissions${queryString ? `?${queryString}` : ""}`,
+      );
+    },
   });
