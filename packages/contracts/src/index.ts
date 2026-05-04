@@ -211,6 +211,124 @@ export const apiRiskFlagValues = [
 
 export type ApiRiskFlag = (typeof apiRiskFlagValues)[number];
 
+export const apiTaskStatusValues = ["open", "snoozed", "done"] as const;
+
+export type ApiTaskStatus = (typeof apiTaskStatusValues)[number];
+
+export type ApiDashboardSectionResult<T> =
+  | {
+      status: "fulfilled";
+      value: T;
+    }
+  | {
+      message: string;
+      status: "rejected";
+    };
+
+export interface ApiDashboardKpis {
+  activeClients: number;
+  activeSubmissions: number;
+  openJobs: number;
+  overdueTasks: number;
+}
+
+export interface ApiDashboardPulsePoint {
+  followUps: number;
+  label: string;
+  submissionTouches: number;
+}
+
+export interface ApiDashboardStageDatum {
+  count: number;
+  label: string;
+  shortLabel: string;
+  stage: ApiSubmissionStage;
+}
+
+export type ApiDashboardRiskTone =
+  | "accent"
+  | "muted"
+  | "primary"
+  | "secondary"
+  | "strong";
+
+export interface ApiDashboardRiskSegment {
+  key: ApiRiskFlag;
+  label: string;
+  tone: ApiDashboardRiskTone;
+  value: number;
+}
+
+export interface ApiDashboardSubmissionDigestItem {
+  candidateName: string;
+  clientName: string;
+  id: string;
+  jobTitle: string;
+  lastTouchAt: string | null;
+  nextStep: string | null;
+  ownerName: string | null;
+  riskFlag: ApiRiskFlag;
+  stage: ApiSubmissionStage;
+}
+
+export interface ApiDashboardTaskDigestItem {
+  assigneeName: string | null;
+  candidateName: string | null;
+  dueAt: string | null;
+  id: string;
+  jobTitle: string | null;
+  status: ApiTaskStatus;
+  title: string;
+}
+
+export interface ApiDashboardPlacementItem {
+  candidateName: string;
+  clientName: string;
+  id: string;
+  jobTitle: string;
+  ownerName: string | null;
+  placedAt: string;
+}
+
+export interface ApiDashboardOutcomeSummary {
+  averageTimeToSubmitDays: number | null;
+  recentPlacements: ApiDashboardPlacementItem[];
+}
+
+export interface ApiDashboardActivityItem {
+  actionLabel: string;
+  actorName: string;
+  href: string;
+  id: string;
+  source: "activity" | "audit";
+  summary: string;
+  timestamp: string;
+}
+
+export interface ApiDashboardOverviewSections {
+  activityDigest: ApiDashboardSectionResult<ApiDashboardActivityItem[]>;
+  atRiskSubmissions: ApiDashboardSectionResult<
+    ApiDashboardSubmissionDigestItem[]
+  >;
+  kpis: ApiDashboardSectionResult<ApiDashboardKpis>;
+  myTasks: ApiDashboardSectionResult<ApiDashboardTaskDigestItem[]>;
+  operationalPulse: ApiDashboardSectionResult<ApiDashboardPulsePoint[]>;
+  outcomeSummary: ApiDashboardSectionResult<ApiDashboardOutcomeSummary>;
+  overdueTasks: ApiDashboardSectionResult<ApiDashboardTaskDigestItem[]>;
+  riskBreakdown: ApiDashboardSectionResult<ApiDashboardRiskSegment[]>;
+  stageDistribution: ApiDashboardSectionResult<ApiDashboardStageDatum[]>;
+  staleSubmissions: ApiDashboardSectionResult<
+    ApiDashboardSubmissionDigestItem[]
+  >;
+}
+
+export interface ApiDashboardOverviewResponse {
+  contractVersion: "phase-1";
+  generatedAt: string;
+  sections: ApiDashboardOverviewSections;
+  workspaceScoped: true;
+}
+
 export const apiDocumentTypeValues = [
   "jd",
   "resume",

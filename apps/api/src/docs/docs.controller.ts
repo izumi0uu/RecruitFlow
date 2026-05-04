@@ -240,6 +240,13 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   },
   {
     auth: "session",
+    description: "Return dashboard aggregation read models with section-level failure boundaries.",
+    method: "GET",
+    owner: "api",
+    path: "/dashboard/overview",
+  },
+  {
+    auth: "session",
     description: "Return workspace-scoped document metadata with type and linked entity filters.",
     method: "GET",
     owner: "api",
