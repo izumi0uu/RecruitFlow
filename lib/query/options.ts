@@ -7,6 +7,8 @@ import type {
   DocumentsListResponse,
   JobDetailResponse,
   JobsListResponse,
+  NotesListQuery,
+  NotesListResponse,
   SubmissionsListResponse,
   TasksListResponse,
 } from "@recruitflow/contracts";
@@ -199,5 +201,25 @@ export const activityTimelineQueryOptions = (query: ActivityTimelineQuery) =>
       return fetchJson<ActivityTimelineResponse>(
         `/api/activity/timeline?${params.toString()}`,
       );
+    },
+  });
+
+export const notesListRootQueryKey = ["notes", "list"] as const;
+
+export const notesListQueryKey = (query: NotesListQuery) =>
+  [...notesListRootQueryKey, query] as const;
+
+export const notesListQueryOptions = (query: NotesListQuery) =>
+  queryOptions({
+    queryKey: notesListQueryKey(query),
+    queryFn: () => {
+      const params = new URLSearchParams({
+        entityId: query.entityId,
+        entityType: query.entityType,
+        page: String(query.page),
+        pageSize: String(query.pageSize),
+      });
+
+      return fetchJson<NotesListResponse>(`/api/notes?${params.toString()}`);
     },
   });

@@ -27,6 +27,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -689,6 +690,17 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
             }}
             ownerOptions={ownerOptions}
             title="Job tasks"
+          />
+
+          <EntityNotesPanel
+            canCreateNote={!job.archivedAt}
+            entity={{
+              entityId: job.id,
+              entityType: "job",
+              label: job.title,
+              secondaryLabel: job.client?.name ?? null,
+            }}
+            title="Job notes"
           />
 
           <Card>

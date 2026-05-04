@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -265,8 +266,8 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
             <CardHeader>
               <CardTitle>Relationship notes</CardTitle>
               <CardDescription>
-                A lightweight account readout before the notes/activity branch
-                adds richer collaboration records.
+                A lightweight account readout kept separate from the
+                collaborative note feed in the side rail.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -467,6 +468,17 @@ const ClientDetailSurface = ({ clientId }: ClientDetailSurfaceProps) => {
             }}
             ownerOptions={ownerOptions}
             title="Client tasks"
+          />
+
+          <EntityNotesPanel
+            canCreateNote={!isArchived}
+            entity={{
+              entityId: client.id,
+              entityType: "client",
+              label: client.name,
+              secondaryLabel: client.industry,
+            }}
+            title="Client notes"
           />
 
           {isArchived || canArchive ? (

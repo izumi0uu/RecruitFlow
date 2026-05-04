@@ -21,6 +21,7 @@ import type { ReactNode } from "react";
 
 import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
+import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
 import { Button } from "@/components/ui/Button";
 import {
   Dialog,
@@ -360,6 +361,16 @@ export const PipelineSubmissionDetailPanel = ({
                   }}
                   ownerOptions={ownerOptions}
                   title="Submission tasks"
+                />
+
+                <EntityNotesPanel
+                  entity={{
+                    entityId: submission.id,
+                    entityType: "submission",
+                    label: getCandidateTitle(submission),
+                    secondaryLabel: getRoleTitle(submission),
+                  }}
+                  title="Submission notes"
                 />
 
                 <DetailSection
