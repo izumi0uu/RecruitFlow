@@ -1099,7 +1099,6 @@ export interface NoteRecord {
   archivedByUserId: string | null;
   body: string | null;
   canArchive: boolean;
-  canFinalDelete: boolean;
   createdAt: string;
   createdBy: ApiUserReference | null;
   createdByUserId: string | null;
@@ -1137,11 +1136,11 @@ export interface NoteMutationResponse {
 }
 
 export interface NoteDeleteResponse {
-  action: "archived" | "final_deleted";
+  action: "archived";
   context: ApiCrmPlaceholderContext;
   contractVersion: "phase-1";
   message: string;
-  note: NoteRecord | null;
+  note: NoteRecord;
   workspaceScoped: true;
 }
 

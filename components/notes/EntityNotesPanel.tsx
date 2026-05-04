@@ -129,15 +129,7 @@ type EntityNoteRowProps = {
 
 const EntityNoteRow = ({ isPending, note, onDelete }: EntityNoteRowProps) => {
   const isArchived = note.lifecycleStatus === "archived";
-  const canDelete = isArchived ? note.canFinalDelete : note.canArchive;
-  const actionLabel = isArchived ? "Hide deleted note" : "Delete note";
-  const confirmText = isArchived ? "Hide forever" : "Delete note";
-  const confirmTitle = isArchived
-    ? "Hide this deleted note?"
-    : "Delete this note?";
-  const confirmDescription = isArchived
-    ? "This removes the tombstone from the note feed and timeline."
-    : "This hides the note body and leaves a deleted-note tombstone.";
+  const canDelete = !isArchived && note.canArchive;
   const occurredAt = isArchived
     ? (note.archivedAt ?? note.updatedAt)
     : note.createdAt;
@@ -187,7 +179,7 @@ const EntityNoteRow = ({ isPending, note, onDelete }: EntityNoteRowProps) => {
                       Working
                     </>
                   ) : (
-                    confirmText
+                    "Delete note"
                   ),
                   disabled: isPending,
                   onClick: () => {
@@ -195,17 +187,17 @@ const EntityNoteRow = ({ isPending, note, onDelete }: EntityNoteRowProps) => {
                   },
                   type: "button",
                 }}
-                description={confirmDescription}
-                title={confirmTitle}
+                description="This hides the note body and leaves a deleted-note tombstone."
+                title="Delete this note?"
                 variant="destructive"
               >
                 {({ open }) => (
                   <Button
-                    aria-label={actionLabel}
+                    aria-label="Delete note"
                     className="size-8 rounded-full"
                     disabled={isPending}
                     size="icon"
-                    title={actionLabel}
+                    title="Delete note"
                     type="button"
                     variant={open ? "outline" : "ghost"}
                   >

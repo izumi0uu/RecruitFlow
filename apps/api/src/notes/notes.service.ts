@@ -29,10 +29,7 @@ import {
 
 import { db } from "../db/database";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
-import {
-  canDeleteNote,
-  getNoteLifecyclePermissions,
-} from "./notes.permissions";
+import { canDeleteNote } from "./notes.permissions";
 
 const countValue = sql<number>`cast(count(${notes.id}) as int)`;
 const noteCreators = alias(users, "note_creators");
@@ -87,7 +84,7 @@ const serializeNoteRecord = (
   }
 
   const isArchived = Boolean(row.archivedAt);
-  const permissions = getNoteLifecyclePermissions(
+  const canDelete = canDeleteNote(
     {
       role: context.membership.role,
       userId: context.membership.userId,
@@ -104,8 +101,7 @@ const serializeNoteRecord = (
     }),
     archivedByUserId: row.archivedByUserId,
     body: isArchived ? null : row.body,
-    canArchive: permissions.canArchive,
-    canFinalDelete: permissions.canFinalDelete,
+    canArchive: !isArchived && canDelete,
     createdAt: row.createdAt.toISOString(),
     createdBy: getUserReference({
       email: row.createdByEmail,
@@ -284,11 +280,7 @@ export class NotesService {
       .leftJoin(noteCreators, eq(notes.createdByUserId, noteCreators.id))
       .leftJoin(noteArchivers, eq(notes.archivedByUserId, noteArchivers.id))
       .where(
-        and(
-          eq(notes.workspaceId, context.workspace.id),
-          eq(notes.id, noteId),
-          isNull(notes.finalDeletedAt),
-        ),
+        and(eq(notes.workspaceId, context.workspace.id), eq(notes.id, noteId)),
       )
       .limit(1);
 
@@ -313,7 +305,7 @@ export class NotesService {
       eq(notes.entityType, query.entityType),
       eq(notes.entityId, query.entityId),
       eq(notes.visibility, "workspace"),
-      isNull(notes.finalDeletedAt),
+      isNull(notes.archivedAt),
     );
     const [totalRow] = await db
       .select({ count: countValue })
@@ -449,7 +441,7 @@ export class NotesService {
         entityId: noteId,
         entityType: "note",
         metadata: {
-          attemptedAction: existingNote.archivedAt ? "final_delete" : "archive",
+          attemptedAction: "archive",
           createdByUserId: existingNote.createdByUserId,
           entityId: existingNote.entityId,
           entityType: existingNote.entityType,
@@ -478,7 +470,6 @@ export class NotesService {
             eq(notes.id, noteId),
             eq(notes.workspaceId, workspaceId),
             isNull(notes.archivedAt),
-            isNull(notes.finalDeletedAt),
           ),
         )
         .returning({ id: notes.id });
@@ -520,55 +511,15 @@ export class NotesService {
       };
     }
 
-    const finalDeletedAt = new Date();
-
-    const [deletedNote] = await db
-      .update(notes)
-      .set({
-        finalDeletedAt,
-        finalDeletedByUserId: actorUserId,
-        updatedAt: finalDeletedAt,
-      })
-      .where(
-        and(
-          eq(notes.id, noteId),
-          eq(notes.workspaceId, workspaceId),
-          isNull(notes.finalDeletedAt),
-        ),
-      )
-      .returning({ id: notes.id });
-
-    if (!deletedNote) {
-      throw new NotFoundException("Note not found");
-    }
-
-    await writeAuditLog({
-      action: AuditAction.NOTE_DELETED,
-      actorRole: context.membership.role,
-      actorUserId,
-      entityId: noteId,
-      entityType: "note",
-      metadata: {
-        archivedAt: existingNote.archivedAt.toISOString(),
-        entityId: existingNote.entityId,
-        entityType: existingNote.entityType,
-        finalDeletedAt: finalDeletedAt.toISOString(),
-        noteId,
-        originalAuthorUserId: existingNote.createdByUserId,
-      },
-      source: "api",
-      workspaceId,
-    });
-
     return {
-      action: "final_deleted",
+      action: "archived",
       context: {
         role: context.membership.role,
         workspaceId,
       },
       contractVersion: "phase-1",
-      message: "Deleted note hidden",
-      note: null,
+      message: "Note already deleted",
+      note: serializeNoteRecord(context, existingNote),
       workspaceScoped: true,
     };
   }

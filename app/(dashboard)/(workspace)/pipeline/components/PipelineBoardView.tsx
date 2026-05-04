@@ -559,6 +559,7 @@ export const PipelineBoardView = ({
 
       <DndContext
         collisionDetection={pipelineCollisionDetection}
+        id="pipeline-board"
         sensors={sensors}
         onDragCancel={() => {
           setActiveSubmissionId(null);

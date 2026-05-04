@@ -9,12 +9,14 @@ import { useQuery } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  ArchiveX,
   CircleDot,
   FileText,
   GitBranch,
   ListFilter,
   ListTodo,
   Loader2,
+  Maximize2,
   RadioTower,
   RotateCcw,
   StickyNote,
@@ -120,8 +122,8 @@ const filterOrder: ActivityFilterValue[] = [
 ];
 
 const activityFilterSearchParam = "activityFilter";
-const deletedContentMetadataLabel = "Deleted content";
-const deletedContentPreviewLength = 180;
+const activityDescriptionPreviewLength = 220;
+const deletedNotePreviewLength = 160;
 
 const getActivityFilterValue = (value: string | null): ActivityFilterValue => {
   if (filterOrder.includes(value as ActivityFilterValue)) {
@@ -311,113 +313,173 @@ const TimelineEntityLink = ({ event }: { event: ActivityTimelineEvent }) => {
   );
 };
 
-const TimelineEvent = ({ event }: { event: ActivityTimelineEvent }) => {
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const deletedContent = event.metadata.find(
-    (item) => item.label === deletedContentMetadataLabel,
-  )?.value;
-  const visibleMetadata = event.metadata.filter(
-    (item) => item.label !== deletedContentMetadataLabel,
-  );
-  const shouldShowDeletedPreview =
-    event.action === "NOTE_ARCHIVED" && Boolean(deletedContent?.trim());
-  const previewText = deletedContent?.trim() ?? "";
-  const previewSnippet =
-    previewText.length > deletedContentPreviewLength
-      ? `${previewText.slice(0, deletedContentPreviewLength - 3)}...`
-      : previewText;
-  const canExpandPreview = previewText.length > previewSnippet.length;
+const getTextPreview = (value: string, maxLength: number) =>
+  value.length > maxLength
+    ? `${value.slice(0, maxLength).trimEnd()}...`
+    : value;
+
+const TimelineDescriptionPreview = ({ content }: { content: string }) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const description = content.trim();
+  const isTruncated = description.length > activityDescriptionPreviewLength;
+  const preview = getTextPreview(description, activityDescriptionPreviewLength);
 
   return (
     <>
-      <motion.li
-        layout
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -6 }}
-        transition={activityMotionTransition}
-        className="relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3"
-      >
-        <div className="relative flex justify-center">
-          <span className="absolute bottom-[-1rem] top-10 w-px bg-border/70" />
-          <TimelineEventIcon event={event} />
-        </div>
-        <div className="min-w-0 rounded-[1.1rem] border border-border/70 bg-surface-1/62 px-3 py-3 transition-colors hover:bg-surface-1">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">
-                {event.title}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {event.actorLabel} · {formatEventTime(event.occurredAt)}
-              </p>
-            </div>
-            <span
-              className={cn(
-                "w-fit shrink-0 rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold",
-                eventToneClassMap[event.type],
-              )}
-            >
-              {eventTypeConfig[event.type].label}
-            </span>
-          </div>
-          {event.description ? (
-            <p className="mt-2 text-sm leading-6 text-foreground/88">
-              {event.description}
-            </p>
-          ) : null}
-          {shouldShowDeletedPreview ? (
-            <div className="mt-3 rounded-[0.95rem] border border-violet-500/20 bg-violet-500/8 p-3">
-              <p className="text-[0.68rem] font-semibold uppercase text-violet-700 dark:text-violet-200">
-                Deleted note preview
-              </p>
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/82">
-                {previewSnippet}
-              </p>
-              {canExpandPreview ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 px-0 text-xs font-semibold text-violet-700 hover:bg-transparent dark:text-violet-200"
-                  onClick={() => {
-                    setIsPreviewOpen(true);
-                  }}
-                >
-                  View full note
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-          <TimelineEntityLink event={event} />
-          {visibleMetadata.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {visibleMetadata.map((item) => (
-                <span
-                  key={`${event.id}-${item.label}-${item.value}`}
-                  className="max-w-full break-words rounded-full border border-border/70 bg-background/68 px-2 py-1 text-[0.68rem] font-medium text-muted-foreground"
-                >
-                  {item.label}: {item.value}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </motion.li>
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-xl">
+      <div className="mt-2 flex items-start gap-2">
+        <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/88">
+          {preview}
+        </p>
+        {isTruncated ? (
+          <Button
+            aria-label="View full activity text"
+            className="mt-0.5 size-7 shrink-0 rounded-full"
+            size="icon"
+            title="View full activity text"
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setIsDialogOpen(true);
+            }}
+          >
+            <Maximize2 className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Deleted note preview</DialogTitle>
+            <DialogTitle>Activity detail</DialogTitle>
             <DialogDescription>
-              {event.actorLabel} · {formatEventTime(event.occurredAt)}
+              Full timeline text for this activity event.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[56vh] overflow-y-auto whitespace-pre-wrap break-words rounded-[1rem] border border-border/70 bg-surface-1/70 p-4 text-sm leading-6 text-foreground/88">
-            {previewText}
+          <div className="max-h-[55vh] overflow-auto rounded-[1rem] border border-border bg-workspace-muted-surface/55 p-4">
+            <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground/88">
+              {description}
+            </p>
           </div>
         </DialogContent>
       </Dialog>
     </>
+  );
+};
+
+const getDeletedNotePreview = (value: string) =>
+  getTextPreview(value, deletedNotePreviewLength);
+
+const DeletedNotePreview = ({ event }: { event: ActivityTimelineEvent }) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const deletedContent =
+    event.description?.trim() || "Deleted note content was not captured.";
+  const isTruncated = deletedContent.length > deletedNotePreviewLength;
+  const preview = getDeletedNotePreview(deletedContent);
+
+  return (
+    <>
+      <div className="mt-3 flex items-center gap-2 rounded-[0.95rem] border border-dashed border-rose-500/25 bg-rose-500/10 px-3 py-2 text-sm text-muted-foreground">
+        <ArchiveX className="size-4 shrink-0 text-rose-600 dark:text-rose-300" />
+        <p className="min-w-0 flex-1 truncate leading-6 line-through decoration-rose-500/45 decoration-2">
+          {preview}
+        </p>
+        {isTruncated ? (
+          <Button
+            aria-label="View deleted note"
+            className="size-7 shrink-0 rounded-full"
+            size="icon"
+            title="View deleted note"
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setIsDialogOpen(true);
+            }}
+          >
+            <Maximize2 className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Deleted note content</DialogTitle>
+            <DialogDescription>
+              This content is hidden from the note feed but retained in the
+              activity trail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55vh] overflow-auto rounded-[1rem] border border-dashed border-border bg-workspace-muted-surface/55 p-4">
+            <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground/88">
+              {deletedContent}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+const TimelineEvent = ({ event }: { event: ActivityTimelineEvent }) => {
+  const isDeletedNote = event.action === "NOTE_ARCHIVED";
+
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={activityMotionTransition}
+      className="relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3"
+    >
+      <div className="relative flex justify-center">
+        <span className="absolute bottom-[-1rem] top-10 w-px bg-border/70" />
+        <TimelineEventIcon event={event} />
+      </div>
+      <div
+        className={cn(
+          "min-w-0 rounded-[1.1rem] border border-border/70 bg-surface-1/62 px-3 py-3 transition-colors hover:bg-surface-1",
+          isDeletedNote && "border-dashed bg-muted/35 hover:bg-muted/45",
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {event.title}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {event.actorLabel} · {formatEventTime(event.occurredAt)}
+            </p>
+          </div>
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold",
+              eventToneClassMap[event.type],
+            )}
+          >
+            {eventTypeConfig[event.type].label}
+          </span>
+        </div>
+        {isDeletedNote ? (
+          <DeletedNotePreview event={event} />
+        ) : event.description ? (
+          <TimelineDescriptionPreview content={event.description} />
+        ) : null}
+        <TimelineEntityLink event={event} />
+        {event.metadata.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {event.metadata.map((item) => (
+              <span
+                key={`${event.id}-${item.label}-${item.value}`}
+                className="rounded-full border border-border/70 bg-background/68 px-2 py-1 text-[0.68rem] font-medium text-muted-foreground"
+              >
+                {item.label}: {item.value}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </motion.li>
   );
 };
 
@@ -517,7 +579,7 @@ const ActivityTimelinePanel = ({
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="max-h-[min(42rem,calc(100dvh-16rem))] overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-gutter:stable]">
         {isError ? (
           <div className="rounded-[1.1rem] border border-destructive/30 bg-destructive/10 p-4">
             <p className="text-sm font-medium text-foreground">

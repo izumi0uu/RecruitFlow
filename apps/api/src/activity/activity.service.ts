@@ -206,14 +206,6 @@ const formatDateTime = (value: string | Date | null | undefined) => {
   }).format(date);
 };
 
-const toDeletedNotePreview = (body: string) => {
-  const trimmedBody = body.trim();
-
-  return trimmedBody.length > 140
-    ? `${trimmedBody.slice(0, 137)}...`
-    : trimmedBody;
-};
-
 const createReference = ({
   href,
   id,
@@ -358,8 +350,6 @@ const getActionTitle = (action: string) => {
       return "Task action blocked";
     case "NOTE_ARCHIVED":
       return "Note deleted";
-    case "NOTE_DELETED":
-      return "Deleted note hidden";
     case "NOTE_PERMISSION_DENIED":
       return "Note action blocked";
     default:
@@ -1029,13 +1019,7 @@ export class ActivityService {
         noteArchiveActors,
         eq(notes.archivedByUserId, noteArchiveActors.id),
       )
-      .where(
-        and(
-          eq(notes.workspaceId, context.workspace.id),
-          isNull(notes.finalDeletedAt),
-          whereClause,
-        ),
-      )
+      .where(and(eq(notes.workspaceId, context.workspace.id), whereClause))
       .orderBy(
         desc(sql`coalesce(${notes.archivedAt}, ${notes.createdAt})`),
         asc(notes.id),
@@ -1206,26 +1190,16 @@ export class ActivityService {
         actorUserId: row.archivedByUserId,
       });
       const originalAuthorLabel = actor?.name ?? actor?.email ?? null;
-      const deletedContent = row.body.trim();
       const metadata = compact([originalAuthorLabel]).map((value) => ({
         label: "Original author",
         value,
       }));
 
-      if (deletedContent) {
-        metadata.push({
-          label: "Deleted content",
-          value: deletedContent,
-        });
-      }
-
       return {
         action: "NOTE_ARCHIVED",
         actor: archiveActor,
         actorLabel: archiveActor?.name ?? archiveActor?.email ?? "System",
-        description: deletedContent
-          ? toDeletedNotePreview(deletedContent)
-          : "A workspace note was deleted. Its content is hidden.",
+        description: row.body.trim(),
         entity,
         id: `note-archived-${row.id}`,
         metadata,
@@ -1238,17 +1212,11 @@ export class ActivityService {
       };
     }
 
-    const trimmedBody = row.body.trim();
-    const description =
-      trimmedBody.length > 140
-        ? `${trimmedBody.slice(0, 137)}...`
-        : trimmedBody;
-
     return {
       action: "NOTE_ADDED",
       actor,
       actorLabel: actor?.name ?? actor?.email ?? "System",
-      description,
+      description: row.body.trim(),
       entity,
       id: `note-${row.id}`,
       metadata: entity ? [{ label: "Linked to", value: entity.label }] : [],

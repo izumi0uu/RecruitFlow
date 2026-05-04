@@ -6,7 +6,6 @@ type NotePermissionContext = {
 };
 
 type NotePermissionRecord = {
-  archivedAt: Date | string | null;
   createdByUserId: string | null;
 };
 
@@ -17,16 +16,3 @@ export const canDeleteNote = (
   note: NotePermissionRecord,
 ) =>
   managerNoteRoles.has(context.role) || note.createdByUserId === context.userId;
-
-export const getNoteLifecyclePermissions = (
-  context: NotePermissionContext,
-  note: NotePermissionRecord,
-) => {
-  const isArchived = Boolean(note.archivedAt);
-  const canDelete = canDeleteNote(context, note);
-
-  return {
-    canArchive: !isArchived && canDelete,
-    canFinalDelete: isArchived && canDelete,
-  };
-};

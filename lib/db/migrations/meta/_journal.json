@@ -43,6 +43,13 @@
       "when": 1777865941402,
       "tag": "0005_note_archive_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777874855177,
+      "tag": "0006_drop_note_final_delete_fields",
+      "breakpoints": true
     }
   ]
 }

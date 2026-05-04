@@ -369,7 +369,7 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   {
     auth: "session",
     description:
-      "Archive an active note or final-delete an already archived note with API-enforced permissions.",
+      "Soft-delete a workspace-visible note with API-enforced permissions while preserving the activity trail.",
     method: "DELETE",
     owner: "api",
     path: "/notes/:noteId",
