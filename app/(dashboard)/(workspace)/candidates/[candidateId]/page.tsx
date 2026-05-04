@@ -551,7 +551,7 @@ const CandidatePipelineSummary = ({
               this candidate matched to one role.
             </CardDescription>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 ">
             <Button asChild className="rounded-full" variant="outline">
               <TrackedLink href={`/pipeline?candidateId=${candidate.id}`}>
                 View pipeline

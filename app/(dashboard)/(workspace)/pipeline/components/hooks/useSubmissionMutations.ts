@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
 import {
-  submissionMutationRequestSchema,
   type SubmissionMutationResponse,
+  submissionMutationRequestSchema,
 } from "@recruitflow/contracts";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import {
   candidatesListRootQueryKey,
@@ -17,12 +16,6 @@ import {
 } from "@/lib/query/options";
 
 import type { SubmissionFormValues } from "../SubmissionForm";
-
-type SubmissionRedirectTarget = "candidate" | "job" | "pipeline";
-
-type UseSubmissionMutationOptions = {
-  redirectTarget: SubmissionRedirectTarget;
-};
 
 const getSubmissionPayload = (values: SubmissionFormValues) => ({
   candidateId: values.candidateId,
@@ -77,24 +70,18 @@ const requestSubmissionMutation = async (values: SubmissionFormValues) => {
   return (await response.json()) as SubmissionMutationResponse;
 };
 
-const getSubmissionRedirectPath = (
-  response: SubmissionMutationResponse,
-  redirectTarget: SubmissionRedirectTarget,
-) => {
-  if (redirectTarget === "job") {
-    return `/jobs/${response.submission.jobId}?submissionCreated=1`;
-  }
+const getSubmissionRedirectPath = (response: SubmissionMutationResponse) => {
+  const params = new URLSearchParams({
+    candidateId: response.submission.candidateId,
+    jobId: response.submission.jobId,
+    submissionCreated: "1",
+    view: "list",
+  });
 
-  if (redirectTarget === "candidate") {
-    return `/candidates/${response.submission.candidateId}?submissionCreated=1`;
-  }
-
-  return "/pipeline?submissionCreated=1";
+  return `/pipeline?${params.toString()}`;
 };
 
-export const useSubmissionMutation = ({
-  redirectTarget,
-}: UseSubmissionMutationOptions) => {
+export const useSubmissionMutation = () => {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +111,7 @@ export const useSubmissionMutation = ({
         refetchType: "active",
       });
 
-      router.push(getSubmissionRedirectPath(response, redirectTarget));
+      router.push(getSubmissionRedirectPath(response));
     },
     onError: (mutationError) => {
       if (

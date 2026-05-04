@@ -1,15 +1,13 @@
 "use client";
 
+import { useSubmissionMutation } from "./hooks/useSubmissionMutations";
 import {
-  SubmissionForm,
   type SubmissionCandidateOption,
   type SubmissionExistingOption,
+  SubmissionForm,
   type SubmissionFormValues,
   type SubmissionJobOption,
 } from "./SubmissionForm";
-import { useSubmissionMutation } from "./hooks/useSubmissionMutations";
-
-type SubmissionRedirectTarget = "candidate" | "job" | "pipeline";
 
 type SubmissionFormControllerProps = {
   cancelHref: string;
@@ -22,7 +20,6 @@ type SubmissionFormControllerProps = {
     id: string;
     name: string | null;
   }>;
-  redirectTarget: SubmissionRedirectTarget;
 };
 
 export const SubmissionFormController = ({
@@ -32,11 +29,8 @@ export const SubmissionFormController = ({
   initialValues,
   jobOptions,
   ownerOptions,
-  redirectTarget,
 }: SubmissionFormControllerProps) => {
-  const { createSubmission, error, isPending } = useSubmissionMutation({
-    redirectTarget,
-  });
+  const { createSubmission, error, isPending } = useSubmissionMutation();
 
   return (
     <SubmissionForm

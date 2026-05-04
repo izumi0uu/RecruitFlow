@@ -193,7 +193,6 @@ const NewSubmissionPage = async ({ searchParams }: PageProps) => {
             initialValues={initialValues}
             jobOptions={jobOptions}
             ownerOptions={ownerOptions}
-            redirectTarget={redirectTarget}
           />
         </div>
       )}
