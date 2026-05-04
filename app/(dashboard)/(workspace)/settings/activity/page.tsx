@@ -11,6 +11,7 @@ import {
   UserMinus,
   UserPlus,
 } from "lucide-react";
+import { Suspense } from "react";
 
 import {
   Card,
@@ -22,6 +23,11 @@ import {
 import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader";
 import { getActivityLogs } from "@/lib/db/queries";
 import { ActivityType } from "@/lib/db/schema";
+
+import {
+  AuditLogSection,
+  AuditLogSectionSkeleton,
+} from "../components/AuditLogSection";
 
 const iconMap: Record<ActivityType, LucideIcon> = {
   [ActivityType.SIGN_UP]: UserPlus,
@@ -85,7 +91,7 @@ const ActivityPage = async () => {
   const logs = await getActivityLogs();
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
+    <section className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto px-0 py-1 pr-1 lg:py-0">
       <WorkspacePageHeader
         backHref="/settings"
         breadcrumbItems={[
@@ -150,6 +156,10 @@ const ActivityPage = async () => {
           )}
         </CardContent>
       </Card>
+
+      <Suspense fallback={<AuditLogSectionSkeleton />}>
+        <AuditLogSection />
+      </Suspense>
     </section>
   );
 };

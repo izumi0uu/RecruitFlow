@@ -9,6 +9,8 @@ import type {
   JobsListResponse,
   NotesListQuery,
   NotesListResponse,
+  SettingsAuditListQuery,
+  SettingsAuditListResponse,
   SubmissionsListResponse,
   TasksListResponse,
 } from "@recruitflow/contracts";
@@ -221,5 +223,36 @@ export const notesListQueryOptions = (query: NotesListQuery) =>
       });
 
       return fetchJson<NotesListResponse>(`/api/notes?${params.toString()}`);
+    },
+  });
+
+export const settingsAuditRootQueryKey = ["settings", "audit"] as const;
+
+export const settingsAuditQueryKey = (filters: SettingsAuditListQuery) =>
+  [...settingsAuditRootQueryKey, filters] as const;
+
+export const settingsAuditQueryOptions = (filters: SettingsAuditListQuery) =>
+  queryOptions({
+    queryKey: settingsAuditQueryKey(filters),
+    queryFn: () => {
+      const params = new URLSearchParams();
+
+      if (filters.action) {
+        params.set("action", filters.action);
+      }
+
+      if (filters.actorUserId) {
+        params.set("actorUserId", filters.actorUserId);
+      }
+
+      if (filters.entityType) {
+        params.set("entityType", filters.entityType);
+      }
+
+      const queryString = params.toString();
+
+      return fetchJson<SettingsAuditListResponse>(
+        `/api/settings/audit${queryString ? `?${queryString}` : ""}`,
+      );
     },
   });

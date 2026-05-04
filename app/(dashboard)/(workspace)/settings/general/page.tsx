@@ -18,6 +18,10 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { getFormString } from "@/lib/form-data";
 import { currentUserQueryOptions } from "@/lib/query/options";
 
+import {
+  WorkspaceProfileFormSkeleton,
+  WorkspaceProfileSection,
+} from "../components/WorkspaceProfileSection";
 import { useAccountUpdateMutation } from "../hooks/useAccountSettingsMutations";
 
 type AccountFormProps = {
@@ -104,7 +108,7 @@ const AccountSettingsForm = () => {
 
 const GeneralPage = () => {
   return (
-    <section className="flex h-full min-h-0 flex-col gap-5 px-0 py-1 lg:py-0">
+    <section className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto px-0 py-1 pr-1 lg:py-0">
       <WorkspacePageHeader
         backHref="/settings"
         breadcrumbItems={[
@@ -129,6 +133,24 @@ const GeneralPage = () => {
           </Suspense>
         </CardContent>
       </Card>
+
+      <Suspense
+        fallback={
+          <Card className="w-full max-w-3xl">
+            <CardHeader>
+              <CardTitle>Workspace profile</CardTitle>
+              <CardDescription>
+                Loading the current workspace identity.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WorkspaceProfileFormSkeleton />
+            </CardContent>
+          </Card>
+        }
+      >
+        <WorkspaceProfileSection />
+      </Suspense>
     </section>
   );
 };

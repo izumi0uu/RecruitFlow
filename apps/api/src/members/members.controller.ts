@@ -4,22 +4,26 @@ import {
   Controller,
   Delete,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
 
 import {
-  memberInvitationRequestSchema,
-  memberRemovalParamsSchema,
   type MemberInvitationResponse,
   type MemberRemovalResponse,
+  type MemberRoleUpdateResponse,
+  memberInvitationRequestSchema,
+  memberRemovalParamsSchema,
+  memberRoleUpdateParamsSchema,
+  memberRoleUpdateRequestSchema,
 } from "@recruitflow/contracts";
 
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentWorkspaceContext } from "../workspace/current-workspace-context.decorator";
 import { RequireWorkspaceRole } from "../workspace/require-workspace-role.decorator";
-import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceContextGuard } from "../workspace/workspace.guard";
+import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
 
 import { MembersService } from "./members.service";
@@ -59,6 +63,38 @@ export class MembersController {
       );
     }
 
-    return this.membersService.removeMember(context, parsedParams.data.memberId);
+    return this.membersService.removeMember(
+      context,
+      parsedParams.data.memberId,
+    );
+  }
+
+  @Patch(":memberId/role")
+  async updateMemberRole(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param("memberId") memberId: string,
+    @Body() body: unknown,
+  ): Promise<MemberRoleUpdateResponse> {
+    const parsedParams = memberRoleUpdateParamsSchema.safeParse({ memberId });
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ?? "Invalid member id",
+      );
+    }
+
+    const parsedBody = memberRoleUpdateRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(
+        parsedBody.error.issues[0]?.message ?? "Invalid role payload",
+      );
+    }
+
+    return this.membersService.updateMemberRole(
+      context,
+      parsedParams.data.memberId,
+      parsedBody.data,
+    );
   }
 }
