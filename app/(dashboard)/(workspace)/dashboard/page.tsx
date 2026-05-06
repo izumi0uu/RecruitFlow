@@ -2,21 +2,22 @@ import {
   BriefcaseBusiness,
   Building2,
   FileText,
+  type LucideIcon,
   Settings,
   SquareKanban,
   UsersRound,
   Workflow,
-  type LucideIcon,
 } from "lucide-react";
 
+import { ActivityDigestList } from "@/components/dashboard/ActivityDigestList";
+import { DashboardAreaChart } from "@/components/dashboard/DashboardAreaChart";
+import { DashboardBarChart } from "@/components/dashboard/DashboardBarChart";
+import { DashboardRingChart } from "@/components/dashboard/DashboardRingChart";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
 import {
   DashboardHeroMetricTile,
   DashboardMetricPill,
 } from "@/components/dashboard/DashboardStatCard";
-import { DashboardAreaChart } from "@/components/dashboard/DashboardAreaChart";
-import { DashboardBarChart } from "@/components/dashboard/DashboardBarChart";
-import { DashboardRingChart } from "@/components/dashboard/DashboardRingChart";
 import { SubmissionDigestList } from "@/components/dashboard/SubmissionDigestList";
 import { TaskDigestList } from "@/components/dashboard/TaskDigestList";
 import { TaskTodoTable } from "@/components/dashboard/TaskTodoTable";
@@ -31,6 +32,7 @@ import {
   getFirstName,
 } from "@/lib/dashboard/formatters";
 import {
+  getDashboardActivityDigest,
   getDashboardAtRiskSubmissions,
   getDashboardKpis,
   getDashboardOperationalPulse,
@@ -111,6 +113,7 @@ const DashboardPage = async () => {
     overdueResult,
     myTasksResult,
     outcomeResult,
+    activityResult,
   ] = await Promise.allSettled([
     getDashboardKpis(workspace.id),
     getDashboardOperationalPulse(workspace.id),
@@ -121,6 +124,7 @@ const DashboardPage = async () => {
     getDashboardOverdueTasks(workspace.id),
     getDashboardUserTasks(workspace.id, user.id),
     getDashboardOutcomeSummary(workspace.id),
+    getDashboardActivityDigest(workspace.id),
   ]);
   const kpis = kpisResult.status === "fulfilled" ? kpisResult.value : null;
   const pulse = pulseResult.status === "fulfilled" ? pulseResult.value : null;
@@ -138,6 +142,8 @@ const DashboardPage = async () => {
     myTasksResult.status === "fulfilled" ? myTasksResult.value : [];
   const outcomeSummary =
     outcomeResult.status === "fulfilled" ? outcomeResult.value : null;
+  const activityItems =
+    activityResult.status === "fulfilled" ? activityResult.value : [];
 
   const riskTotal =
     riskBreakdown?.reduce((sum, segment) => sum + segment.value, 0) ?? 0;
@@ -390,6 +396,26 @@ const DashboardPage = async () => {
           )}
         </DashboardSection>
       </div>
+
+      <DashboardSection
+        eyebrow="Activity"
+        title="Recent activity digest"
+        description="A capped workspace feed from audit and account activity, ordered newest first."
+        action={
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <TrackedLink href="/settings/activity">Open activity</TrackedLink>
+          </Button>
+        }
+      >
+        {activityResult.status === "fulfilled" ? (
+          <ActivityDigestList
+            items={activityItems}
+            emptyMessage="No recent activity has been recorded for this workspace yet. Sign-ins, member changes, submissions, tasks, documents, and audit events will populate this digest."
+          />
+        ) : (
+          <DashboardFallback message="Recent activity could not be loaded, but the dashboard metrics remain available." />
+        )}
+      </DashboardSection>
 
       <div className="grid gap-6 xl:grid-cols-[0.85fr_minmax(0,1.15fr)]">
         <DashboardSection

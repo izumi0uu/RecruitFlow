@@ -99,6 +99,7 @@ type TaskRecordRow = {
   submissionStage: TaskSubmissionReference["stage"] | null;
   title: string;
   updatedAt: Date;
+  workspaceId: string | null;
 };
 
 const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
@@ -296,9 +297,11 @@ const serializeTaskRecord = (
       role: context.membership.role,
       userId: context.membership.userId,
     },
+    { workspaceId: context.workspace.id },
     {
       assignedToUserId: row.assignedToUserId,
       status: row.status,
+      workspaceId: row.workspaceId,
     },
   );
 
@@ -572,6 +575,7 @@ export class TasksService {
         submissionStage: taskSubmissions.stage,
         title: tasks.title,
         updatedAt: tasks.updatedAt,
+        workspaceId: tasks.workspaceId,
       })
       .from(tasks)
       .leftJoin(assignedUsers, eq(tasks.assignedToUserId, assignedUsers.id))
@@ -934,6 +938,7 @@ export class TasksService {
         submissionStage: taskSubmissions.stage,
         title: tasks.title,
         updatedAt: tasks.updatedAt,
+        workspaceId: tasks.workspaceId,
       })
       .from(tasks)
       .leftJoin(assignedUsers, eq(tasks.assignedToUserId, assignedUsers.id))

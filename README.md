@@ -127,6 +127,8 @@ The seed also creates baseline clients, jobs, candidates, submissions, tasks,
 documents, and audit history so the authenticated workspace routes load with
 non-empty demo states.
 
+For a guided portfolio demo path, use [`docs/dashboard-demo-walkthrough.md`](docs/dashboard-demo-walkthrough.md). It covers the dashboard, pipeline, clients/jobs, candidates/documents, tasks/activity, seeded AI-status examples, and the outcome wrap-up.
+
 You can also create new users through the `/sign-up` route.
 
 Start the web shell:

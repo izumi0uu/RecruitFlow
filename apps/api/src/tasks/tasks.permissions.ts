@@ -10,9 +10,19 @@ type TaskPermissionActor = {
 type TaskPermissionTarget = {
   assignedToUserId: string | null;
   status: ApiTaskStatus;
+  workspaceId: string | null;
+};
+
+type TaskPermissionWorkspace = {
+  workspaceId: string;
 };
 
 const taskManagerRoles = new Set<WorkspaceRole>(["owner", "recruiter"]);
+
+export const isTaskWorkspaceScoped = (
+  workspace: TaskPermissionWorkspace,
+  target: Pick<TaskPermissionTarget, "workspaceId">,
+) => target.workspaceId === workspace.workspaceId;
 
 export const canManageTasks = (role: WorkspaceRole) =>
   taskManagerRoles.has(role);
@@ -32,8 +42,18 @@ export const canUpdateTaskStatus = (
 
 export const getTaskActionPermissions = (
   actor: TaskPermissionActor,
+  workspace: TaskPermissionWorkspace,
   target: TaskPermissionTarget,
 ) => {
+  if (!isTaskWorkspaceScoped(workspace, target)) {
+    return {
+      canComplete: false,
+      canEdit: false,
+      canReopen: false,
+      canSnooze: false,
+    };
+  }
+
   const canUpdateStatus = canUpdateTaskStatus(actor, target);
 
   return {

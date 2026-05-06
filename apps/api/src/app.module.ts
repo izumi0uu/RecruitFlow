@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { ActivityModule } from "./activity/activity.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
+import { AutomationModule } from "./automation/automation.module";
 import { BillingModule } from "./billing/billing.module";
 import { CandidatesModule } from "./candidates/candidates.module";
 import { ClientsModule } from "./clients/clients.module";
@@ -21,6 +22,7 @@ import { WorkspaceModule } from "./workspace/workspace.module";
   imports: [
     ActivityModule,
     AuditModule,
+    AutomationModule,
     AuthModule,
     BillingModule,
     CandidatesModule,

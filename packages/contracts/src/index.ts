@@ -444,6 +444,25 @@ export const apiAutomationStatusValues = [
 
 export type ApiAutomationStatus = (typeof apiAutomationStatusValues)[number];
 
+export const apiAutomationTypeValues = [
+  "jd_summary",
+  "candidate_summary",
+  "document_indexing",
+  "reminder_generation",
+] as const;
+
+export type ApiAutomationType = (typeof apiAutomationTypeValues)[number];
+
+export const apiAutomationEntityTypeValues = [
+  "job",
+  "candidate",
+  "submission",
+  "document",
+] as const;
+
+export type ApiAutomationEntityType =
+  (typeof apiAutomationEntityTypeValues)[number];
+
 export const apiCrmDomainValues = [
   "clients",
   "jobs",
@@ -994,6 +1013,45 @@ export interface CandidateDetailResponse {
 
 export interface CandidateMutationResponse extends CandidateDetailResponse {
   message: string;
+}
+
+export const automationRunCreateRequestSchema = z.object({
+  documentId: z.string().uuid().optional(),
+  entityId: z.string().uuid("Linked entity is required"),
+  entityType: z.enum(apiAutomationEntityTypeValues),
+  type: z.enum(apiAutomationTypeValues),
+});
+
+export type AutomationRunCreateRequest = z.infer<
+  typeof automationRunCreateRequestSchema
+>;
+
+export const automationRunParamsSchema = z.object({
+  automationRunId: z.string().uuid(),
+});
+
+export type AutomationRunParams = z.infer<typeof automationRunParamsSchema>;
+
+export interface AutomationRunRecord {
+  attemptCount: number;
+  createdAt: string;
+  documentId: string | null;
+  entityId: string | null;
+  entityType: string | null;
+  errorMessage: string | null;
+  finishedAt: string | null;
+  id: string;
+  startedAt: string | null;
+  status: ApiAutomationStatus;
+  type: ApiAutomationType;
+  updatedAt: string;
+}
+
+export interface AutomationRunMutationResponse {
+  automationRun: AutomationRunRecord;
+  contractVersion: "phase-1";
+  message: string;
+  workspaceScoped: true;
 }
 
 export const documentMutationRequestSchema = z.object({
