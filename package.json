@@ -15,6 +15,7 @@
     "check:all": "biome check .",
     "check:staged": "biome check --staged --no-errors-on-unmatched .",
     "check:write": "biome check --write --changed --no-errors-on-unmatched .",
+    "test:documents": "tsx apps/api/src/documents/document-placeholder-storage.test.ts && tsx lib/documents/filters.test.ts",
     "test:tasks-activity": "tsx apps/api/src/tasks/tasks.permissions.test.ts && tsx apps/api/src/notes/notes.permissions.test.ts && tsx lib/tasks/filters.test.ts",
     "typecheck": "pnpm exec tsc --noEmit -p tsconfig.json --pretty false && pnpm --filter @recruitflow/api check",
     "verify": "pnpm check && pnpm typecheck && pnpm build:web",
