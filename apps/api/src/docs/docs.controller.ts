@@ -321,6 +321,14 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   {
     auth: "session",
     description:
+      "Return workspace-scoped dashboard overview aggregates with per-section degradation metadata.",
+    method: "GET",
+    owner: "api",
+    path: "/dashboard/overview",
+  },
+  {
+    auth: "session",
+    description:
       "Return workspace-scoped submissions with job, candidate, owner, stage, risk, and next-step filters.",
     method: "GET",
     owner: "api",
