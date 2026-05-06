@@ -329,6 +329,14 @@ const API_DOC_ENDPOINTS: ApiDocsEndpoint[] = [
   {
     auth: "session",
     description:
+      "Export the current workspace-scoped pipeline metadata result set as CSV and audit the action.",
+    method: "GET",
+    owner: "api",
+    path: "/submissions/export",
+  },
+  {
+    auth: "session",
+    description:
       "Create a workspace-scoped candidate-to-job submission and audit the mutation.",
     method: "POST",
     owner: "api",

@@ -25,6 +25,7 @@ import { WorkspacePageHeader } from "@/components/workspace/WorkspacePageHeader"
 import { cn } from "@/lib/utils";
 
 import { PipelineBoardView } from "./PipelineBoardView";
+import { PipelineExportButton } from "./PipelineExportButton";
 import {
   PipelineFilterControls,
   type PipelineFilterValues,
@@ -618,19 +619,26 @@ export const PipelineSurface = ({
         rightSlotClassName="w-full xl:w-[24rem]"
         rightSlot={
           <div className="flex w-full flex-col gap-3">
-            {canLaunch ? (
-              <Button asChild className="w-full justify-center rounded-full">
-                <TrackedLink href="/pipeline/new">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {canLaunch ? (
+                <Button asChild className="w-full justify-center rounded-full">
+                  <TrackedLink href="/pipeline/new">
+                    <Plus className="size-4" />
+                    Launch opportunity
+                  </TrackedLink>
+                </Button>
+              ) : (
+                <Button className="w-full justify-center rounded-full" disabled>
                   <Plus className="size-4" />
-                  Launch opportunity
-                </TrackedLink>
-              </Button>
-            ) : (
-              <Button className="w-full justify-center rounded-full" disabled>
-                <Plus className="size-4" />
-                Launch restricted
-              </Button>
-            )}
+                  Launch restricted
+                </Button>
+              )}
+              <PipelineExportButton
+                filters={filterValues}
+                totalItems={submissions.pagination.totalItems}
+                view={view}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <ViewToggleLink
                 active={view === "board"}
