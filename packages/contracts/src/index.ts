@@ -308,6 +308,19 @@ export const apiDocumentsExportSourceSurfaceValues = ["documents_hub"] as const;
 export type ApiDocumentsExportSourceSurface =
   (typeof apiDocumentsExportSourceSurfaceValues)[number];
 
+export const apiPipelineViewValues = ["board", "list"] as const;
+
+export type ApiPipelineView = (typeof apiPipelineViewValues)[number];
+
+export const apiPipelineExportSourceSurfaceValues = [
+  "pipeline_board",
+  "pipeline_list",
+  "pipeline_detail",
+] as const;
+
+export type ApiPipelineExportSourceSurface =
+  (typeof apiPipelineExportSourceSurfaceValues)[number];
+
 export const apiAutomationStatusValues = [
   "queued",
   "running",
@@ -1254,6 +1267,24 @@ export const submissionsListQuerySchema = apiCollectionQuerySchema.extend({
 });
 
 export type SubmissionsListQuery = z.infer<typeof submissionsListQuerySchema>;
+
+export const pipelineExportQuerySchema = z.object({
+  candidateId: optionalUuidSchema,
+  clientId: optionalUuidSchema,
+  includeArchived: z.coerce.boolean().default(false),
+  jobId: optionalUuidSchema,
+  owner: optionalUuidSchema,
+  ownerUserId: optionalUuidSchema,
+  q: z.string().trim().max(200).optional(),
+  risk: z.enum(apiRiskFlagValues).optional(),
+  riskFlag: z.enum(apiRiskFlagValues).optional(),
+  search: z.string().trim().max(200).optional(),
+  sourceSurface: z.enum(apiPipelineExportSourceSurfaceValues),
+  stage: z.enum(apiSubmissionStageValues).optional(),
+  view: z.enum(apiPipelineViewValues).default("board"),
+});
+
+export type PipelineExportQuery = z.infer<typeof pipelineExportQuerySchema>;
 
 export const submissionParamsSchema = z.object({
   submissionId: z.string().uuid(),

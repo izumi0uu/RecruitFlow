@@ -7,13 +7,16 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UseGuards,
 } from "@nestjs/common";
 
 import {
-  submissionFollowUpUpdateRequestSchema,
+  pipelineExportQuerySchema,
   type SubmissionMutationResponse,
   type SubmissionsListResponse,
+  submissionFollowUpUpdateRequestSchema,
   submissionMutationRequestSchema,
   submissionParamsSchema,
   submissionStageTransitionRequestSchema,
@@ -29,11 +32,41 @@ import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
 
 import { SubmissionsService } from "./submissions.service";
 
+type HeaderWriter = {
+  setHeader: (name: string, value: string) => void;
+};
+
 @Controller("submissions")
 @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
 @RequireWorkspaceRole({ minRole: "coordinator" })
 export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
+
+  @Get("export")
+  async exportPipeline(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: HeaderWriter,
+  ): Promise<StreamableFile> {
+    const parsedQuery = pipelineExportQuerySchema.safeParse(query);
+
+    if (!parsedQuery.success) {
+      throw new BadRequestException(
+        parsedQuery.error.issues[0]?.message ?? "Invalid pipeline export query",
+      );
+    }
+
+    const exportResult = await this.submissionsService.exportPipeline(
+      context,
+      parsedQuery.data,
+    );
+
+    response.setHeader("cache-control", exportResult.cacheControl);
+    response.setHeader("content-disposition", exportResult.contentDisposition);
+    response.setHeader("content-type", exportResult.contentType);
+
+    return new StreamableFile(exportResult.body);
+  }
 
   @Get()
   getSubmissions(

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -10,6 +11,7 @@ import type {
   ApiRiskFlag,
   ApiSubmissionStage,
   ApiUserReference,
+  PipelineExportQuery,
   SubmissionFollowUpUpdateRequest,
   SubmissionMutationRequest,
   SubmissionMutationResponse,
@@ -49,6 +51,38 @@ const restrictedSubmissionStageTransitionMessage =
   "Only owners and recruiters can change submission stages";
 const restrictedSubmissionFollowUpUpdateMessage =
   "Only owners and recruiters can update submission follow-up fields";
+const submissionsExportRestrictedMessage =
+  "Pipeline export is limited to workspace members with coordinator access or higher";
+const emptySubmissionsExportMessage =
+  "No pipeline submissions match the current filters.";
+const csvFormulaRiskPattern = /^[=+\-@]|\t|\r|^[ ]+[=+\-@]/;
+
+type SubmissionFilterQuery = Pick<
+  SubmissionsListQuery,
+  | "candidateId"
+  | "clientId"
+  | "includeArchived"
+  | "jobId"
+  | "owner"
+  | "ownerUserId"
+  | "q"
+  | "riskFlag"
+  | "search"
+  | "stage"
+> & {
+  risk?: ApiRiskFlag;
+};
+
+type NormalizedSubmissionFilters = {
+  candidateId: string | null;
+  clientId: string | null;
+  includeArchived: boolean;
+  jobId: string | null;
+  owner: string | null;
+  q: string | null;
+  riskFlag: ApiRiskFlag | null;
+  stage: ApiSubmissionStage | null;
+};
 
 type SubmissionRecordRow = {
   candidateCurrentCompany: string | null;
@@ -80,6 +114,13 @@ type SubmissionRecordRow = {
   updatedAt: Date;
 };
 
+type SubmissionExportResponse = {
+  body: Buffer;
+  cacheControl: string;
+  contentDisposition: string;
+  contentType: string;
+};
+
 const toIsoString = (date: Date | null) => date?.toISOString() ?? null;
 
 const normalizeTextFilter = (value: string | undefined) => {
@@ -87,6 +128,19 @@ const normalizeTextFilter = (value: string | undefined) => {
 
   return normalizedValue ? normalizedValue : null;
 };
+
+const normalizeSubmissionFilters = (
+  query: SubmissionFilterQuery,
+): NormalizedSubmissionFilters => ({
+  candidateId: query.candidateId ?? null,
+  clientId: query.clientId ?? null,
+  includeArchived: query.includeArchived,
+  jobId: query.jobId ?? null,
+  owner: query.owner ?? query.ownerUserId ?? null,
+  q: normalizeTextFilter(query.q ?? query.search),
+  riskFlag: query.riskFlag ?? query.risk ?? null,
+  stage: query.stage ?? null,
+});
 
 const getOwnerReference = (
   row: SubmissionRecordRow,
@@ -146,6 +200,81 @@ const serializeSubmissionRecord = (
 const isSubmittedStage = (stage: ApiSubmissionStage) =>
   !["sourced", "screening"].includes(stage);
 
+const buildAttachmentDisposition = (fileName: string) => {
+  const sanitizedFallback = fileName
+    .replace(/[^\x20-\x7e]+/g, "_")
+    .replace(/["\\]/g, "_");
+  const encodedFileName = encodeURIComponent(fileName);
+
+  return `attachment; filename="${sanitizedFallback}"; filename*=UTF-8''${encodedFileName}`;
+};
+
+const buildPipelineExportFileName = () =>
+  `pipeline-export-${new Date().toISOString().slice(0, 10)}.csv`;
+
+const escapeCsvCell = (value: string | number | null) => {
+  const rawValue = value == null ? "" : String(value);
+  const safeValue = csvFormulaRiskPattern.test(rawValue)
+    ? `'${rawValue}`
+    : rawValue;
+
+  return `"${safeValue.replace(/"/g, '""')}"`;
+};
+
+const buildPipelineCsv = (rows: SubmissionRecordRow[]) => {
+  const header = [
+    "candidate",
+    "job",
+    "client",
+    "stage",
+    "ownerName",
+    "ownerEmail",
+    "risk",
+    "nextStep",
+    "lastTouchAt",
+    "submittedAt",
+    "latestFeedbackAt",
+    "createdAt",
+    "updatedAt",
+    "lostReason",
+    "offerAmount",
+    "currency",
+  ];
+  const lines = [
+    header.join(","),
+    ...rows.map((row) =>
+      [
+        row.candidateFullName,
+        row.jobTitle,
+        row.clientName,
+        row.stage,
+        row.ownerName,
+        row.ownerEmail,
+        row.riskFlag,
+        row.nextStep,
+        toIsoString(row.lastTouchAt),
+        toIsoString(row.submittedAt),
+        toIsoString(row.latestFeedbackAt),
+        row.createdAt.toISOString(),
+        row.updatedAt.toISOString(),
+        row.lostReason,
+        row.offerAmount,
+        row.currency,
+      ]
+        .map((value) =>
+          escapeCsvCell(
+            typeof value === "number" || typeof value === "string"
+              ? value
+              : null,
+          ),
+        )
+        .join(","),
+    ),
+  ];
+
+  return Buffer.from(`\uFEFF${lines.join("\r\n")}\r\n`, "utf8");
+};
+
 @Injectable()
 export class SubmissionsService {
   private assertCanCreateSubmission(context: ApiWorkspaceContext) {
@@ -182,6 +311,14 @@ export class SubmissionsService {
     }
 
     throw new ForbiddenException(restrictedSubmissionFollowUpUpdateMessage);
+  }
+
+  private assertCanExportSubmissions(context: ApiWorkspaceContext) {
+    if (
+      !["owner", "recruiter", "coordinator"].includes(context.membership.role)
+    ) {
+      throw new ForbiddenException(submissionsExportRestrictedMessage);
+    }
   }
 
   private getOwnerOptions(context: ApiWorkspaceContext): ApiUserReference[] {
@@ -328,25 +465,20 @@ export class SubmissionsService {
     return serializeSubmissionRecord(row);
   }
 
-  async listSubmissions(
-    context: ApiWorkspaceContext,
-    query: SubmissionsListQuery,
-  ): Promise<SubmissionsListResponse> {
-    const workspaceId = context.workspace.id;
-    const q = normalizeTextFilter(query.q ?? query.search);
-    const owner = query.owner ?? query.ownerUserId ?? null;
-    const page = query.page;
-    const pageSize = query.pageSize;
-    const offset = (page - 1) * pageSize;
+  private buildSubmissionWhereClause(
+    workspaceId: string,
+    query: SubmissionFilterQuery,
+  ) {
+    const filters = normalizeSubmissionFilters(query);
     const whereClauses: SQL[] = [eq(submissions.workspaceId, workspaceId)];
 
-    if (!query.includeArchived) {
+    if (!filters.includeArchived) {
       whereClauses.push(isNull(jobs.archivedAt));
       whereClauses.push(isNull(candidates.archivedAt));
     }
 
-    if (q) {
-      const searchPattern = `%${q}%`;
+    if (filters.q) {
+      const searchPattern = `%${filters.q}%`;
       const searchCondition = or(
         ilike(candidates.fullName, searchPattern),
         ilike(jobs.title, searchPattern),
@@ -359,31 +491,92 @@ export class SubmissionsService {
       }
     }
 
-    if (query.candidateId) {
-      whereClauses.push(eq(submissions.candidateId, query.candidateId));
+    if (filters.candidateId) {
+      whereClauses.push(eq(submissions.candidateId, filters.candidateId));
     }
 
-    if (query.clientId) {
-      whereClauses.push(eq(jobs.clientId, query.clientId));
+    if (filters.clientId) {
+      whereClauses.push(eq(jobs.clientId, filters.clientId));
     }
 
-    if (query.jobId) {
-      whereClauses.push(eq(submissions.jobId, query.jobId));
+    if (filters.jobId) {
+      whereClauses.push(eq(submissions.jobId, filters.jobId));
     }
 
-    if (owner) {
-      whereClauses.push(eq(submissions.ownerUserId, owner));
+    if (filters.owner) {
+      whereClauses.push(eq(submissions.ownerUserId, filters.owner));
     }
 
-    if (query.riskFlag) {
-      whereClauses.push(eq(submissions.riskFlag, query.riskFlag));
+    if (filters.riskFlag) {
+      whereClauses.push(eq(submissions.riskFlag, filters.riskFlag));
     }
 
-    if (query.stage) {
-      whereClauses.push(eq(submissions.stage, query.stage));
+    if (filters.stage) {
+      whereClauses.push(eq(submissions.stage, filters.stage));
     }
 
-    const whereClause = and(...whereClauses);
+    return {
+      filters,
+      whereClause: and(...whereClauses),
+    };
+  }
+
+  private getFilteredSubmissionRows(whereClause: SQL | undefined) {
+    return db
+      .select({
+        candidateCurrentCompany: candidates.currentCompany,
+        candidateCurrentTitle: candidates.currentTitle,
+        candidateFullName: candidates.fullName,
+        candidateHeadline: candidates.headline,
+        candidateId: submissions.candidateId,
+        candidateSource: candidates.source,
+        clientId: clients.id,
+        clientName: clients.name,
+        createdAt: submissions.createdAt,
+        currency: submissions.currency,
+        id: submissions.id,
+        jobClientId: jobs.clientId,
+        jobId: submissions.jobId,
+        jobStatus: jobs.status,
+        jobTitle: jobs.title,
+        lastTouchAt: submissions.lastTouchAt,
+        latestFeedbackAt: submissions.latestFeedbackAt,
+        lostReason: submissions.lostReason,
+        nextStep: submissions.nextStep,
+        offerAmount: submissions.offerAmount,
+        ownerEmail: users.email,
+        ownerName: users.name,
+        ownerUserId: submissions.ownerUserId,
+        riskFlag: submissions.riskFlag,
+        stage: submissions.stage,
+        submittedAt: submissions.submittedAt,
+        updatedAt: submissions.updatedAt,
+      })
+      .from(submissions)
+      .innerJoin(jobs, eq(submissions.jobId, jobs.id))
+      .innerJoin(candidates, eq(submissions.candidateId, candidates.id))
+      .leftJoin(clients, eq(jobs.clientId, clients.id))
+      .leftJoin(users, eq(submissions.ownerUserId, users.id))
+      .where(whereClause)
+      .orderBy(
+        sql`${submissions.lastTouchAt} desc nulls last`,
+        desc(submissions.updatedAt),
+        asc(submissions.id),
+      );
+  }
+
+  async listSubmissions(
+    context: ApiWorkspaceContext,
+    query: SubmissionsListQuery,
+  ): Promise<SubmissionsListResponse> {
+    const workspaceId = context.workspace.id;
+    const page = query.page;
+    const pageSize = query.pageSize;
+    const offset = (page - 1) * pageSize;
+    const { filters, whereClause } = this.buildSubmissionWhereClause(
+      workspaceId,
+      query,
+    );
     const [totalRow] = await db
       .select({ count: countValue })
       .from(submissions)
@@ -442,16 +635,7 @@ export class SubmissionsService {
         workspaceId,
       },
       contractVersion: "phase-1",
-      filters: {
-        candidateId: query.candidateId ?? null,
-        clientId: query.clientId ?? null,
-        includeArchived: query.includeArchived,
-        jobId: query.jobId ?? null,
-        owner,
-        q,
-        riskFlag: query.riskFlag ?? null,
-        stage: query.stage ?? null,
-      },
+      filters,
       items: rows.map(serializeSubmissionRecord),
       ownerOptions: this.getOwnerOptions(context),
       pagination: {
@@ -461,6 +645,55 @@ export class SubmissionsService {
         totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
       },
       workspaceScoped: true,
+    };
+  }
+
+  async exportPipeline(
+    context: ApiWorkspaceContext,
+    query: PipelineExportQuery,
+  ): Promise<SubmissionExportResponse> {
+    this.assertCanExportSubmissions(context);
+
+    const workspaceId = context.workspace.id;
+    const { filters, whereClause } = this.buildSubmissionWhereClause(
+      workspaceId,
+      query,
+    );
+    const rows = await this.getFilteredSubmissionRows(whereClause);
+
+    if (rows.length === 0) {
+      throw new HttpException(
+        {
+          code: "RESULT_SET_EMPTY",
+          error: emptySubmissionsExportMessage,
+        },
+        409,
+      );
+    }
+
+    await db.insert(auditLogs).values({
+      action: AuditAction.RESULT_SET_EXPORTED,
+      actorUserId: context.membership.userId,
+      entityType: "submission",
+      metadataJson: {
+        actorRole: context.membership.role,
+        filters,
+        module: "pipeline",
+        rowCount: rows.length,
+        source: "api",
+        sourceSurface: query.sourceSurface,
+        view: query.view,
+      },
+      workspaceId,
+    });
+
+    return {
+      body: buildPipelineCsv(rows),
+      cacheControl: "private, no-store",
+      contentDisposition: buildAttachmentDisposition(
+        buildPipelineExportFileName(),
+      ),
+      contentType: "text/csv; charset=utf-8",
     };
   }
 
