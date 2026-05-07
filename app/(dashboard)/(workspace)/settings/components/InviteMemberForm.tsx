@@ -1,9 +1,8 @@
 "use client";
 
-import { type FormEvent, useRef } from "react";
-import { Loader2, PlusCircle } from "lucide-react";
-
 import type { ApiWorkspaceRole } from "@recruitflow/contracts";
+import { Loader2, PlusCircle } from "lucide-react";
+import { type FormEvent, useRef } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -118,9 +117,7 @@ const InviteMemberForm = ({ isOwner }: { isOwner: boolean }) => {
           </RadioGroup>
         </div>
 
-        {error ? (
-          <p className="status-message status-error">{error}</p>
-        ) : null}
+        {error ? <p className="status-message status-error">{error}</p> : null}
         {success ? (
           <p className="status-message status-success">{success}</p>
         ) : null}
@@ -146,7 +143,7 @@ const InviteMemberForm = ({ isOwner }: { isOwner: boolean }) => {
 
       {!isOwner ? (
         <p className="text-sm leading-6 text-muted-foreground">
-          Only workspace owners can invite new teammates.
+          Only workspace owners can invite new members.
         </p>
       ) : null}
     </>

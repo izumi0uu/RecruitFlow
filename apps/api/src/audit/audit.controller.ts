@@ -3,11 +3,14 @@ import {
   Controller,
   Get,
   Query,
+  Res,
+  StreamableFile,
   UseGuards,
 } from "@nestjs/common";
 
 import {
   type SettingsAuditListResponse,
+  settingsAuditExportQuerySchema,
   settingsAuditListQuerySchema,
 } from "@recruitflow/contracts";
 
@@ -19,6 +22,10 @@ import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
 
 import { AuditService } from "./audit.service";
+
+type HeaderWriter = {
+  setHeader: (name: string, value: string) => void;
+};
 
 const normalizeQuery = (query: Record<string, unknown>) => {
   return Object.fromEntries(
@@ -41,6 +48,34 @@ const normalizeQuery = (query: Record<string, unknown>) => {
 @RequireWorkspaceRole({ allowedRoles: ["owner"] })
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
+
+  @Get("logs/export")
+  async exportWorkspaceAuditLogs(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Query() query: Record<string, unknown>,
+    @Res({ passthrough: true }) response: HeaderWriter,
+  ): Promise<StreamableFile> {
+    const parsedQuery = settingsAuditExportQuerySchema.safeParse(
+      normalizeQuery(query),
+    );
+
+    if (!parsedQuery.success) {
+      throw new BadRequestException(
+        parsedQuery.error.issues[0]?.message ?? "Invalid audit export filters",
+      );
+    }
+
+    const exportResult = await this.auditService.exportWorkspaceAuditLogs(
+      context,
+      parsedQuery.data,
+    );
+
+    response.setHeader("cache-control", exportResult.cacheControl);
+    response.setHeader("content-disposition", exportResult.contentDisposition);
+    response.setHeader("content-type", exportResult.contentType);
+
+    return new StreamableFile(exportResult.body);
+  }
 
   @Get("logs")
   async listWorkspaceAuditLogs(

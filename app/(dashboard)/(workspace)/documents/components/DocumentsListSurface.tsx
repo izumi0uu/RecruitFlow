@@ -15,12 +15,15 @@ import {
   CheckCircle2,
   Database,
   Download,
+  FileSearch,
   FileSpreadsheet,
   FileText,
   Filter,
   Loader2,
   RotateCcw,
+  Search,
   ShieldCheck,
+  Sparkles,
   Upload,
   UserRound,
   Workflow,
@@ -449,12 +452,17 @@ export const DocumentsListSurface = ({
     isPending,
     refetch,
     resetFilters,
+    searchDraft,
     setEntityIdDraft,
+    setSearchDraft,
     totalPages,
   } = useDocumentsListSurface({
     initialFilters,
   });
   const documentItems = documentsList?.items ?? [];
+  const searchState = documentsList?.search;
+  const hasSearch = Boolean(filters.q);
+  const indexingSummary = documentsList?.indexingSummary;
 
   return (
     <section className="space-y-6 px-0 py-1 lg:py-2">
@@ -488,6 +496,18 @@ export const DocumentsListSurface = ({
                   ? "Loading scope"
                   : "Scope pending"}
             </WorkspaceListStatusBadge>
+            {hasSearch ? (
+              <WorkspaceListStatusBadge>
+                <Sparkles className="size-3.5" />
+                Search fallback
+              </WorkspaceListStatusBadge>
+            ) : null}
+            {indexingSummary ? (
+              <WorkspaceListStatusBadge>
+                {indexingSummary.indexed} indexed ·{" "}
+                {indexingSummary.pending + indexingSummary.running} pending
+              </WorkspaceListStatusBadge>
+            ) : null}
             {isFetching ? (
               <WorkspaceListStatusBadge>
                 <Loader2 className="size-3.5 animate-spin" />
@@ -500,9 +520,22 @@ export const DocumentsListSurface = ({
             />
           </>
         }
-        filterControlsClassName="lg:grid-cols-[minmax(10rem,0.35fr)_minmax(10rem,0.35fr)_minmax(16rem,1fr)_auto]"
+        filterControlsClassName="lg:grid-cols-[minmax(14rem,1fr)_minmax(10rem,0.35fr)_minmax(10rem,0.35fr)_minmax(16rem,0.75fr)_auto]"
         filterControls={
           <>
+            <label className="space-y-2" htmlFor="documents-semantic-search">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Semantic search
+              </span>
+              <Input
+                id="documents-semantic-search"
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Search summaries, filenames, and document signals"
+                leadingIcon={<Search className="size-4" />}
+              />
+            </label>
+
             <label className="space-y-2" htmlFor="documents-type-filter">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Type
@@ -568,11 +601,15 @@ export const DocumentsListSurface = ({
                 type="button"
                 className="rounded-full"
                 onClick={() => {
-                  applyFilters({ entityId: entityIdDraft, page: "" });
+                  applyFilters({
+                    entityId: entityIdDraft,
+                    page: "",
+                    q: searchDraft,
+                  });
                 }}
               >
                 <Filter className="size-4" />
-                Apply
+                Search
               </Button>
               <Button
                 type="button"
@@ -588,7 +625,29 @@ export const DocumentsListSurface = ({
           </>
         }
         alerts={
-          isError && documentsList ? (
+          searchState?.enabled ? (
+            <div className="rounded-[1.45rem] border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-800 dark:text-sky-200">
+              <div className="flex items-start gap-3">
+                <FileSearch className="mt-0.5 size-4 shrink-0" />
+                <div>
+                  <p className="font-semibold">
+                    {searchState.resultCount > 0
+                      ? `${searchState.resultCount} workspace-scoped document matches`
+                      : searchState.fallbackReason === "no_indexed_documents"
+                        ? "Semantic search is waiting for indexed documents"
+                        : "No semantic matches found"}
+                  </p>
+                  <p className="mt-1 leading-6 text-muted-foreground">
+                    {searchState.fallbackReason === "keyword_fallback"
+                      ? "Phase 1 uses a safe keyword fallback over indexed document metadata and summaries until a vector store is attached."
+                      : searchState.fallbackReason === "no_indexed_documents"
+                        ? "Documents remain browsable while indexing is queued or failed; try again after an embedding run succeeds."
+                        : "Try a broader phrase or clear semantic search to return to all document metadata."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : isError && documentsList ? (
             <div className="rounded-[1.45rem] border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p>
@@ -610,7 +669,7 @@ export const DocumentsListSurface = ({
         }
         contentHeader={
           <>
-            <span>Document</span>
+            <span>{hasSearch ? "Search result" : "Document"}</span>
             <span>Entity</span>
             <span className="text-right">Status &amp; delivery</span>
           </>
@@ -635,7 +694,7 @@ export const DocumentsListSurface = ({
           icon: <FileText className="size-4 text-muted-foreground" />,
           title: "Secure delivery boundary",
           children:
-            "Downloads and filtered metadata exports stay API-owned here, while previews, binary upload transport, and semantic search remain downstream work.",
+            "Downloads and filtered metadata exports stay API-owned. Semantic search now uses workspace-scoped indexed metadata and a graceful keyword fallback until vector storage is attached.",
         }}
       >
         {isError && !documentsList ? (

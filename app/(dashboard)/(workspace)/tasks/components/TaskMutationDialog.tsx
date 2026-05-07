@@ -348,7 +348,7 @@ const TaskMutationDialog = ({
                 <textarea
                   id={`task-${mode}-description`}
                   className="input min-h-28 resize-y py-3"
-                  placeholder="Prep detail, handoff note, or the exact follow-up the team should remember."
+                  placeholder="Prep detail, handoff note, or the exact follow-up the workspace should remember."
                   value={values.description}
                   onChange={(event) => {
                     updateValue("description", event.target.value);

@@ -17,7 +17,7 @@ const featureCards = [
     icon: BriefcaseBusiness,
     title: "Pipeline clarity",
     description:
-      "Track roles, candidates, and stage movement inside a single calm surface built for hiring teams.",
+      "Track jobs, candidates, and stage movement inside a single calm surface built for recruiting workspaces.",
   },
   {
     icon: MessagesSquare,
@@ -48,7 +48,9 @@ const HomePage = () => {
       <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 lg:px-8 lg:pb-24 lg:pt-[4.5rem]">
         <div className="grid items-center gap-12 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="space-y-8">
-            <span className="inline-kicker">Monochrome recruiting workspace</span>
+            <span className="inline-kicker">
+              Monochrome recruiting workspace
+            </span>
             <div className="space-y-5">
               <h1 className="text-balance text-5xl font-semibold tracking-[-0.06em] text-foreground sm:text-6xl lg:text-7xl">
                 Turn hiring operations into a surface that feels precise.

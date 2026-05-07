@@ -71,7 +71,7 @@ This project started from a Next.js SaaS starter and now carries RecruitFlow dom
 
 - Marketing landing page (`/`) with animated Terminal element
 - Pricing page (`/pricing`) which connects to Stripe Checkout
-- Dashboard pages with CRUD operations on users/teams
+- Workspace pages for members, settings, and RecruitFlow operations
 - Basic RBAC with Owner and Member roles
 - Subscription management with Stripe Customer Portal
 - Email/password authentication with JWTs stored to cookies
@@ -127,7 +127,7 @@ The seed also creates baseline clients, jobs, candidates, submissions, tasks,
 documents, and audit history so the authenticated workspace routes load with
 non-empty demo states.
 
-For a guided portfolio demo path, use [`docs/dashboard-demo-walkthrough.md`](docs/dashboard-demo-walkthrough.md). It covers the dashboard, pipeline, clients/jobs, candidates/documents, tasks/activity, seeded AI-status examples, and the outcome wrap-up.
+For a guided portfolio demo path, use [`docs/dashboard-demo-walkthrough.md`](docs/dashboard-demo-walkthrough.md). It covers the dashboard, pipeline, clients/jobs, candidates/documents, tasks/activity, seeded AI-status examples, and the outcome wrap-up. The companion regression and language-QA record lives at [`docs/dashboard-demo-qa.md`](docs/dashboard-demo-qa.md).
 
 You can also create new users through the `/sign-up` route.
 

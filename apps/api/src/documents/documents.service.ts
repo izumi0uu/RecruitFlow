@@ -5,16 +5,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
-  and,
-  asc,
-  desc,
-  eq,
-  isNull,
-  sql,
-  type SQL,
-} from "drizzle-orm";
-
-import {
   type ApiAutomationStatus,
   type ApiDocumentEntityType,
   type ApiDocumentType,
@@ -23,14 +13,22 @@ import {
   type DocumentMutationResponse,
   type DocumentParams,
   type DocumentRecord,
+  type DocumentSearchMatch,
   type DocumentsExportQuery,
   type DocumentsListQuery,
   type DocumentsListResponse,
 } from "@recruitflow/contracts";
-
-import { db } from "../db/database";
-import type { ApiWorkspaceContext } from "../workspace/workspace.service";
-
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import {
   AuditAction,
   auditLogs,
@@ -40,10 +38,12 @@ import {
   submissions,
   users,
 } from "@/lib/db/schema";
+import { db } from "../db/database";
+import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 
 import {
-  resolvePlaceholderDocument,
   type ResolvedDocumentObject,
+  resolvePlaceholderDocument,
 } from "./document-placeholder-storage";
 
 const countValue = sql<number>`cast(count(${documents.id}) as int)`;
@@ -55,9 +55,85 @@ const documentsExportRestrictedMessage =
   "Document export is limited to workspace members with coordinator access or higher";
 const documentFileMissingMessage =
   "This document file is not available for download yet.";
-const emptyDocumentsExportMessage =
-  "No documents match the current filters.";
+const emptyDocumentsExportMessage = "No documents match the current filters.";
 const csvFormulaRiskPattern = /^[=+\-@]|\t|\r|^[ ]+[=+\-@]/;
+
+const emptyIndexingSummary = {
+  failed: 0,
+  indexed: 0,
+  pending: 0,
+  running: 0,
+};
+
+const normalizeDocumentSearchQuery = (value: string | null | undefined) =>
+  value?.trim().replace(/\s+/g, " ") ?? "";
+
+const escapeLikePattern = (value: string) =>
+  value.replace(/[\\%_]/g, (character) => `\\${character}`);
+
+const getDocumentSearchPattern = (query: string) =>
+  `%${escapeLikePattern(query)}%`;
+
+const getDocumentSearchWhereClause = (query: string) => {
+  const searchPattern = getDocumentSearchPattern(query);
+
+  return or(
+    ilike(documents.title, searchPattern),
+    ilike(documents.sourceFilename, searchPattern),
+    ilike(documents.summaryText, searchPattern),
+  );
+};
+
+const getSearchableText = (row: DocumentRecordRow) =>
+  [row.title, row.sourceFilename, row.summaryText, row.type, row.entityType]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+
+const getDocumentSearchMatch = (
+  row: DocumentRecordRow,
+  query: string,
+): DocumentSearchMatch | null => {
+  if (!query) {
+    return null;
+  }
+
+  const loweredQuery = query.toLowerCase();
+  const summaryText = row.summaryText ?? "";
+  const fileName = row.sourceFilename ?? "";
+  const metadata = `${row.title} ${row.type} ${row.entityType ?? ""}`;
+  const candidates = [
+    { source: "summary" as const, value: summaryText },
+    { source: "filename" as const, value: fileName },
+    { source: "metadata" as const, value: metadata },
+  ];
+  const matchedCandidate =
+    candidates.find(({ value }) =>
+      value.toLowerCase().includes(loweredQuery),
+    ) ?? candidates.find(({ value }) => value.trim().length > 0);
+
+  if (!matchedCandidate) {
+    return null;
+  }
+
+  const rawContext = matchedCandidate.value.trim().replace(/\s+/g, " ");
+  const matchIndex = rawContext.toLowerCase().indexOf(loweredQuery);
+  const start = Math.max(0, matchIndex > -1 ? matchIndex - 48 : 0);
+  const context = rawContext.slice(start, start + 180);
+  const searchableText = getSearchableText(row).toLowerCase();
+  const score = Math.max(
+    1,
+    query
+      .toLowerCase()
+      .split(" ")
+      .filter((token) => token && searchableText.includes(token)).length,
+  );
+
+  return {
+    context,
+    score,
+    source: matchedCandidate.source,
+  };
+};
 
 type DocumentRecordRow = {
   createdAt: Date;
@@ -65,6 +141,7 @@ type DocumentRecordRow = {
   entityId: string | null;
   entityType: string | null;
   id: string;
+  match?: DocumentSearchMatch | null;
   mimeType: string | null;
   sizeBytes: number | null;
   sourceFilename: string | null;
@@ -210,6 +287,7 @@ const serializeDocumentRecord = (row: DocumentRecordRow): DocumentRecord => {
     entityId: identity.entityId,
     entityType: identity.entityType,
     id: row.id,
+    match: row.match ?? null,
     mimeType: row.mimeType,
     sizeBytes: row.sizeBytes,
     sourceFilename: identity.sourceFilename,
@@ -243,7 +321,7 @@ const getWorkspaceUserReference = (
 
 const createWorkspaceDocumentWhereClause = (
   workspaceId: string,
-  query: Pick<DocumentsListQuery, "entityId" | "entityType" | "type">,
+  query: Pick<DocumentsListQuery, "entityId" | "entityType" | "q" | "type">,
 ) => {
   const whereClauses: SQL[] = [eq(documents.workspaceId, workspaceId)];
 
@@ -257,6 +335,15 @@ const createWorkspaceDocumentWhereClause = (
 
   if (query.entityId) {
     whereClauses.push(eq(documents.entityId, query.entityId));
+  }
+
+  const searchQuery = normalizeDocumentSearchQuery(query.q);
+  if (searchQuery) {
+    const searchWhereClause = getDocumentSearchWhereClause(searchQuery);
+
+    if (searchWhereClause) {
+      whereClauses.push(searchWhereClause);
+    }
   }
 
   return and(...whereClauses);
@@ -327,7 +414,7 @@ export class DocumentsService {
 
   private async getFilteredDocumentRows(
     workspaceId: string,
-    query: Pick<DocumentsListQuery, "entityId" | "entityType" | "type">,
+    query: Pick<DocumentsListQuery, "entityId" | "entityType" | "q" | "type">,
   ) {
     const whereClause = createWorkspaceDocumentWhereClause(workspaceId, query);
 
@@ -354,7 +441,11 @@ export class DocumentsService {
       .from(documents)
       .leftJoin(users, eq(documents.uploadedByUserId, users.id))
       .where(whereClause)
-      .orderBy(desc(documents.createdAt), asc(documents.title), asc(documents.id));
+      .orderBy(
+        desc(documents.createdAt),
+        asc(documents.title),
+        asc(documents.id),
+      );
   }
 
   private resolveDocumentObject(
@@ -382,7 +473,18 @@ export class DocumentsService {
     const page = query.page;
     const pageSize = query.pageSize;
     const offset = (page - 1) * pageSize;
+    const searchQuery = normalizeDocumentSearchQuery(query.q);
     const whereClause = createWorkspaceDocumentWhereClause(workspaceId, query);
+    const [indexingSummaryRow] = await db
+      .select({
+        failed: sql<number>`cast(count(*) filter (where ${documents.embeddingStatus} = 'failed') as int)`,
+        indexed: sql<number>`cast(count(*) filter (where ${documents.embeddingStatus} = 'succeeded') as int)`,
+        pending: sql<number>`cast(count(*) filter (where ${documents.embeddingStatus} = 'queued') as int)`,
+        running: sql<number>`cast(count(*) filter (where ${documents.embeddingStatus} = 'running') as int)`,
+      })
+      .from(documents)
+      .where(eq(documents.workspaceId, workspaceId));
+    const indexingSummary = indexingSummaryRow ?? emptyIndexingSummary;
     const [totalRow] = await db
       .select({ count: countValue })
       .from(documents)
@@ -410,7 +512,11 @@ export class DocumentsService {
       .from(documents)
       .leftJoin(users, eq(documents.uploadedByUserId, users.id))
       .where(whereClause)
-      .orderBy(desc(documents.createdAt), asc(documents.title), asc(documents.id))
+      .orderBy(
+        desc(documents.createdAt),
+        asc(documents.title),
+        asc(documents.id),
+      )
       .limit(pageSize)
       .offset(offset);
     const totalItems = totalRow?.count ?? 0;
@@ -424,14 +530,31 @@ export class DocumentsService {
       filters: {
         entityId: query.entityId ?? null,
         entityType: query.entityType ?? null,
+        q: searchQuery || null,
         type: query.type ?? null,
       },
-      items: rows.map(serializeDocumentRecord),
+      items: rows.map((row) =>
+        serializeDocumentRecord({
+          ...row,
+          match: getDocumentSearchMatch(row, searchQuery),
+        }),
+      ),
+      indexingSummary,
       pagination: {
         page,
         pageSize,
         totalItems,
         totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
+      },
+      search: {
+        enabled: Boolean(searchQuery),
+        fallbackReason: searchQuery
+          ? indexingSummary.indexed > 0
+            ? "keyword_fallback"
+            : "no_indexed_documents"
+          : "no_query",
+        query: searchQuery || null,
+        resultCount: searchQuery ? totalItems : 0,
       },
       workspaceScoped: true,
     };
@@ -590,7 +713,10 @@ export class DocumentsService {
   ): Promise<DocumentDeliveryResponse> {
     this.assertCanDownloadDocument(context);
 
-    const row = await this.getDocumentRow(context.workspace.id, params.documentId);
+    const row = await this.getDocumentRow(
+      context.workspace.id,
+      params.documentId,
+    );
 
     if (!row) {
       throw new NotFoundException("Document not found");
@@ -640,7 +766,10 @@ export class DocumentsService {
   ): Promise<DocumentDeliveryResponse> {
     this.assertCanExportDocuments(context);
 
-    const rows = await this.getFilteredDocumentRows(context.workspace.id, query);
+    const rows = await this.getFilteredDocumentRows(
+      context.workspace.id,
+      query,
+    );
 
     if (rows.length === 0) {
       throw new HttpException(

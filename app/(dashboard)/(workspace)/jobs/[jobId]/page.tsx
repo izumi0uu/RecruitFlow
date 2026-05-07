@@ -1,6 +1,8 @@
 import type {
   ApiRiskFlag,
   ApiSubmissionStage,
+  DocumentRecord,
+  DocumentsListResponse,
   JobDetailResponse,
   JobRecord,
   JobStageTemplateSummary,
@@ -26,6 +28,7 @@ import {
 import { notFound, redirect } from "next/navigation";
 
 import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
+import { SummaryAutomationPanel } from "@/components/automation/SummaryAutomationPanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
 import { Button } from "@/components/ui/Button";
@@ -100,6 +103,20 @@ const getJobSubmissions = async (jobId: string) => {
   try {
     return await requestApiJson<SubmissionsListResponse>(
       `/submissions?jobId=${jobId}&pageSize=100`,
+    );
+  } catch (error) {
+    if (isApiRequestError(error) && error.status === 401) {
+      redirect("/sign-in");
+    }
+
+    throw error;
+  }
+};
+
+const getJobDocuments = async (jobId: string) => {
+  try {
+    return await requestApiJson<DocumentsListResponse>(
+      `/documents?entityType=job&entityId=${jobId}&pageSize=6`,
     );
   } catch (error) {
     if (isApiRequestError(error) && error.status === 401) {
@@ -462,6 +479,83 @@ const TextPanel = ({
   </Card>
 );
 
+const documentTypeLabelMap: Record<DocumentRecord["type"], string> = {
+  call_note: "Call note",
+  interview_note: "Interview note",
+  jd: "Job description",
+  resume: "Resume",
+};
+
+const JobDocumentsSummary = ({
+  documents,
+  job,
+}: {
+  documents: DocumentRecord[];
+  job: JobRecord;
+}) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <FileText className="size-4" />
+        Job documents
+      </CardTitle>
+      <CardDescription>
+        JD and note metadata that can feed summary generation without changing
+        the role record itself.
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      {documents.length > 0 ? (
+        <>
+          {documents.map((document) => (
+            <div
+              key={document.id}
+              className="rounded-[1.15rem] border border-border/70 bg-surface-1/70 p-4"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300">
+                  {documentTypeLabelMap[document.type]}
+                </Badge>
+                <Badge className="border-border/70 bg-surface-1 text-muted-foreground">
+                  Summary: {document.summaryStatus}
+                </Badge>
+              </div>
+              <p className="mt-3 truncate text-sm font-semibold text-foreground">
+                {document.title}
+              </p>
+              <p className="mt-1 truncate text-sm leading-6 text-muted-foreground">
+                {document.sourceFilename}
+              </p>
+            </div>
+          ))}
+          <Button asChild variant="outline" className="rounded-full">
+            <TrackedLink href={`/documents?entityType=job&entityId=${job.id}`}>
+              View all linked documents
+            </TrackedLink>
+          </Button>
+        </>
+      ) : (
+        <div className="rounded-[1.35rem] border border-dashed border-border bg-surface-1/60 p-5">
+          <p className="text-sm font-medium text-foreground">
+            No job documents linked yet.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Add a JD metadata row from the documents hub before summary
+            generation has a document source to attach.
+          </p>
+          <Button asChild className="mt-4 rounded-full" variant="outline">
+            <TrackedLink
+              href={`/documents/new?entityType=job&entityId=${job.id}&type=jd`}
+            >
+              Add JD metadata
+            </TrackedLink>
+          </Button>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+);
+
 const StageTemplateOverview = ({
   stageTemplate,
 }: {
@@ -531,8 +625,15 @@ const StageTemplateOverview = ({
 const JobDetailPage = async ({ params, searchParams }: PageProps) => {
   const { jobId } = await params;
   const urlParams = await Promise.resolve(searchParams ?? {});
-  const [{ context, job, ownerOptions, stageTemplate }, jobSubmissions] =
-    await Promise.all([getJobDetail(jobId), getJobSubmissions(jobId)]);
+  const [
+    { context, job, ownerOptions, stageTemplate },
+    jobSubmissions,
+    jobDocuments,
+  ] = await Promise.all([
+    getJobDetail(jobId),
+    getJobSubmissions(jobId),
+    getJobDocuments(jobId),
+  ]);
   const ownerLabel = job.owner?.name ?? job.owner?.email ?? "Unassigned";
   const canEdit = context.role !== "coordinator";
 
@@ -642,9 +743,20 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
 
           <TextPanel
             title="Role description"
-            description="Working JD or internal role notes. AI summary work remains downstream."
+            description="Working JD or internal role notes. AI summary output stays separate from these source notes."
             fallback="No role description yet. Paste the working JD or internal notes in the edit form."
             value={job.description}
+          />
+
+          <SummaryAutomationPanel
+            documents={jobDocuments.items}
+            entityId={job.id}
+            entityType="job"
+            fallback="No AI-generated JD summary yet. Queue a summary run once the JD or intake notes are ready; failures stay visible and non-blocking."
+            intro="Queue or view a JD summary generated from linked role documents. This never overwrites intake summary or role description fields."
+            preferredDocumentType="jd"
+            title="JD AI summary"
+            type="jd_summary"
           />
 
           <StageTemplateOverview stageTemplate={stageTemplate} />
@@ -702,6 +814,8 @@ const JobDetailPage = async ({ params, searchParams }: PageProps) => {
             }}
             title="Job notes"
           />
+
+          <JobDocumentsSummary documents={jobDocuments.items} job={job} />
 
           <Card>
             <CardHeader>

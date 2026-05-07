@@ -1,8 +1,8 @@
 import {
-  apiDocumentEntityTypeValues,
-  apiDocumentTypeValues,
   type ApiDocumentEntityType,
   type ApiDocumentType,
+  apiDocumentEntityTypeValues,
+  apiDocumentTypeValues,
 } from "@recruitflow/contracts";
 
 type SearchParamRecord = Record<string, string | string[] | undefined>;
@@ -15,6 +15,7 @@ export type DocumentListFilters = {
   entityId: string;
   entityType: ApiDocumentEntityType | "";
   page: string;
+  q: string;
   type: ApiDocumentType | "";
 };
 
@@ -26,6 +27,7 @@ const EMPTY_DOCUMENT_FILTERS: DocumentListFilters = {
   entityId: "",
   entityType: "",
   page: "",
+  q: "",
   type: "",
 };
 
@@ -86,16 +88,16 @@ export const normalizeDocumentListFilters = (
   entityId: normalizeUuidValue(filters.entityId),
   entityType: normalizeEntityTypeValue(filters.entityType),
   page: normalizePageValue(filters.page),
+  q: normalizeTextValue(filters.q).slice(0, 200),
   type: normalizeDocumentTypeValue(filters.type),
 });
 
-export const parseDocumentListFiltersFromRecord = (
-  params: SearchParamRecord,
-) =>
+export const parseDocumentListFiltersFromRecord = (params: SearchParamRecord) =>
   normalizeDocumentListFilters({
     entityId: getSingleRecordValue(params.entityId),
     entityType: getSingleRecordValue(params.entityType),
     page: getSingleRecordValue(params.page),
+    q: getSingleRecordValue(params.q),
     type: getSingleRecordValue(params.type),
   });
 
@@ -106,6 +108,7 @@ export const parseDocumentListFiltersFromSearchParams = (
     entityId: params.get("entityId"),
     entityType: params.get("entityType"),
     page: params.get("page"),
+    q: params.get("q"),
     type: params.get("type"),
   });
 
@@ -123,6 +126,7 @@ export const documentListFiltersToSearchParams = (
   if (normalizedFilters.entityId) {
     params.set("entityId", normalizedFilters.entityId);
   }
+  if (normalizedFilters.q) params.set("q", normalizedFilters.q);
   if (normalizedFilters.page) params.set("page", normalizedFilters.page);
   if (options.includePageSize) params.set("pageSize", "20");
 
@@ -136,6 +140,7 @@ export const areDocumentListFiltersEqual = (
   first.entityId === second.entityId &&
   first.entityType === second.entityType &&
   first.page === second.page &&
+  first.q === second.q &&
   first.type === second.type;
 
 export { EMPTY_DOCUMENT_FILTERS };

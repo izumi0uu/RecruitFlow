@@ -32,6 +32,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ActivityTimelinePanel } from "@/components/activity/ActivityTimelinePanel";
+import { SummaryAutomationPanel } from "@/components/automation/SummaryAutomationPanel";
 import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { EntityNotesPanel } from "@/components/notes/EntityNotesPanel";
@@ -767,10 +768,21 @@ const CandidateDetailPage = async ({ params, searchParams }: PageProps) => {
 
           <TextPanel
             title="Summary"
-            description="Human or future AI summary slot. AI generation is intentionally not part of RF-34."
-            fallback="No candidate summary yet. AI summaries and retry states remain owned by the automation branch."
+            description="Human-authored candidate truth. AI summary output is shown separately below and never overwrites this profile field."
+            fallback="No human candidate summary yet. Add recruiter-owned judgment from the edit form."
             icon={<Sparkles className="size-4" />}
             value={candidate.summary}
+          />
+
+          <SummaryAutomationPanel
+            documents={documentsList.items}
+            entityId={candidate.id}
+            entityType="candidate"
+            fallback="No AI-generated candidate summary yet. Queue a summary run when resume or interview note metadata is ready; failures stay visible and non-blocking."
+            intro="Queue or view a candidate summary generated from linked resume and note metadata. Recruiter-owned profile fields remain the source of truth."
+            preferredDocumentType="resume"
+            title="Candidate AI summary"
+            type="candidate_summary"
           />
 
           <DocumentsSection

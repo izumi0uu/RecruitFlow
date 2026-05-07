@@ -249,6 +249,14 @@ export const settingsAuditQueryOptions = (filters: SettingsAuditListQuery) =>
         params.set("entityType", filters.entityType);
       }
 
+      if (filters.startDate) {
+        params.set("startDate", filters.startDate);
+      }
+
+      if (filters.endDate) {
+        params.set("endDate", filters.endDate);
+      }
+
       const queryString = params.toString();
 
       return fetchJson<SettingsAuditListResponse>(

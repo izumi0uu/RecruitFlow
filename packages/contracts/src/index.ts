@@ -435,6 +435,13 @@ export const apiPipelineExportSourceSurfaceValues = [
 export type ApiPipelineExportSourceSurface =
   (typeof apiPipelineExportSourceSurfaceValues)[number];
 
+export const apiSettingsAuditExportSourceSurfaceValues = [
+  "settings_audit",
+] as const;
+
+export type ApiSettingsAuditExportSourceSurface =
+  (typeof apiSettingsAuditExportSourceSurfaceValues)[number];
+
 export const apiAutomationStatusValues = [
   "queued",
   "running",
@@ -458,6 +465,7 @@ export const apiAutomationEntityTypeValues = [
   "candidate",
   "submission",
   "document",
+  "workspace",
 ] as const;
 
 export type ApiAutomationEntityType =
@@ -1032,6 +1040,29 @@ export const automationRunParamsSchema = z.object({
 
 export type AutomationRunParams = z.infer<typeof automationRunParamsSchema>;
 
+export type ReminderSuggestionReason =
+  | "overdue_task"
+  | "stale_submission"
+  | "snoozed_task_due";
+
+export interface ReminderSuggestionRecord {
+  assignedTo: ApiUserReference | null;
+  assignedToUserId: string | null;
+  dueAt: string | null;
+  entityId: string | null;
+  entityType: ApiTaskEntityType | null;
+  id: string;
+  reason: ReminderSuggestionReason;
+  suggestedTitle: string;
+  title: string;
+}
+
+export interface AutomationRunReminderSummary {
+  idempotencyKey: string;
+  suggestions: ReminderSuggestionRecord[];
+  targetSetSize: number;
+}
+
 export interface AutomationRunRecord {
   attemptCount: number;
   createdAt: string;
@@ -1041,6 +1072,7 @@ export interface AutomationRunRecord {
   errorMessage: string | null;
   finishedAt: string | null;
   id: string;
+  reminderSummary?: AutomationRunReminderSummary | null;
   startedAt: string | null;
   status: ApiAutomationStatus;
   type: ApiAutomationType;
@@ -1051,6 +1083,7 @@ export interface AutomationRunMutationResponse {
   automationRun: AutomationRunRecord;
   contractVersion: "phase-1";
   message: string;
+  reminderSummary?: AutomationRunReminderSummary | null;
   workspaceScoped: true;
 }
 
@@ -1085,6 +1118,12 @@ export const documentDownloadQuerySchema = z.object({
 
 export type DocumentDownloadQuery = z.infer<typeof documentDownloadQuerySchema>;
 
+export interface DocumentSearchMatch {
+  context: string;
+  score: number;
+  source: "summary" | "metadata" | "filename";
+}
+
 export interface DocumentRecord {
   createdAt: string;
   deliveryStatus: ApiDocumentDeliveryStatus;
@@ -1092,6 +1131,7 @@ export interface DocumentRecord {
   entityId: string;
   entityType: ApiDocumentEntityType;
   id: string;
+  match: DocumentSearchMatch | null;
   mimeType: string | null;
   sizeBytes: number | null;
   sourceFilename: string;
@@ -1114,6 +1154,7 @@ export interface DocumentMutationResponse {
 
 export const documentsListQuerySchema = apiCollectionQuerySchema.extend({
   entityId: optionalUuidSchema,
+  q: z.string().trim().max(200).optional(),
   entityType: z.enum(apiDocumentEntityTypeValues).optional(),
   type: z.enum(apiDocumentTypeValues).optional(),
 });
@@ -1135,14 +1176,31 @@ export interface DocumentsListResponse {
   filters: {
     entityId: string | null;
     entityType: ApiDocumentEntityType | null;
+    q: string | null;
     type: ApiDocumentType | null;
   };
   items: DocumentRecord[];
+  indexingSummary: {
+    failed: number;
+    indexed: number;
+    pending: number;
+    running: number;
+  };
   pagination: {
     page: number;
     pageSize: number;
     totalItems: number;
     totalPages: number;
+  };
+  search: {
+    enabled: boolean;
+    fallbackReason:
+      | "no_query"
+      | "no_indexed_documents"
+      | "keyword_fallback"
+      | null;
+    query: string | null;
+    resultCount: number;
   };
   workspaceScoped: true;
 }
@@ -1818,14 +1876,31 @@ export interface MemberRoleUpdateResponse {
   message: string;
 }
 
+const settingsAuditDateFilterSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD date filters")
+  .optional();
+
 export const settingsAuditListQuerySchema = z.object({
   action: z.string().trim().max(120).optional(),
   actorUserId: z.string().uuid().optional(),
+  endDate: settingsAuditDateFilterSchema,
   entityType: z.string().trim().max(50).optional(),
+  startDate: settingsAuditDateFilterSchema,
 });
 
 export type SettingsAuditListQuery = z.infer<
   typeof settingsAuditListQuerySchema
+>;
+
+export const settingsAuditExportQuerySchema =
+  settingsAuditListQuerySchema.extend({
+    sourceSurface: z.enum(apiSettingsAuditExportSourceSurfaceValues),
+  });
+
+export type SettingsAuditExportQuery = z.infer<
+  typeof settingsAuditExportQuerySchema
 >;
 
 export interface SettingsAuditLogItemResponse {

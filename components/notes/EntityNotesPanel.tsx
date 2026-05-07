@@ -230,7 +230,7 @@ const EntityNoteRow = ({ isPending, note, onDelete }: EntityNoteRowProps) => {
 const EntityNotesPanel = ({
   canCreateNote = true,
   className,
-  description = "Workspace-visible notes linked to this record for handoff, feedback, and team memory.",
+  description = "Workspace-visible notes linked to this record for handoff, feedback, and shared context.",
   entity,
   pageSize = 8,
   title = "Notes",

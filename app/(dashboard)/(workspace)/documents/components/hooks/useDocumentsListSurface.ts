@@ -1,15 +1,15 @@
 "use client";
 
-import * as React from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import * as React from "react";
 
 import { useUrlBackedListFilters } from "@/hooks/useUrlBackedListFilters";
 import {
   areDocumentListFiltersEqual,
+  type DocumentListFilters,
   documentListFiltersToSearchParams,
   normalizeDocumentListFilters,
   parseDocumentListFiltersFromSearchParams,
-  type DocumentListFilters,
 } from "@/lib/documents/filters";
 import { documentsListQueryOptions } from "@/lib/query/options";
 
@@ -18,7 +18,9 @@ type UseDocumentsListSurfaceOptions = {
 };
 
 const getDocumentFilterCount = (filters: DocumentListFilters) =>
-  [filters.type, filters.entityType, filters.entityId].filter(Boolean).length;
+  [filters.type, filters.entityType, filters.entityId, filters.q].filter(
+    Boolean,
+  ).length;
 
 const useDocumentsListSurface = ({
   initialFilters,
@@ -34,10 +36,17 @@ const useDocumentsListSurface = ({
   const [entityIdDraft, setEntityIdDraft] = React.useState(
     normalizedInitialFilters.entityId,
   );
+  const [searchDraft, setSearchDraft] = React.useState(
+    normalizedInitialFilters.q,
+  );
 
   React.useEffect(() => {
     setEntityIdDraft(filters.entityId);
   }, [filters.entityId]);
+
+  React.useEffect(() => {
+    setSearchDraft(filters.q);
+  }, [filters.q]);
 
   const {
     data: documentsList,
@@ -61,6 +70,7 @@ const useDocumentsListSurface = ({
       entityId: "",
       entityType: "",
       page: "",
+      q: "",
       type: "",
     });
   }, [applyFilters]);
@@ -79,7 +89,9 @@ const useDocumentsListSurface = ({
     isPending,
     refetch,
     resetFilters,
+    searchDraft,
     setEntityIdDraft,
+    setSearchDraft,
     totalPages,
   };
 };

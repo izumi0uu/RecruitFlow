@@ -2,9 +2,19 @@
 
 import type { SettingsAuditListQuery } from "@recruitflow/contracts";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Activity, FilterX, Loader2, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  FileDown,
+  FilterX,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
+import {
+  readDownloadFailure,
+  triggerBrowserDownload,
+} from "@/components/documents/download-utils";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -14,6 +24,8 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import {
   currentUserQueryOptions,
   currentWorkspaceQueryOptions,
@@ -61,6 +73,52 @@ const formatAuditDate = (createdAt: string) => {
   }).format(new Date(createdAt));
 };
 
+const getAuditExportErrorMessage = ({
+  code,
+  message,
+  status,
+}: {
+  code: string | null;
+  message: string;
+  status: number;
+}) => {
+  if (code === "RESULT_SET_EMPTY") {
+    return "No audit events match the current filters yet.";
+  }
+
+  if (status === 403) {
+    return "Only workspace owners can export audit history.";
+  }
+
+  return message || "Unable to export audit history right now.";
+};
+
+const buildAuditExportSearchParams = (filters: SettingsAuditListQuery) => {
+  const params = new URLSearchParams({ sourceSurface: "settings_audit" });
+
+  if (filters.action) {
+    params.set("action", filters.action);
+  }
+
+  if (filters.actorUserId) {
+    params.set("actorUserId", filters.actorUserId);
+  }
+
+  if (filters.entityType) {
+    params.set("entityType", filters.entityType);
+  }
+
+  if (filters.startDate) {
+    params.set("startDate", filters.startDate);
+  }
+
+  if (filters.endDate) {
+    params.set("endDate", filters.endDate);
+  }
+
+  return params;
+};
+
 const AuditLogSectionSkeleton = () => (
   <Card className="w-full">
     <CardHeader>
@@ -87,13 +145,19 @@ const AuditLogSection = () => {
   const [action, setAction] = useState("");
   const [actorUserId, setActorUserId] = useState("");
   const [entityType, setEntityType] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const filters = useMemo<SettingsAuditListQuery>(
     () => ({
       ...(action ? { action } : {}),
       ...(actorUserId ? { actorUserId } : {}),
       ...(entityType ? { entityType } : {}),
+      ...(startDate ? { startDate } : {}),
+      ...(endDate ? { endDate } : {}),
     }),
-    [action, actorUserId, entityType],
+    [action, actorUserId, endDate, entityType, startDate],
   );
   const auditQuery = useQuery({
     ...settingsAuditQueryOptions(filters),
@@ -110,7 +174,42 @@ const AuditLogSection = () => {
       })),
     ];
   }, [workspace?.memberships]);
-  const hasActiveFilters = Boolean(action || actorUserId || entityType);
+  const hasActiveFilters = Boolean(
+    action || actorUserId || entityType || startDate || endDate,
+  );
+  const isEmpty = (auditQuery.data?.items.length ?? 0) <= 0;
+
+  const handleExport = async () => {
+    if (isExporting || isEmpty) {
+      return;
+    }
+
+    setExportError(null);
+    setIsExporting(true);
+
+    try {
+      const params = buildAuditExportSearchParams(filters);
+      const response = await fetch(
+        `/api/settings/audit/export?${params.toString()}`,
+        {
+          method: "GET",
+        },
+      );
+
+      if (!response.ok) {
+        setExportError(
+          getAuditExportErrorMessage(await readDownloadFailure(response)),
+        );
+        return;
+      }
+
+      await triggerBrowserDownload(response, "audit-export.csv");
+    } catch {
+      setExportError("Unable to export audit history right now.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (!isOwner) {
     return (
@@ -140,7 +239,7 @@ const AuditLogSection = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto] lg:items-end">
           <FilterSelect
             options={auditActionOptions}
             placeholder="Action"
@@ -159,6 +258,28 @@ const AuditLogSection = () => {
             value={entityType}
             onValueChange={setEntityType}
           />
+          <div className="space-y-1.5">
+            <Label htmlFor="audit-start-date" className="text-xs">
+              Start date
+            </Label>
+            <Input
+              id="audit-start-date"
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="audit-end-date" className="text-xs">
+              End date
+            </Label>
+            <Input
+              id="audit-end-date"
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+            />
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -168,12 +289,47 @@ const AuditLogSection = () => {
               setAction("");
               setActorUserId("");
               setEntityType("");
+              setStartDate("");
+              setEndDate("");
+              setExportError(null);
             }}
           >
             <FilterX className="size-4" />
             Clear
           </Button>
         </div>
+
+        <div className="flex flex-col gap-2 rounded-[1.5rem] border border-border/70 bg-surface-1/55 px-4 py-4 md:flex-row md:items-center md:justify-between">
+          <p className="text-sm leading-6 text-muted-foreground">
+            Export the current owner-only filtered audit view as curated CSV.
+            Raw metadata stays mapped into a safe summary column.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full"
+            disabled={auditQuery.isLoading || isEmpty || isExporting}
+            onClick={() => {
+              void handleExport();
+            }}
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <FileDown className="size-4" />
+                Export CSV
+              </>
+            )}
+          </Button>
+        </div>
+
+        {exportError ? (
+          <p className="status-message status-error">{exportError}</p>
+        ) : null}
 
         {auditQuery.error ? (
           <p className="status-message status-error">

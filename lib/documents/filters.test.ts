@@ -21,6 +21,7 @@ assert.deepEqual(normalized, {
   entityId,
   entityType: "candidate",
   page: "3",
+  q: "",
   type: "resume",
 });
 
@@ -35,6 +36,7 @@ assert.deepEqual(
     entityId: "",
     entityType: "",
     page: "",
+    q: "",
     type: "",
   },
 );
@@ -44,12 +46,14 @@ assert.deepEqual(
     entityId: [entityId],
     entityType: ["submission", "candidate"],
     page: ["2"],
+    q: ["healthcare designer", "ignored"],
     type: ["jd"],
   }),
   {
     entityId,
     entityType: "submission",
     page: "2",
+    q: "healthcare designer",
     type: "jd",
   },
 );
@@ -64,6 +68,7 @@ assert.equal(params.get("entityId"), entityId);
 assert.equal(params.get("entityType"), "candidate");
 assert.equal(params.get("page"), "3");
 assert.equal(params.get("pageSize"), "20");
+assert.equal(params.get("q"), null);
 assert.equal(params.get("type"), "resume");
 
 assert.deepEqual(parseDocumentListFiltersFromSearchParams(params), normalized);
@@ -72,4 +77,17 @@ assert.equal(areDocumentListFiltersEqual(normalized, { ...normalized }), true);
 assert.equal(
   areDocumentListFiltersEqual(normalized, { ...normalized, page: "" }),
   false,
+);
+assert.equal(
+  areDocumentListFiltersEqual(normalized, { ...normalized, q: "designer" }),
+  false,
+);
+
+const semanticSearchFilters = normalizeDocumentListFilters({
+  q: "  senior     product designer  ",
+});
+assert.equal(semanticSearchFilters.q, "senior     product designer");
+assert.equal(
+  documentListFiltersToSearchParams(semanticSearchFilters).get("q"),
+  "senior     product designer",
 );

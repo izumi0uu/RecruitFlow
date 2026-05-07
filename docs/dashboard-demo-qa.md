@@ -34,6 +34,10 @@ Use the seeded `Northstar Recruiting` workspace.
 
 ## Product Language QA Notes
 
+Dashboard outcome language: the UI label **Average cycle** is the demo-visible time-to-submit metric, defined as average time from job intake opening to the first candidate submission. Keep that mapping in the walkthrough instead of renaming technical metric fields.
+
+Seeded regression anchors: Nina Patel, Marcus Lee, Priya Nair, Grace Kim, and Theo Brooks should remain available after `pnpm db:seed` as the primary five-minute path; Lila Chen, Rosa Martinez, BrightLayer Energy, Cedar Bank, and Northstar Commerce are backup examples for alternate review paths.
+
 Approved recruiter-facing vocabulary for the demo:
 
 - `workspace` for tenant/account boundary.

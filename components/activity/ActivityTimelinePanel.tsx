@@ -75,7 +75,7 @@ const eventTypeConfig: Record<
   member: {
     icon: UsersRound,
     label: "Members",
-    shortLabel: "Team",
+    shortLabel: "Members",
   },
   note: {
     icon: StickyNote,

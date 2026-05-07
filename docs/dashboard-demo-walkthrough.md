@@ -43,11 +43,17 @@ Start as the owner when explaining workspace health, billing/settings, and outco
 
 ## Seeded Story Beats
 
+The demo seed in `lib/db/seed.ts` already carries the named records below, so this walkthrough should not require manual data setup after `pnpm db:seed`.
+
 - **Nina Patel / Senior Full Stack Engineer**: healthy submitted candidate with panel prep follow-up.
 - **Marcus Lee / Senior Full Stack Engineer**: client-interview work with timing risk.
 - **Priya Nair / Principal AI Infrastructure Engineer**: offer-stage submission with compensation risk and AI-summary-ready documents.
 - **Grace Kim / Account Executive**: placed submission for outcome metrics.
 - **Theo Brooks / RevOps Lead**: failed AI summary example that demonstrates safe failure and retry narrative.
+
+Backup records such as **Lila Chen**, **Rosa Martinez**, **BrightLayer Energy**, **Cedar Bank**, and **Northstar Commerce** provide alternate low-risk, timing-risk, and client-variety examples if the primary path needs a second pass.
+
+When explaining outcomes, treat the dashboard's **Average cycle** tile as the demo-visible time-to-submit metric: it measures the average duration from job intake opening to first candidate submission, while the adjacent placements list shows closed wins.
 
 ## Low-Data Workspace Check
 

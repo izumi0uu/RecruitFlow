@@ -38,6 +38,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { ReminderGenerationPanel } from "@/components/automation/ReminderGenerationPanel";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import {
@@ -181,7 +182,7 @@ const taskViewMeta: Record<
   },
   workspace: {
     countLabel: "active",
-    description: "Team operating view",
+    description: "Workspace operating view",
     icon: UsersRound,
     label: "Workspace",
     tone: "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
@@ -330,6 +331,12 @@ const TasksActionDock = ({
       </p>
     )}
     <TasksSummaryDock tasksList={tasksList} />
+    <ReminderGenerationPanel
+      targetSetSize={
+        tasksList.summary.overdueCount + tasksList.summary.snoozedCount
+      }
+      workspaceId={tasksList.context.workspaceId}
+    />
   </div>
 );
 
