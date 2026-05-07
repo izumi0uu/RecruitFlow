@@ -1,11 +1,19 @@
 "use client";
 
-import type { TaskRecord, TasksListResponse } from "@recruitflow/contracts";
+import type {
+  FollowUpItem,
+  FollowUpTodayResponse,
+  TaskRecord,
+  TasksListResponse,
+} from "@recruitflow/contracts";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
 import { useUrlBackedListFilters } from "@/hooks/useUrlBackedListFilters";
-import { tasksListQueryOptions } from "@/lib/query/options";
+import {
+  followUpTodayQueryOptions,
+  tasksListQueryOptions,
+} from "@/lib/query/options";
 import {
   areTaskListFiltersEqual,
   normalizeTaskListFilters,
@@ -19,11 +27,13 @@ import { getTaskFilterCount } from "../../utils";
 type UseTasksListSurfaceOptions = {
   initialData: TasksListResponse;
   initialFilters: TaskListFilters;
+  initialTodayData: FollowUpTodayResponse | null;
 };
 
 const useTasksListSurface = ({
   initialData,
   initialFilters,
+  initialTodayData,
 }: UseTasksListSurfaceOptions) => {
   const {
     applyFilters,
@@ -58,15 +68,39 @@ const useTasksListSurface = ({
     initialData: isInitialQuery ? initialData : undefined,
     placeholderData: keepPreviousData,
   });
+  const isTodayView = filters.view === "today";
+  const {
+    data: todayFollowUps = initialTodayData,
+    error: todayError,
+    isError: isTodayError,
+    isFetching: isTodayFetching,
+    refetch: refetchToday,
+  } = useQuery({
+    ...followUpTodayQueryOptions(filters),
+    enabled: isTodayView,
+    initialData:
+      isInitialQuery && isTodayView && initialTodayData
+        ? initialTodayData
+        : undefined,
+    placeholderData: keepPreviousData,
+  });
   const taskItems = tasksList.items;
+  const todayItems = todayFollowUps?.items ?? [];
   const selectedTask =
     taskItems.find((task) => task.id === selectedTaskId) ??
     taskItems[0] ??
+    null;
+  const selectedTodayItem =
+    todayItems.find((item) => item.id === selectedTaskId) ??
+    todayItems[0] ??
     null;
   const filterCount = getTaskFilterCount(filters);
   const hasFilters = filterCount > 0;
   const currentPage = tasksList.pagination.page;
   const totalPages = tasksList.pagination.totalPages;
+  const currentTodayPage = todayFollowUps?.pagination.page ?? 1;
+  const totalTodayPages = todayFollowUps?.pagination.totalPages ?? 1;
+  const totalTodayItems = todayFollowUps?.pagination.totalItems ?? 0;
   const ownerOptions = [
     { label: "All owners", value: "" },
     ...tasksList.ownerOptions.map((owner) => ({
@@ -76,6 +110,22 @@ const useTasksListSurface = ({
   ];
 
   React.useEffect(() => {
+    if (isTodayView) {
+      if (todayItems.length === 0) {
+        setSelectedTaskId(null);
+        return;
+      }
+
+      if (
+        !selectedTaskId ||
+        !todayItems.some((item) => item.id === selectedTaskId)
+      ) {
+        setSelectedTaskId(todayItems[0]?.id ?? null);
+      }
+
+      return;
+    }
+
     if (taskItems.length === 0) {
       setSelectedTaskId(null);
       return;
@@ -87,7 +137,7 @@ const useTasksListSurface = ({
     ) {
       setSelectedTaskId(taskItems[0]?.id ?? null);
     }
-  }, [selectedTaskId, taskItems]);
+  }, [isTodayView, selectedTaskId, taskItems, todayItems]);
 
   const resetFilters = React.useCallback(() => {
     setSearchDraft("");
@@ -112,25 +162,57 @@ const useTasksListSurface = ({
     [selectedTask],
   );
 
+  const refetchActiveView = React.useCallback(() => {
+    if (isTodayView) {
+      void refetchToday();
+      return;
+    }
+
+    void refetch();
+  }, [isTodayView, refetch, refetchToday]);
+
+  const getTodaySelectionProps = React.useCallback(
+    (item: FollowUpItem) => ({
+      isSelected: selectedTaskId === item.id,
+      onSelect: () => {
+        setSelectedTaskId(item.id);
+      },
+    }),
+    [selectedTaskId],
+  );
+
   return {
     applyFilters,
     currentPage,
+    currentTodayPage,
     error,
     filterCount,
     filters,
     getTaskSelectionProps,
+    getTodaySelectionProps,
     hasFilters,
+    isTodayError,
+    isTodayFetching,
+    isTodayView,
     isError,
     isFetching,
     ownerOptions,
     refetch,
+    refetchActiveView,
+    refetchToday,
     resetFilters,
     searchDraft,
     selectedTask,
+    selectedTodayItem,
     setSearchDraft,
     taskItems,
     tasksList,
+    todayError,
+    todayFollowUps,
+    todayItems,
     totalPages,
+    totalTodayItems,
+    totalTodayPages,
   };
 };
 

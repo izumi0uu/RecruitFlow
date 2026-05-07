@@ -1,8 +1,13 @@
-import type { TasksListResponse } from "@recruitflow/contracts";
+import type {
+  FollowUpTodayResponse,
+  TasksListResponse,
+} from "@recruitflow/contracts";
 import { redirect } from "next/navigation";
 
 import { isApiRequestError, requestApiJson } from "@/lib/api/client";
 import {
+  followUpTodayFiltersToSearchParams,
+  getApiTaskListFilters,
   parseTaskListFiltersFromRecord,
   type TaskListFilters,
   taskListFiltersToSearchParams,
@@ -17,11 +22,22 @@ type PageProps = {
 };
 
 const buildTasksApiPath = (filters: TaskListFilters) => {
-  const queryString = taskListFiltersToSearchParams(filters, {
+  const queryString = taskListFiltersToSearchParams(
+    getApiTaskListFilters(filters),
+    {
+      includePageSize: true,
+    },
+  ).toString();
+
+  return `/tasks${queryString ? `?${queryString}` : ""}`;
+};
+
+const buildTodayApiPath = (filters: TaskListFilters) => {
+  const queryString = followUpTodayFiltersToSearchParams(filters, {
     includePageSize: true,
   }).toString();
 
-  return `/tasks${queryString ? `?${queryString}` : ""}`;
+  return `/tasks/today${queryString ? `?${queryString}` : ""}`;
 };
 
 const getTasksList = async (filters: TaskListFilters) => {
@@ -36,13 +52,36 @@ const getTasksList = async (filters: TaskListFilters) => {
   }
 };
 
+const getTodayFollowUps = async (filters: TaskListFilters) => {
+  try {
+    return await requestApiJson<FollowUpTodayResponse>(
+      buildTodayApiPath(filters),
+    );
+  } catch (error) {
+    if (isApiRequestError(error) && error.status === 401) {
+      redirect("/sign-in");
+    }
+
+    throw error;
+  }
+};
+
 const TasksPage = async ({ searchParams }: PageProps) => {
   const params = await Promise.resolve(searchParams ?? {});
   const initialFilters = parseTaskListFiltersFromRecord(params);
-  const tasksList = await getTasksList(initialFilters);
+  const [tasksList, todayFollowUps] = await Promise.all([
+    getTasksList(initialFilters),
+    initialFilters.view === "today"
+      ? getTodayFollowUps(initialFilters)
+      : Promise.resolve(null),
+  ]);
 
   return (
-    <TasksListSurface initialData={tasksList} initialFilters={initialFilters} />
+    <TasksListSurface
+      initialData={tasksList}
+      initialFilters={initialFilters}
+      initialTodayData={todayFollowUps}
+    />
   );
 };
 

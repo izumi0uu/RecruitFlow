@@ -8,6 +8,9 @@ import type {
   ApiTaskEntityType,
   ApiTaskStatus,
   ApiUserReference,
+  ReminderSuggestion,
+  ReminderSuggestionDismissRequest,
+  ReminderSuggestionMutationResponse,
   TaskEntityReference,
   TaskFormEntityOption,
   TaskMutationRequest,
@@ -19,7 +22,11 @@ import type {
   TasksListResponse,
   TaskWorkspacePermissions,
 } from "@recruitflow/contracts";
-import { apiTaskEntityTypeValues } from "@recruitflow/contracts";
+import {
+  apiFollowUpReasonValues,
+  apiReminderSuggestionDismissReasonValues,
+  apiTaskEntityTypeValues,
+} from "@recruitflow/contracts";
 import {
   and,
   asc,
@@ -37,9 +44,11 @@ import { alias } from "drizzle-orm/pg-core";
 import { writeAuditLog } from "@/lib/db/audit";
 import {
   AuditAction,
+  auditLogs,
   candidates,
   clients,
   jobs,
+  reminderSuggestions,
   submissions,
   tasks,
   users,
@@ -118,6 +127,74 @@ const normalizeTextFilter = (value: string | undefined) => {
 
 const isTaskEntityType = (value: string | null): value is ApiTaskEntityType =>
   apiTaskEntityTypeValues.includes(value as ApiTaskEntityType);
+
+const isReminderSuggestionReason = (
+  value: string,
+): value is ReminderSuggestion["reason"] =>
+  apiFollowUpReasonValues.includes(value as ReminderSuggestion["reason"]);
+
+const isReminderSuggestionDismissReason = (
+  value: string | null,
+): value is NonNullable<ReminderSuggestion["dismissReason"]> =>
+  apiReminderSuggestionDismissReasonValues.includes(
+    value as NonNullable<ReminderSuggestion["dismissReason"]>,
+  );
+
+const toReminderSuggestionResponse = (row: {
+  acceptedTaskId: string | null;
+  automationRunId: string;
+  createdAt: Date;
+  dismissNote: string | null;
+  dismissReason: string | null;
+  entityId: string | null;
+  entityType: string | null;
+  id: string;
+  proposedAssigneeUserId: string | null;
+  proposedDueAt: Date | null;
+  proposedTitle: string;
+  reason: string;
+  sourceEntityId: string;
+  sourceEntityType: string;
+  status: "suggested" | "accepted" | "dismissed";
+  updatedAt: Date;
+  workspaceId: string;
+}): ReminderSuggestion => ({
+  acceptedTaskId: row.acceptedTaskId,
+  automationRunId: row.automationRunId,
+  createdAt: row.createdAt.toISOString(),
+  dismissNote: row.dismissNote,
+  dismissReason: isReminderSuggestionDismissReason(row.dismissReason)
+    ? row.dismissReason
+    : null,
+  id: row.id,
+  proposedAssigneeUserId: row.proposedAssigneeUserId,
+  proposedDueAt: row.proposedDueAt?.toISOString() ?? null,
+  proposedTitle: row.proposedTitle,
+  reason: isReminderSuggestionReason(row.reason)
+    ? row.reason
+    : "suggested_by_automation",
+  sourceEntityId: row.sourceEntityId,
+  sourceEntityType: isTaskEntityType(row.sourceEntityType)
+    ? row.sourceEntityType
+    : "submission",
+  status: row.status,
+  updatedAt: row.updatedAt.toISOString(),
+  workspaceId: row.workspaceId,
+});
+
+const getSuggestionLinkedEntityInput = (suggestion: {
+  entityId: string | null;
+  entityType: string | null;
+  sourceEntityId: string;
+  sourceEntityType: string;
+}): Pick<TaskMutationRequest, "entityId" | "entityType"> => ({
+  entityId: suggestion.entityId ?? suggestion.sourceEntityId,
+  entityType: isTaskEntityType(suggestion.entityType)
+    ? suggestion.entityType
+    : isTaskEntityType(suggestion.sourceEntityType)
+      ? suggestion.sourceEntityType
+      : "submission",
+});
 
 const getOwnerOptions = (context: ApiWorkspaceContext): ApiUserReference[] =>
   context.workspace.memberships.map((membership) => ({
@@ -1075,6 +1152,263 @@ export class TasksService {
     });
 
     return this.buildMutationResponse(context, task.id, "Task created");
+  }
+
+  async acceptReminderSuggestion(
+    context: ApiWorkspaceContext,
+    reminderSuggestionId: string,
+  ): Promise<ReminderSuggestionMutationResponse> {
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const now = new Date();
+
+    const [suggestion] = await db
+      .select()
+      .from(reminderSuggestions)
+      .where(
+        and(
+          eq(reminderSuggestions.id, reminderSuggestionId),
+          eq(reminderSuggestions.workspaceId, workspaceId),
+        ),
+      )
+      .limit(1);
+
+    if (!suggestion) {
+      throw new NotFoundException(
+        "Reminder suggestion not found in this workspace",
+      );
+    }
+
+    if (suggestion.status === "dismissed") {
+      throw new BadRequestException(
+        "Dismissed reminder suggestions cannot be accepted",
+      );
+    }
+
+    if (suggestion.acceptedTaskId) {
+      const task = await this.selectTaskRecord(
+        context,
+        suggestion.acceptedTaskId,
+      );
+
+      return {
+        contractVersion: "phase-2-daily-followup",
+        message: "Reminder suggestion already accepted",
+        reminderSuggestion: toReminderSuggestionResponse(suggestion),
+        task,
+        workspaceScoped: true,
+      };
+    }
+
+    const assignedToUserId = this.resolveAssigneeUserId(
+      context,
+      suggestion.proposedAssigneeUserId ?? actorUserId,
+    );
+    await this.assertCanCreateTask(context, assignedToUserId);
+
+    const linkedEntity = await this.resolveLinkedEntity(
+      context,
+      getSuggestionLinkedEntityInput(suggestion),
+    );
+
+    const [createdTask] = await db.transaction(async (tx) => {
+      const [task] = await tx
+        .insert(tasks)
+        .values({
+          assignedToUserId,
+          createdAt: now,
+          createdByUserId: actorUserId,
+          description: `Created from reminder suggestion ${suggestion.id}.`,
+          dueAt: suggestion.proposedDueAt ?? now,
+          entityId: linkedEntity.entityId,
+          entityType: linkedEntity.entityType,
+          status: "open",
+          submissionId: linkedEntity.submissionId,
+          title: suggestion.proposedTitle.replace(/^\[Suggested\]\s*/, ""),
+          updatedAt: now,
+          workspaceId,
+        })
+        .returning({ id: tasks.id });
+
+      if (!task) {
+        throw new NotFoundException("Failed to create task");
+      }
+
+      const [updatedSuggestion] = await tx
+        .update(reminderSuggestions)
+        .set({
+          acceptedTaskId: task.id,
+          status: "accepted",
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(reminderSuggestions.id, suggestion.id),
+            eq(reminderSuggestions.workspaceId, workspaceId),
+            eq(reminderSuggestions.status, "suggested"),
+          ),
+        )
+        .returning({ id: reminderSuggestions.id });
+
+      if (!updatedSuggestion) {
+        throw new BadRequestException(
+          "Reminder suggestion was already handled",
+        );
+      }
+
+      await tx.insert(auditLogs).values([
+        {
+          workspaceId,
+          actorUserId,
+          action: AuditAction.TASK_CREATED,
+          entityType: "task",
+          entityId: task.id,
+          metadataJson: {
+            assignedToUserId,
+            linkedEntityId: linkedEntity.entityId,
+            linkedEntityType: linkedEntity.entityType,
+            reminderSuggestionId: suggestion.id,
+            source: "api",
+          },
+          createdAt: now,
+        },
+        {
+          workspaceId,
+          actorUserId,
+          action: AuditAction.REMINDER_SUGGESTION_ACCEPTED,
+          entityType: "reminder_suggestion",
+          entityId: suggestion.id,
+          metadataJson: {
+            acceptedTaskId: task.id,
+            source: "api",
+          },
+          createdAt: now,
+        },
+      ]);
+
+      return [task];
+    });
+
+    const [updatedSuggestion] = await db
+      .select()
+      .from(reminderSuggestions)
+      .where(
+        and(
+          eq(reminderSuggestions.id, suggestion.id),
+          eq(reminderSuggestions.workspaceId, workspaceId),
+        ),
+      )
+      .limit(1);
+
+    if (!createdTask || !updatedSuggestion) {
+      throw new NotFoundException("Accepted reminder suggestion not found");
+    }
+
+    const task = await this.selectTaskRecord(context, createdTask.id);
+
+    return {
+      contractVersion: "phase-2-daily-followup",
+      message: "Reminder suggestion accepted as a linked task",
+      reminderSuggestion: toReminderSuggestionResponse(updatedSuggestion),
+      task,
+      workspaceScoped: true,
+    };
+  }
+
+  async dismissReminderSuggestion(
+    context: ApiWorkspaceContext,
+    reminderSuggestionId: string,
+    input: ReminderSuggestionDismissRequest,
+  ): Promise<ReminderSuggestionMutationResponse> {
+    const workspaceId = context.workspace.id;
+    const actorUserId = context.membership.userId;
+    const now = new Date();
+
+    const [suggestion] = await db
+      .select()
+      .from(reminderSuggestions)
+      .where(
+        and(
+          eq(reminderSuggestions.id, reminderSuggestionId),
+          eq(reminderSuggestions.workspaceId, workspaceId),
+        ),
+      )
+      .limit(1);
+
+    if (!suggestion) {
+      throw new NotFoundException(
+        "Reminder suggestion not found in this workspace",
+      );
+    }
+
+    if (suggestion.status === "accepted") {
+      throw new BadRequestException(
+        "Accepted reminder suggestions cannot be dismissed",
+      );
+    }
+
+    if (suggestion.status === "dismissed") {
+      return {
+        contractVersion: "phase-2-daily-followup",
+        message: "Reminder suggestion already dismissed",
+        reminderSuggestion: toReminderSuggestionResponse(suggestion),
+        task: null,
+        workspaceScoped: true,
+      };
+    }
+
+    const [updatedSuggestion] = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(reminderSuggestions)
+        .set({
+          dismissNote: input.dismissNote ?? null,
+          dismissReason: input.dismissReason,
+          status: "dismissed",
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(reminderSuggestions.id, suggestion.id),
+            eq(reminderSuggestions.workspaceId, workspaceId),
+            eq(reminderSuggestions.status, "suggested"),
+          ),
+        )
+        .returning();
+
+      if (!updated) {
+        throw new BadRequestException(
+          "Reminder suggestion was already handled",
+        );
+      }
+
+      await tx.insert(auditLogs).values({
+        workspaceId,
+        actorUserId,
+        action: AuditAction.REMINDER_SUGGESTION_DISMISSED,
+        entityType: "reminder_suggestion",
+        entityId: suggestion.id,
+        metadataJson: {
+          dismissReason: input.dismissReason,
+          hasDismissNote: Boolean(input.dismissNote),
+          source: "api",
+        },
+        createdAt: now,
+      });
+
+      return [updated];
+    });
+
+    if (!updatedSuggestion) {
+      throw new NotFoundException("Dismissed reminder suggestion not found");
+    }
+
+    return {
+      contractVersion: "phase-2-daily-followup",
+      message: "Reminder suggestion dismissed",
+      reminderSuggestion: toReminderSuggestionResponse(updatedSuggestion),
+      task: null,
+      workspaceScoped: true,
+    };
   }
 
   async updateTask(

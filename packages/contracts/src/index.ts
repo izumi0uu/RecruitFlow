@@ -607,6 +607,193 @@ export const apiCollectionQuerySchema = z.object({
 
 export type ApiCollectionQuery = z.infer<typeof apiCollectionQuerySchema>;
 
+export const apiFollowUpSourceTypeValues = [
+  "task",
+  "snoozed_task",
+  "stale_submission",
+  "risk_signal",
+  "reminder_suggestion",
+] as const;
+
+export type FollowUpSourceType = (typeof apiFollowUpSourceTypeValues)[number];
+
+export const apiFollowUpReasonValues = [
+  "task_overdue",
+  "task_due_today",
+  "snooze_returned",
+  "submission_stale",
+  "high_risk_without_next_step",
+  "cadence_due",
+  "suggested_by_automation",
+] as const;
+
+export type FollowUpReason = (typeof apiFollowUpReasonValues)[number];
+
+export const apiFollowUpSeverityValues = [
+  "critical",
+  "high",
+  "normal",
+  "low",
+] as const;
+
+export type FollowUpSeverity = (typeof apiFollowUpSeverityValues)[number];
+
+export const apiFollowUpScopeValues = ["mine", "workspace"] as const;
+
+export type FollowUpScope = (typeof apiFollowUpScopeValues)[number];
+
+export const apiReminderSuggestionStatusValues = [
+  "suggested",
+  "accepted",
+  "dismissed",
+] as const;
+
+export type ReminderSuggestionStatus =
+  (typeof apiReminderSuggestionStatusValues)[number];
+
+export const apiReminderSuggestionDismissReasonValues = [
+  "not_relevant",
+  "already_handled",
+  "duplicate",
+  "wrong_owner",
+  "other",
+] as const;
+
+export type ReminderSuggestionDismissReason =
+  (typeof apiReminderSuggestionDismissReasonValues)[number];
+
+export const reminderSuggestionParamsSchema = z.object({
+  reminderSuggestionId: z.string().uuid(),
+});
+
+export type ReminderSuggestionParams = z.infer<
+  typeof reminderSuggestionParamsSchema
+>;
+
+export const reminderSuggestionDismissRequestSchema = z.object({
+  dismissNote: optionalTrimmedTextSchema(1000),
+  dismissReason: z.enum(apiReminderSuggestionDismissReasonValues),
+});
+
+export type ReminderSuggestionDismissRequest = z.infer<
+  typeof reminderSuggestionDismissRequestSchema
+>;
+
+export const followUpTodayQuerySchema = apiCollectionQuerySchema.extend({
+  ownerUserId: optionalUuidSchema,
+  scope: z.enum(apiFollowUpScopeValues).default("mine"),
+});
+
+export type FollowUpTodayQuery = z.infer<typeof followUpTodayQuerySchema>;
+
+export interface FollowUpPrimaryAction {
+  href: string;
+  label: string;
+  type: "open_entity" | "resume_snooze" | "review_suggestion";
+}
+
+export interface FollowUpItem {
+  dueAt: string | null;
+  entityId: string | null;
+  entityLabel: string;
+  entityType: ApiTaskEntityType | null;
+  id: string;
+  lastTouchAt: string | null;
+  navigationHref: string;
+  nextStep: string | null;
+  ownerName: string | null;
+  ownerUserId: string | null;
+  primaryAction: FollowUpPrimaryAction;
+  primaryReason: FollowUpReason;
+  secondaryReasons: FollowUpReason[];
+  severity: FollowUpSeverity;
+  sourceId: string;
+  sourceType: FollowUpSourceType;
+  staleDays: number | null;
+}
+
+export interface ReminderSuggestionMutationResponse {
+  contractVersion: "phase-2-daily-followup";
+  message: string;
+  reminderSuggestion: ReminderSuggestion;
+  task?: TaskRecord | null;
+  workspaceScoped: true;
+}
+
+export interface ReminderSuggestion {
+  acceptedTaskId: string | null;
+  automationRunId: string;
+  createdAt: string;
+  dismissNote: string | null;
+  dismissReason: ReminderSuggestionDismissReason | null;
+  id: string;
+  proposedAssigneeUserId: string | null;
+  proposedDueAt: string | null;
+  proposedTitle: string;
+  reason: FollowUpReason;
+  sourceEntityId: string;
+  sourceEntityType: ApiTaskEntityType;
+  status: ReminderSuggestionStatus;
+  updatedAt: string;
+  workspaceId: string;
+}
+
+export type FollowUpCountByReason = Record<FollowUpReason, number>;
+
+export type FollowUpCountBySeverity = Record<FollowUpSeverity, number>;
+
+export type FollowUpCountBySource = Record<FollowUpSourceType, number>;
+
+export interface FollowUpTodaySummary {
+  byReason: FollowUpCountByReason;
+  bySeverity: FollowUpCountBySeverity;
+  bySource: FollowUpCountBySource;
+  cadenceDueCount: number;
+  dueTodayTaskCount: number;
+  highRiskCount: number;
+  overdueTaskCount: number;
+  snoozeReturnedCount: number;
+  staleSubmissionCount: number;
+  totalCount: number;
+}
+
+export interface FollowUpTodayResponse {
+  contractVersion: "phase-2-daily-followup";
+  generatedAt: string;
+  items: FollowUpItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  query: {
+    ownerUserId: string | null;
+    scope: FollowUpScope;
+  };
+  summary: FollowUpTodaySummary;
+  workspaceScoped: true;
+}
+
+export const apiSubmissionStageCadenceDefaults = {
+  sourced: { active: true, days: 7 },
+  screening: { active: true, days: 3 },
+  submitted: { active: true, days: 3 },
+  client_interview: { active: true, days: 2 },
+  offer: { active: true, days: 1 },
+  placed: { active: false, days: null },
+  lost: { active: false, days: null },
+} as const satisfies Record<
+  ApiSubmissionStage,
+  { active: boolean; days: number | null }
+>;
+
+export const getSubmissionStageCadenceDefault = (stage: ApiSubmissionStage) =>
+  apiSubmissionStageCadenceDefaults[stage];
+
+export const isSubmissionStageCadenceActive = (stage: ApiSubmissionStage) =>
+  apiSubmissionStageCadenceDefaults[stage].active;
+
 export const clientsListQuerySchema = apiCollectionQuerySchema.extend({
   owner: optionalUuidSchema,
   ownerUserId: optionalUuidSchema,

@@ -3,11 +3,20 @@
 import NumberFlow from "@number-flow/react";
 import type {
   ApiTaskEntityType,
+  FollowUpItem,
+  FollowUpReason,
+  FollowUpSeverity,
+  FollowUpSourceType,
+  FollowUpTodayResponse,
+  ReminderSuggestionDismissReason,
+  ReminderSuggestionDismissRequest,
+  ReminderSuggestionMutationResponse,
   TaskMutationResponse,
   TaskRecord,
   TaskStatusActionRequest,
   TasksListResponse,
 } from "@recruitflow/contracts";
+import { reminderSuggestionDismissRequestSchema } from "@recruitflow/contracts";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowUpRight,
@@ -16,6 +25,7 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
+  ClipboardList,
   Filter,
   Inbox,
   ListChecks,
@@ -27,6 +37,7 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Target,
   TimerReset,
   UserRound,
@@ -79,6 +90,7 @@ import { TaskMutationDialog } from "./TaskMutationDialog";
 type TasksListSurfaceProps = {
   initialData: TasksListResponse;
   initialFilters: TaskListFilters;
+  initialTodayData: FollowUpTodayResponse | null;
 };
 
 type TaskGroupKey = "overdue" | "open" | "snoozed" | "done";
@@ -112,6 +124,14 @@ const taskEntityIconMap: Record<ApiTaskEntityType, LucideIcon> = {
   client: Building2,
   job: BriefcaseBusiness,
   submission: ListChecks,
+};
+
+const followUpSourceIconMap: Record<FollowUpSourceType, LucideIcon> = {
+  reminder_suggestion: Sparkles,
+  risk_signal: ShieldCheck,
+  snoozed_task: Bell,
+  stale_submission: ListChecks,
+  task: ListTodo,
 };
 
 const taskGroupMeta: Record<
@@ -180,6 +200,13 @@ const taskViewMeta: Record<
     label: "Snoozed",
     tone: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   },
+  today: {
+    countLabel: "signals",
+    description: "Daily follow-up loop",
+    icon: ClipboardList,
+    label: "Today",
+    tone: "border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+  },
   workspace: {
     countLabel: "active",
     description: "Workspace operating view",
@@ -190,12 +217,138 @@ const taskViewMeta: Record<
 };
 
 const taskViewOrder: TaskListFilters["view"][] = [
+  "today",
   "mine",
   "workspace",
   "overdue",
   "snoozed",
   "done",
 ];
+
+const followUpReasonMeta: Record<
+  FollowUpReason,
+  { label: string; tone: string }
+> = {
+  cadence_due: {
+    label: "Cadence due",
+    tone: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  },
+  high_risk_without_next_step: {
+    label: "Risk needs next step",
+    tone: "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  },
+  snooze_returned: {
+    label: "Snooze returned",
+    tone: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  },
+  submission_stale: {
+    label: "Submission stale",
+    tone: "border-orange-500/25 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  },
+  suggested_by_automation: {
+    label: "Suggested by automation",
+    tone: "border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+  },
+  task_due_today: {
+    label: "Due today",
+    tone: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  },
+  task_overdue: {
+    label: "Task overdue",
+    tone: "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  },
+};
+
+const followUpSeverityToneMap: Record<FollowUpSeverity, string> = {
+  critical:
+    "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  high: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  low: "border-slate-500/25 bg-slate-500/10 text-slate-700 dark:text-slate-300",
+  normal: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+};
+
+const followUpSourceLabelMap: Record<FollowUpSourceType, string> = {
+  reminder_suggestion: "Suggestion",
+  risk_signal: "Risk signal",
+  snoozed_task: "Snoozed task",
+  stale_submission: "Submission",
+  task: "Task",
+};
+
+const reminderSuggestionDismissReasonOptions: Array<{
+  label: string;
+  value: ReminderSuggestionDismissReason;
+}> = [
+  { label: "Not relevant", value: "not_relevant" },
+  { label: "Already handled", value: "already_handled" },
+  { label: "Duplicate", value: "duplicate" },
+  { label: "Wrong owner", value: "wrong_owner" },
+  { label: "Other", value: "other" },
+];
+
+const getRequestErrorMessage = async (response: Response) => {
+  try {
+    const body = (await response.json()) as { error?: string };
+
+    if (body.error) {
+      return body.error;
+    }
+  } catch {
+    // Fall through to the status fallback.
+  }
+
+  return `Unable to update reminder suggestion (${response.status}).`;
+};
+
+const postReminderSuggestionAccept = async (reminderSuggestionId: string) => {
+  const response = await fetch(
+    `/api/tasks/reminder-suggestions/${reminderSuggestionId}/accept`,
+    { method: "POST" },
+  );
+
+  if (response.status === 401) {
+    throw new Error("UNAUTHENTICATED");
+  }
+
+  if (!response.ok) {
+    throw new Error(await getRequestErrorMessage(response));
+  }
+
+  return (await response.json()) as ReminderSuggestionMutationResponse;
+};
+
+const postReminderSuggestionDismiss = async (
+  reminderSuggestionId: string,
+  input: ReminderSuggestionDismissRequest,
+) => {
+  const parsedInput = reminderSuggestionDismissRequestSchema.safeParse(input);
+
+  if (!parsedInput.success) {
+    throw new Error(
+      parsedInput.error.issues[0]?.message ??
+        "Invalid reminder suggestion dismiss payload",
+    );
+  }
+
+  const response = await fetch(
+    `/api/tasks/reminder-suggestions/${reminderSuggestionId}/dismiss`,
+    {
+      body: JSON.stringify(parsedInput.data),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+  );
+
+  if (response.status === 401) {
+    throw new Error("UNAUTHENTICATED");
+  }
+
+  if (!response.ok) {
+    throw new Error(await getRequestErrorMessage(response));
+  }
+
+  return (await response.json()) as ReminderSuggestionMutationResponse;
+};
 
 const getTransition = (shouldReduceMotion: boolean) =>
   shouldReduceMotion ? instantMotionTransition : taskMotionTransition;
@@ -343,6 +496,7 @@ const TasksActionDock = ({
 const getTaskViewCount = (
   view: TaskListFilters["view"],
   tasksList: TasksListResponse,
+  todayFollowUps: FollowUpTodayResponse | null,
 ) => {
   switch (view) {
     case "done":
@@ -351,6 +505,8 @@ const getTaskViewCount = (
       return tasksList.summary.overdueCount;
     case "snoozed":
       return tasksList.summary.snoozedCount;
+    case "today":
+      return todayFollowUps?.summary.totalCount ?? tasksList.summary.mineCount;
     case "workspace":
       return tasksList.summary.workspaceActiveCount;
     default:
@@ -781,6 +937,373 @@ const TaskGroupSection = ({
   );
 };
 
+const FollowUpReasonBadges = ({ item }: { item: FollowUpItem }) => (
+  <div className="flex flex-wrap items-center gap-2">
+    {[item.primaryReason, ...item.secondaryReasons].map((reason) => {
+      const meta = followUpReasonMeta[reason];
+
+      return (
+        <TaskBadge key={reason} className={meta.tone}>
+          {meta.label}
+        </TaskBadge>
+      );
+    })}
+  </div>
+);
+
+const TodayFollowUpRow = ({
+  isSelected,
+  item,
+  onSelect,
+}: {
+  isSelected: boolean;
+  item: FollowUpItem;
+  onSelect: () => void;
+}) => {
+  const shouldReduceMotion = useReducedMotion() ?? false;
+  const SourceIcon = followUpSourceIconMap[item.sourceType];
+  const dueLabel =
+    item.primaryReason === "task_overdue"
+      ? "Overdue"
+      : formatTaskDate(item.dueAt, "No due date");
+  const staleLabel =
+    item.staleDays === null
+      ? null
+      : `${item.staleDays} ${item.staleDays === 1 ? "day" : "days"}`;
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelect();
+    }
+  };
+
+  return (
+    <motion.article
+      layout
+      initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+      transition={getTransition(shouldReduceMotion)}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      onClick={onSelect}
+      onKeyDown={handleKeyDown}
+      className={cn(
+        "group relative grid cursor-pointer gap-4 border-t border-border/60 bg-background/18 px-4 py-4 outline-none transition-[background-color,box-shadow] duration-200 first:border-t-0 hover:bg-workspace-muted-surface/38 focus-visible:bg-workspace-muted-surface/44 md:px-5 lg:grid-cols-[minmax(0,1fr)_minmax(9rem,0.22fr)_minmax(10rem,0.24fr)_auto] lg:items-center",
+        isSelected &&
+          "bg-workspace-muted-surface/72 shadow-[inset_0_0_0_1px_var(--border),0_18px_44px_-38px_var(--shadow-color)]",
+      )}
+    >
+      <span
+        className={cn(
+          "absolute bottom-4 left-0 top-4 w-1 rounded-r-full",
+          item.severity === "critical"
+            ? "bg-rose-500/80"
+            : item.severity === "high"
+              ? "bg-amber-500/75"
+              : item.severity === "normal"
+                ? "bg-sky-500/75"
+                : "bg-slate-500/65",
+        )}
+      />
+
+      <div className="flex min-w-0 items-start gap-3">
+        <span
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-[1rem] border bg-background/72",
+            followUpSeverityToneMap[item.severity],
+          )}
+        >
+          <SourceIcon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <TaskBadge className={followUpSeverityToneMap[item.severity]}>
+              {formatTaskLabel(item.severity)}
+            </TaskBadge>
+            <TaskBadge className="border-border/70 bg-surface-1/70 text-muted-foreground">
+              {followUpSourceLabelMap[item.sourceType]}
+            </TaskBadge>
+          </div>
+          <h2 className="mt-3 truncate text-lg font-semibold text-foreground">
+            {item.entityLabel}
+          </h2>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
+            {item.nextStep ?? item.primaryAction.label}
+          </p>
+          <div className="mt-3">
+            <FollowUpReasonBadges item={item} />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-[1.15rem] border border-border/65 bg-background/46 px-3 py-3">
+        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Due
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <CalendarClock className="size-4 text-muted-foreground" />
+          <p className="min-w-0 truncate text-sm font-medium text-foreground">
+            {dueLabel}
+          </p>
+        </div>
+        {staleLabel ? (
+          <p className="mt-2 text-xs font-medium text-muted-foreground">
+            {staleLabel} since signal
+          </p>
+        ) : null}
+      </div>
+
+      <div className="rounded-[1.15rem] border border-border/65 bg-background/46 px-3 py-3">
+        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Owner
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <UserRound className="size-4 text-muted-foreground" />
+          <p className="min-w-0 truncate text-sm font-medium text-foreground">
+            {item.ownerName ?? "Unassigned"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <Button asChild size="sm" variant="outline" className="rounded-full">
+          <TrackedLink
+            href={item.primaryAction.href}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            {item.primaryAction.label}
+            <ArrowUpRight className="size-3.5" />
+          </TrackedLink>
+        </Button>
+      </div>
+    </motion.article>
+  );
+};
+
+const TodayContextPanel = ({
+  item,
+  onRefresh,
+}: {
+  item: FollowUpItem | null;
+  onRefresh: () => void;
+}) => {
+  const [dismissReason, setDismissReason] =
+    useState<ReminderSuggestionDismissReason>("not_relevant");
+  const [dismissNote, setDismissNote] = useState("");
+  const [suggestionActionError, setSuggestionActionError] = useState<
+    string | null
+  >(null);
+  const [suggestionActionMessage, setSuggestionActionMessage] = useState<
+    string | null
+  >(null);
+  const [isSuggestionActionPending, setIsSuggestionActionPending] =
+    useState(false);
+  const isReminderSuggestion = item?.sourceType === "reminder_suggestion";
+
+  const runSuggestionAction = async (
+    action: "accept" | "dismiss",
+    targetItem: FollowUpItem,
+  ) => {
+    if (isSuggestionActionPending) {
+      return;
+    }
+
+    setSuggestionActionError(null);
+    setSuggestionActionMessage(null);
+    setIsSuggestionActionPending(true);
+
+    try {
+      const response =
+        action === "accept"
+          ? await postReminderSuggestionAccept(targetItem.sourceId)
+          : await postReminderSuggestionDismiss(targetItem.sourceId, {
+              dismissNote,
+              dismissReason,
+            });
+
+      setSuggestionActionMessage(response.message);
+      setDismissNote("");
+      onRefresh();
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNAUTHENTICATED") {
+        window.location.assign("/sign-in");
+        return;
+      }
+
+      setSuggestionActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update reminder suggestion.",
+      );
+    } finally {
+      setIsSuggestionActionPending(false);
+    }
+  };
+
+  return (
+    <aside className="border-t border-border/70 bg-workspace-muted-surface/58 p-4 shadow-[inset_1px_0_0_rgba(255,255,255,0.08)] lg:sticky lg:top-5 lg:max-h-[calc(100dvh-2.5rem)] lg:self-start lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-5 xl:top-6 xl:max-h-[calc(100dvh-3rem)]">
+      {item ? (
+        <div className="space-y-5">
+          <div>
+            <span className="inline-kicker">Today signal</span>
+            <h2 className="mt-3 text-xl font-semibold text-foreground">
+              {item.entityLabel}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {item.nextStep ??
+                "Review this follow-up and choose the next action."}
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            {[
+              ["Source", followUpSourceLabelMap[item.sourceType]],
+              ["Severity", formatTaskLabel(item.severity)],
+              ["Owner", item.ownerName ?? "Unassigned"],
+              ["Due", formatTaskDetailDate(item.dueAt, "Not dated")],
+              [
+                "Stale",
+                item.staleDays === null
+                  ? "Not measured"
+                  : `${item.staleDays} ${
+                      item.staleDays === 1 ? "day" : "days"
+                    }`,
+              ],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-[1rem] border border-border/70 bg-background/72 px-3 py-3"
+              >
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {label}
+                </p>
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-[1.15rem] border border-border/70 bg-background/68 px-4 py-4">
+            <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Reasons
+            </p>
+            <div className="mt-3">
+              <FollowUpReasonBadges item={item} />
+            </div>
+          </div>
+
+          {isReminderSuggestion ? (
+            <div className="space-y-3 rounded-[1.15rem] border border-fuchsia-500/25 bg-fuchsia-500/10 px-4 py-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Human approval required
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Accepting creates exactly one linked task. Dismissing records
+                  feedback without changing pipeline or sending messages.
+                </p>
+              </div>
+
+              <Button
+                className="w-full rounded-full"
+                disabled={isSuggestionActionPending}
+                type="button"
+                onClick={() => {
+                  runSuggestionAction("accept", item);
+                }}
+              >
+                {isSuggestionActionPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                Accept as task
+              </Button>
+
+              <div className="space-y-2">
+                <Label htmlFor="reminder-dismiss-reason">Dismiss reason</Label>
+                <FilterSelect
+                  id="reminder-dismiss-reason"
+                  value={dismissReason}
+                  options={reminderSuggestionDismissReasonOptions}
+                  placeholder="Dismiss reason"
+                  onValueChange={(value) => {
+                    setDismissReason(value as ReminderSuggestionDismissReason);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reminder-dismiss-note">Optional note</Label>
+                <textarea
+                  id="reminder-dismiss-note"
+                  className="input min-h-24 resize-y py-3"
+                  maxLength={1000}
+                  placeholder="Capture lightweight feedback for future tuning."
+                  value={dismissNote}
+                  onChange={(event) => {
+                    setDismissNote(event.target.value);
+                  }}
+                />
+              </div>
+
+              <Button
+                className="w-full rounded-full"
+                disabled={isSuggestionActionPending}
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  runSuggestionAction("dismiss", item);
+                }}
+              >
+                Dismiss suggestion
+              </Button>
+
+              {suggestionActionMessage ? (
+                <p className="status-message status-success">
+                  {suggestionActionMessage}
+                </p>
+              ) : null}
+              {suggestionActionError ? (
+                <p className="status-message status-error">
+                  {suggestionActionError}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <Button asChild className="w-full rounded-full">
+              <TrackedLink href={item.primaryAction.href}>
+                {item.primaryAction.label}
+                <ArrowUpRight className="size-4" />
+              </TrackedLink>
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-h-72 flex-col items-center justify-center text-center">
+          <span className="flex size-12 items-center justify-center rounded-[1.15rem] border border-border/70 bg-background/72">
+            <ClipboardList className="size-5 text-muted-foreground" />
+          </span>
+          <h2 className="mt-4 text-lg font-semibold text-foreground">
+            No active signal
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Today's follow-up loop is clear for this scope.
+          </p>
+        </div>
+      )}
+    </aside>
+  );
+};
+
 const TaskContextPanel = ({
   onEditTask,
   onOpenSnooze,
@@ -1089,44 +1612,69 @@ const TasksLoadingState = () => (
 const TasksListSurface = ({
   initialData,
   initialFilters,
+  initialTodayData,
 }: TasksListSurfaceProps) => {
   const {
     applyFilters,
     currentPage,
+    currentTodayPage,
     error,
     filterCount,
     filters,
     getTaskSelectionProps,
+    getTodaySelectionProps,
     hasFilters,
+    isTodayError,
+    isTodayFetching,
+    isTodayView,
     isError,
     isFetching,
     ownerOptions,
-    refetch,
+    refetchActiveView,
     resetFilters,
     searchDraft,
     selectedTask,
+    selectedTodayItem,
     setSearchDraft,
     taskItems,
     tasksList,
+    todayError,
+    todayFollowUps,
+    todayItems,
     totalPages,
+    totalTodayItems,
+    totalTodayPages,
   } = useTasksListSurface({
     initialData,
     initialFilters,
+    initialTodayData,
   });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
   const [snoozingTask, setSnoozingTask] = useState<TaskRecord | null>(null);
   const groupedTasks = groupTasks(taskItems);
   const hasTaskItems = taskItems.length > 0;
+  const hasTodayItems = todayItems.length > 0;
+  const activeIsFetching = isTodayView ? isTodayFetching : isFetching;
+  const activeIsError = isTodayView ? isTodayError : isError;
+  const activeError = isTodayView ? todayError : error;
+  const activePage = isTodayView ? currentTodayPage : currentPage;
+  const activeTotalPages = isTodayView ? totalTodayPages : totalPages;
+  const activeTotalItems = isTodayView
+    ? totalTodayItems
+    : tasksList.pagination.totalItems;
+  const activePageSize = isTodayView
+    ? (todayFollowUps?.pagination.pageSize ?? 20)
+    : tasksList.pagination.pageSize;
   const taskViewOptions = taskViewOrder.map(
     (view): FilterTabOption<TaskListFilters["view"]> => ({
       ...taskViewMeta[view],
-      count: getTaskViewCount(view, tasksList),
+      count: getTaskViewCount(view, tasksList, todayFollowUps),
       value: view,
     }),
   );
   const handleTaskSaved = (_response: TaskMutationResponse) => {
-    void refetch();
+    refetchActiveView();
   };
   const {
     applyTaskStatusAction,
@@ -1179,7 +1727,7 @@ const TasksListSurface = ({
             <WorkspaceListStatusBadge>
               {tasksList.workspaceScoped ? "Workspace scoped" : "Scope pending"}
             </WorkspaceListStatusBadge>
-            {isFetching ? (
+            {activeIsFetching ? (
               <WorkspaceListStatusBadge className="border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300">
                 <Loader2 className="size-3 animate-spin" />
                 Refreshing
@@ -1197,7 +1745,13 @@ const TasksListSurface = ({
                 options={taskViewOptions}
                 value={filters.view}
                 onValueChange={(view) => {
-                  applyFilters({ page: "", status: "", view });
+                  applyFilters({
+                    entityId: view === "today" ? "" : filters.entityId,
+                    entityType: view === "today" ? "" : filters.entityType,
+                    page: "",
+                    status: view === "today" ? "" : filters.status,
+                    view,
+                  });
                 }}
               />
             </div>
@@ -1258,6 +1812,7 @@ const TasksListSurface = ({
                 Entity
               </span>
               <FilterSelect
+                disabled={isTodayView}
                 value={filters.entityType}
                 options={[
                   { label: "All entities", value: "" },
@@ -1278,6 +1833,7 @@ const TasksListSurface = ({
                 Status
               </span>
               <FilterSelect
+                disabled={isTodayView}
                 value={filters.status}
                 options={[
                   { label: "Any status", value: "" },
@@ -1316,22 +1872,25 @@ const TasksListSurface = ({
               </div>
             ) : null}
 
-            {isError ? (
+            {activeIsError ? (
               <div className="rounded-[1.35rem] border border-destructive/30 bg-destructive/10 p-4">
                 <p className="text-sm font-medium text-foreground">
-                  Unable to refresh tasks.
+                  Unable to refresh {isTodayView ? "today follow-ups" : "tasks"}
+                  .
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {error instanceof Error
-                    ? error.message
-                    : "The tasks API returned an unexpected error."}
+                  {activeError instanceof Error
+                    ? activeError.message
+                    : isTodayView
+                      ? "The today follow-up API returned an unexpected error."
+                      : "The tasks API returned an unexpected error."}
                 </p>
                 <Button
                   className="mt-4 rounded-full"
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    void refetch();
+                    refetchActiveView();
                   }}
                 >
                   <RotateCcw className="size-4" />
@@ -1342,31 +1901,71 @@ const TasksListSurface = ({
           </>
         }
         pagination={{
-          currentPage,
-          disabled: isFetching,
+          currentPage: activePage,
+          disabled: activeIsFetching,
           onNext: () => {
-            applyFilters({ page: String(currentPage + 1) });
+            applyFilters({ page: String(activePage + 1) });
           },
           onPrevious: () => {
             applyFilters({
-              page: currentPage - 1 > 1 ? String(currentPage - 1) : "",
+              page: activePage - 1 > 1 ? String(activePage - 1) : "",
             });
           },
-          pageSize: tasksList.pagination.pageSize,
-          totalItems: tasksList.pagination.totalItems,
-          totalPages,
+          pageSize: activePageSize,
+          totalItems: activeTotalItems,
+          totalPages: activeTotalPages,
         }}
         footerNote={{
           icon: <Filter className="size-4 text-muted-foreground" />,
           title: "Task scope",
-          children:
-            "Every row is read through the active workspace and keeps its linked business record visible.",
+          children: isTodayView
+            ? "Today items are API-owned follow-up signals across tasks, snoozes, cadence, risk, and reminder suggestions."
+            : "Every row is read through the active workspace and keeps its linked business record visible.",
         }}
       >
         <div className="grid min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch">
           <div className="min-h-[34rem] min-w-0">
             <AnimatePresence mode="popLayout">
-              {!hasTaskItems && isFetching ? (
+              {isTodayView ? (
+                !hasTodayItems && activeIsFetching ? (
+                  <motion.div key="today-loading" layout>
+                    <TasksLoadingState />
+                  </motion.div>
+                ) : hasTodayItems ? (
+                  <div key="today-follow-ups">
+                    <TaskGroupSection
+                      group={
+                        todayFollowUps?.summary.overdueTaskCount
+                          ? "overdue"
+                          : "open"
+                      }
+                      totalItems={todayItems.length}
+                    >
+                      <AnimatePresence mode="popLayout">
+                        {todayItems.map((item) => {
+                          const selection = getTodaySelectionProps(item);
+
+                          return (
+                            <TodayFollowUpRow
+                              key={item.id}
+                              item={item}
+                              isSelected={selection.isSelected}
+                              onSelect={selection.onSelect}
+                            />
+                          );
+                        })}
+                      </AnimatePresence>
+                    </TaskGroupSection>
+                  </div>
+                ) : (
+                  <motion.div key="today-empty" layout className="h-full">
+                    <TasksEmptyState
+                      hasFilters={hasFilters}
+                      onReset={resetFilters}
+                    />
+                  </motion.div>
+                )
+              ) : !hasTaskItems && isFetching ? (
                 <motion.div key="loading" layout>
                   <TasksLoadingState />
                 </motion.div>
@@ -1412,18 +2011,26 @@ const TasksListSurface = ({
             </AnimatePresence>
           </div>
 
-          <TaskContextPanel
-            task={selectedTask}
-            onOpenSnooze={(task) => {
-              resetStatusActionError();
-              setSnoozingTask(task);
-            }}
-            onEditTask={(task) => {
-              setEditingTask(task);
-            }}
-            onStatusAction={handleStatusAction}
-            statusActionState={statusActionState}
-          />
+          {isTodayView ? (
+            <TodayContextPanel
+              key={selectedTodayItem?.id ?? "empty-today-signal"}
+              item={selectedTodayItem}
+              onRefresh={refetchActiveView}
+            />
+          ) : (
+            <TaskContextPanel
+              task={selectedTask}
+              onOpenSnooze={(task) => {
+                resetStatusActionError();
+                setSnoozingTask(task);
+              }}
+              onEditTask={(task) => {
+                setEditingTask(task);
+              }}
+              onStatusAction={handleStatusAction}
+              statusActionState={statusActionState}
+            />
+          )}
         </div>
       </WorkspaceListSurfaceShell>
 

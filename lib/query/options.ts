@@ -5,6 +5,7 @@ import type {
   ClientDetailResponse,
   ClientsListResponse,
   DocumentsListResponse,
+  FollowUpTodayResponse,
   JobDetailResponse,
   JobsListResponse,
   NotesListQuery,
@@ -35,6 +36,8 @@ import {
 import { fetchJson } from "@/lib/query/fetcher";
 import type { CurrentUserDto, CurrentWorkspaceDto } from "@/lib/query/types";
 import {
+  followUpTodayFiltersToSearchParams,
+  getApiTaskListFilters,
   type TaskListFilters,
   taskListFiltersToSearchParams,
 } from "@/lib/tasks/filters";
@@ -166,6 +169,7 @@ export const submissionsListQueryOptions = () =>
   });
 
 export const tasksListRootQueryKey = ["tasks", "list"] as const;
+export const followUpTodayRootQueryKey = ["tasks", "today"] as const;
 
 export const tasksListQueryKey = (filters: TaskListFilters) =>
   [...tasksListRootQueryKey, filters] as const;
@@ -174,13 +178,34 @@ export const tasksListQueryOptions = (filters: TaskListFilters) =>
   queryOptions({
     queryKey: tasksListQueryKey(filters),
     queryFn: () => {
-      const params = taskListFiltersToSearchParams(filters, {
-        includePageSize: true,
-      });
+      const params = taskListFiltersToSearchParams(
+        getApiTaskListFilters(filters),
+        {
+          includePageSize: true,
+        },
+      );
       const queryString = params.toString();
 
       return fetchJson<TasksListResponse>(
         `/api/tasks${queryString ? `?${queryString}` : ""}`,
+      );
+    },
+  });
+
+export const followUpTodayQueryKey = (filters: TaskListFilters) =>
+  [...followUpTodayRootQueryKey, filters] as const;
+
+export const followUpTodayQueryOptions = (filters: TaskListFilters) =>
+  queryOptions({
+    queryKey: followUpTodayQueryKey(filters),
+    queryFn: () => {
+      const params = followUpTodayFiltersToSearchParams(filters, {
+        includePageSize: true,
+      });
+      const queryString = params.toString();
+
+      return fetchJson<FollowUpTodayResponse>(
+        `/api/tasks/today${queryString ? `?${queryString}` : ""}`,
       );
     },
   });

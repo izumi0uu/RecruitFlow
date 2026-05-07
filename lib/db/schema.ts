@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -67,6 +68,11 @@ export const automationStatusValues = [
   "succeeded",
   "failed",
 ] as const;
+export const reminderSuggestionStatusValues = [
+  "suggested",
+  "accepted",
+  "dismissed",
+] as const;
 
 export type WorkspaceRole = (typeof workspaceRoleValues)[number];
 export type ClientStatus = (typeof clientStatusValues)[number];
@@ -79,6 +85,8 @@ export type TaskStatus = (typeof taskStatusValues)[number];
 export type DocumentType = (typeof documentTypeValues)[number];
 export type AutomationType = (typeof automationTypeValues)[number];
 export type AutomationStatus = (typeof automationStatusValues)[number];
+export type ReminderSuggestionStatus =
+  (typeof reminderSuggestionStatusValues)[number];
 
 export const workspaceRoleEnum = pgEnum("workspace_role", workspaceRoleValues);
 export const clientStatusEnum = pgEnum("client_status", clientStatusValues);
@@ -102,6 +110,10 @@ export const automationTypeEnum = pgEnum(
 export const automationStatusEnum = pgEnum(
   "automation_status",
   automationStatusValues,
+);
+export const reminderSuggestionStatusEnum = pgEnum(
+  "reminder_suggestion_status",
+  reminderSuggestionStatusValues,
 );
 
 const timestamps = () => ({
@@ -386,6 +398,42 @@ export const automationRuns = pgTable("automation_runs", {
   ...timestamps(),
 });
 
+export const reminderSuggestions = pgTable(
+  "reminder_suggestions",
+  {
+    id: idColumn(),
+    workspaceId: workspaceIdColumn(),
+    automationRunId: uuid("automation_run_id")
+      .notNull()
+      .references(() => automationRuns.id),
+    sourceEntityType: varchar("source_entity_type", { length: 50 }).notNull(),
+    sourceEntityId: uuid("source_entity_id").notNull(),
+    reason: varchar("reason", { length: 80 }).notNull(),
+    proposedTitle: varchar("proposed_title", { length: 180 }).notNull(),
+    proposedDueAt: timestamp("proposed_due_at"),
+    proposedAssigneeUserId: userIdColumn("proposed_assignee_user_id"),
+    entityType: varchar("entity_type", { length: 50 }),
+    entityId: uuid("entity_id"),
+    status: reminderSuggestionStatusEnum("status")
+      .notNull()
+      .default("suggested"),
+    acceptedTaskId: uuid("accepted_task_id").references(() => tasks.id),
+    dismissReason: varchar("dismiss_reason", { length: 80 }),
+    dismissNote: text("dismiss_note"),
+    dedupeKey: varchar("dedupe_key", { length: 255 }).notNull(),
+    sourceSnapshotJson: jsonb("source_snapshot_json"),
+    ...timestamps(),
+  },
+  (table) => ({
+    reminderSuggestionsWorkspaceDedupeUnique: uniqueIndex(
+      "reminder_suggestions_workspace_dedupe_unique",
+    ).on(table.workspaceId, table.dedupeKey),
+    reminderSuggestionsWorkspaceStatusCreatedAtIndex: index(
+      "reminder_suggestions_workspace_status_created_at_idx",
+    ).on(table.workspaceId, table.status, table.createdAt),
+  }),
+);
+
 export const auditLogs = pgTable("audit_logs", {
   id: idColumn(),
   workspaceId: workspaceIdColumn(),
@@ -486,6 +534,8 @@ export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
 export type AutomationRun = typeof automationRuns.$inferSelect;
 export type NewAutomationRun = typeof automationRuns.$inferInsert;
+export type ReminderSuggestion = typeof reminderSuggestions.$inferSelect;
+export type NewReminderSuggestion = typeof reminderSuggestions.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
 
@@ -519,6 +569,7 @@ export const auditEntityTypeValues = [
   "note",
   "document",
   "automation_run",
+  "reminder_suggestion",
 ] as const;
 
 export type AuditEntityType = (typeof auditEntityTypeValues)[number];
@@ -561,6 +612,9 @@ export enum AuditAction {
   TASK_COMPLETED = "TASK_COMPLETED",
   TASK_REOPENED = "TASK_REOPENED",
   TASK_PERMISSION_DENIED = "TASK_PERMISSION_DENIED",
+  REMINDER_SUGGESTION_PERSISTED = "REMINDER_SUGGESTION_PERSISTED",
+  REMINDER_SUGGESTION_ACCEPTED = "REMINDER_SUGGESTION_ACCEPTED",
+  REMINDER_SUGGESTION_DISMISSED = "REMINDER_SUGGESTION_DISMISSED",
   NOTE_ADDED = "NOTE_ADDED",
   NOTE_ARCHIVED = "NOTE_ARCHIVED",
   NOTE_PERMISSION_DENIED = "NOTE_PERMISSION_DENIED",

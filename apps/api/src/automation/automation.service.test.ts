@@ -65,7 +65,7 @@ assert.equal(
     { ...reminderSuggestion, id: "b" },
     { ...reminderSuggestion, id: "a" },
   ]),
-  "reminder_generation:workspace-1:a,b",
+  "reminder_generation:workspace-1:stale_submission:submission:a,stale_submission:submission:b",
 );
 assert.equal(
   buildReminderIdempotencyKeyForTest("workspace-1", []),

@@ -11,6 +11,11 @@ import {
 } from "@nestjs/common";
 
 import {
+  type FollowUpTodayResponse,
+  followUpTodayQuerySchema,
+  type ReminderSuggestionMutationResponse,
+  reminderSuggestionDismissRequestSchema,
+  reminderSuggestionParamsSchema,
   type TaskMutationResponse,
   type TasksListResponse,
   taskMutationRequestSchema,
@@ -25,6 +30,7 @@ import { RequireWorkspaceRole } from "../workspace/require-workspace-role.decora
 import { WorkspaceContextGuard } from "../workspace/workspace.guard";
 import type { ApiWorkspaceContext } from "../workspace/workspace.service";
 import { WorkspaceRoleGuard } from "../workspace/workspace-role.guard";
+import { FollowUpService } from "./follow-up.service";
 
 // Keep this as a runtime import. Nest constructor DI needs the class token;
 // `import type` is erased and becomes `Object` in decorator metadata.
@@ -35,7 +41,26 @@ import { TasksService } from "./tasks.service";
 @UseGuards(AuthGuard, WorkspaceContextGuard, WorkspaceRoleGuard)
 @RequireWorkspaceRole({ minRole: "coordinator" })
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(
+    private readonly followUpService: FollowUpService,
+    private readonly tasksService: TasksService,
+  ) {}
+
+  @Get("today")
+  getTodayFollowUps(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Query() query: unknown,
+  ): Promise<FollowUpTodayResponse> {
+    const parsedQuery = followUpTodayQuerySchema.safeParse(query);
+
+    if (!parsedQuery.success) {
+      throw new BadRequestException(
+        parsedQuery.error.issues[0]?.message ?? "Invalid today follow-up query",
+      );
+    }
+
+    return this.followUpService.getTodayFollowUps(context, parsedQuery.data);
+  }
 
   @Get()
   getTasks(
@@ -67,6 +92,57 @@ export class TasksController {
     }
 
     return this.tasksService.createTask(context, parsedBody.data);
+  }
+
+  @Post("reminder-suggestions/:reminderSuggestionId/accept")
+  acceptReminderSuggestion(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+  ): Promise<ReminderSuggestionMutationResponse> {
+    const parsedParams = reminderSuggestionParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ??
+          "Invalid reminder suggestion id",
+      );
+    }
+
+    return this.tasksService.acceptReminderSuggestion(
+      context,
+      parsedParams.data.reminderSuggestionId,
+    );
+  }
+
+  @Post("reminder-suggestions/:reminderSuggestionId/dismiss")
+  dismissReminderSuggestion(
+    @CurrentWorkspaceContext() context: ApiWorkspaceContext,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ): Promise<ReminderSuggestionMutationResponse> {
+    const parsedParams = reminderSuggestionParamsSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(
+        parsedParams.error.issues[0]?.message ??
+          "Invalid reminder suggestion id",
+      );
+    }
+
+    const parsedBody = reminderSuggestionDismissRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(
+        parsedBody.error.issues[0]?.message ??
+          "Invalid reminder suggestion dismiss payload",
+      );
+    }
+
+    return this.tasksService.dismissReminderSuggestion(
+      context,
+      parsedParams.data.reminderSuggestionId,
+      parsedBody.data,
+    );
   }
 
   @Patch(":taskId")

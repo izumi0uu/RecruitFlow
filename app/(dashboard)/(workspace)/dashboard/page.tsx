@@ -1,15 +1,13 @@
+import type { FollowUpTodayResponse } from "@recruitflow/contracts";
 import {
   BriefcaseBusiness,
   Building2,
-  FileText,
-  type LucideIcon,
-  Settings,
   SquareKanban,
-  UsersRound,
   Workflow,
 } from "lucide-react";
 
 import { ActivityDigestList } from "@/components/dashboard/ActivityDigestList";
+import { DailyFollowUpDigest } from "@/components/dashboard/DailyFollowUpDigest";
 import { DashboardAreaChart } from "@/components/dashboard/DashboardAreaChart";
 import { DashboardBarChart } from "@/components/dashboard/DashboardBarChart";
 import { DashboardRingChart } from "@/components/dashboard/DashboardRingChart";
@@ -24,6 +22,7 @@ import { TaskTodoTable } from "@/components/dashboard/TaskTodoTable";
 import { TrackedLink } from "@/components/navigation/TrackedLink";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { requestApiJson } from "@/lib/api/client";
 import {
   formatAverageDays,
   formatCountLabel,
@@ -45,61 +44,14 @@ import {
 } from "@/lib/dashboard/queries";
 import { requireWorkspace } from "@/lib/db/queries";
 
-const quickLinks: Array<{
-  description: string;
-  href: string;
-  icon: LucideIcon;
-  title: string;
-}> = [
-  {
-    href: "/clients",
-    icon: Building2,
-    title: "Clients",
-    description: "Company relationships, owners, and account priorities.",
-  },
-  {
-    href: "/jobs",
-    icon: BriefcaseBusiness,
-    title: "Jobs",
-    description: "Open roles, hiring managers, and intake status.",
-  },
-  {
-    href: "/candidates",
-    icon: UsersRound,
-    title: "Candidates",
-    description: "Profiles, notes, documents, and review readiness.",
-  },
-  {
-    href: "/pipeline",
-    icon: Workflow,
-    title: "Pipeline",
-    description: "Stage movement, risk flags, and view switching.",
-  },
-  {
-    href: "/tasks",
-    icon: SquareKanban,
-    title: "Tasks",
-    description: "My tasks, overdue follow-ups, and workspace queues.",
-  },
-  {
-    href: "/documents",
-    icon: FileText,
-    title: "Documents",
-    description: "Recent files, linked entities, and AI-assisted search.",
-  },
-  {
-    href: "/settings",
-    icon: Settings,
-    title: "Settings",
-    description: "Members, billing, security, and audit controls.",
-  },
-];
-
 const DashboardFallback = ({ message }: { message: string }) => (
   <div className="rounded-[1.4rem] border border-dashed border-border/70 bg-workspace-muted-surface/55 px-4 py-5 text-sm leading-6 text-muted-foreground">
     {message}
   </div>
 );
+
+const getDashboardDailyFollowUps = async () =>
+  requestApiJson<FollowUpTodayResponse>("/tasks/today?scope=mine&pageSize=5");
 
 const DashboardPage = async () => {
   const { membership, user, workspace } = await requireWorkspace();
@@ -112,6 +64,7 @@ const DashboardPage = async () => {
     staleResult,
     overdueResult,
     myTasksResult,
+    todayFollowUpsResult,
     outcomeResult,
     activityResult,
   ] = await Promise.allSettled([
@@ -123,6 +76,7 @@ const DashboardPage = async () => {
     getDashboardStaleSubmissions(workspace.id),
     getDashboardOverdueTasks(workspace.id),
     getDashboardUserTasks(workspace.id, user.id),
+    getDashboardDailyFollowUps(),
     getDashboardOutcomeSummary(workspace.id),
     getDashboardActivityDigest(workspace.id),
   ]);
@@ -140,6 +94,10 @@ const DashboardPage = async () => {
     overdueResult.status === "fulfilled" ? overdueResult.value : [];
   const myTaskItems =
     myTasksResult.status === "fulfilled" ? myTasksResult.value : [];
+  const todayFollowUps =
+    todayFollowUpsResult.status === "fulfilled"
+      ? todayFollowUpsResult.value
+      : null;
   const outcomeSummary =
     outcomeResult.status === "fulfilled" ? outcomeResult.value : null;
   const activityItems =
@@ -221,7 +179,9 @@ const DashboardPage = async () => {
                   <TrackedLink href="/pipeline">Open pipeline</TrackedLink>
                 </Button>
                 <Button asChild variant="outline" className="rounded-full">
-                  <TrackedLink href="/tasks">Review tasks</TrackedLink>
+                  <TrackedLink href="/tasks?view=today">
+                    Review today
+                  </TrackedLink>
                 </Button>
               </div>
             </div>
@@ -242,6 +202,23 @@ const DashboardPage = async () => {
           </div>
         </CardContent>
       </Card>
+
+      <DashboardSection
+        eyebrow="Today"
+        title="Daily follow-up digest"
+        description="A recruiter-first operating loop from tasks, snoozes, stale submissions, risk gaps, cadence, and persisted reminder suggestions."
+        action={
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <TrackedLink href="/tasks?view=today">Open Today</TrackedLink>
+          </Button>
+        }
+      >
+        {todayFollowUps ? (
+          <DailyFollowUpDigest followUps={todayFollowUps} />
+        ) : (
+          <DashboardFallback message="Daily follow-up digest could not be loaded, but the rest of the dashboard remains available." />
+        )}
+      </DashboardSection>
 
       <DashboardSection
         eyebrow="To do"

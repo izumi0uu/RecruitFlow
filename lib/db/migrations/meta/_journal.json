@@ -50,6 +50,13 @@
       "when": 1777874855177,
       "tag": "0006_drop_note_final_delete_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778165609000,
+      "tag": "0007_reminder_suggestions",
+      "breakpoints": true
     }
   ]
 }

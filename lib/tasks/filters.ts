@@ -7,6 +7,10 @@ import {
   apiTaskViewValues,
 } from "@recruitflow/contracts";
 
+const taskSurfaceViewValues = [...apiTaskViewValues, "today"] as const;
+
+export type TaskSurfaceView = (typeof taskSurfaceViewValues)[number];
+
 type SearchParamRecord = Record<string, string | string[] | undefined>;
 
 type SearchParamReader = {
@@ -20,7 +24,7 @@ export type TaskListFilters = {
   page: string;
   q: string;
   status: "" | ApiTaskStatus;
-  view: ApiTaskView;
+  view: TaskSurfaceView;
 };
 
 type TaskListFilterInput = Partial<
@@ -68,8 +72,8 @@ const normalizePageValue = (value: string | null | undefined) => {
 const normalizeTaskViewValue = (value: string | null | undefined) => {
   const normalizedValue = normalizeTextValue(value);
 
-  return apiTaskViewValues.includes(normalizedValue as ApiTaskView)
-    ? (normalizedValue as ApiTaskView)
+  return taskSurfaceViewValues.includes(normalizedValue as TaskSurfaceView)
+    ? (normalizedValue as TaskSurfaceView)
     : "mine";
 };
 
@@ -143,6 +147,36 @@ export const taskListFiltersToSearchParams = (
   if (normalizedFilters.entityId)
     params.set("entityId", normalizedFilters.entityId);
   if (normalizedFilters.status) params.set("status", normalizedFilters.status);
+  if (normalizedFilters.page) params.set("page", normalizedFilters.page);
+  if (options.includePageSize) params.set("pageSize", "20");
+
+  return params;
+};
+
+export const getApiTaskListFilters = (
+  filters: TaskListFilters,
+): TaskListFilters & { view: ApiTaskView } =>
+  normalizeTaskListFilters({
+    ...filters,
+    entityId: filters.view === "today" ? "" : filters.entityId,
+    entityType: filters.view === "today" ? "" : filters.entityType,
+    page: filters.view === "today" ? "" : filters.page,
+    status: filters.view === "today" ? "" : filters.status,
+    view: filters.view === "today" ? "mine" : filters.view,
+  }) as TaskListFilters & { view: ApiTaskView };
+
+export const followUpTodayFiltersToSearchParams = (
+  filters: TaskListFilters,
+  options: { includePageSize?: boolean } = {},
+) => {
+  const normalizedFilters = normalizeTaskListFilters(filters);
+  const params = new URLSearchParams();
+
+  params.set("scope", normalizedFilters.owner ? "workspace" : "mine");
+  if (normalizedFilters.owner) {
+    params.set("ownerUserId", normalizedFilters.owner);
+  }
+  if (normalizedFilters.q) params.set("search", normalizedFilters.q);
   if (normalizedFilters.page) params.set("page", normalizedFilters.page);
   if (options.includePageSize) params.set("pageSize", "20");
 
